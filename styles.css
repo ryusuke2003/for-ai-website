@@ -149,17 +149,94 @@ input::placeholder { color: #aaa69d; }
 }
 
 .done-button { width: 100%; }
-.streak {
-  display: flex;
-  align-items: baseline;
+
+.progress-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   margin-top: 18px;
+}
+
+.progress-stat {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  background: rgba(29,29,31,.05);
   color: #6c685f;
 }
 
-.streak strong {
+.progress-stat strong {
   font-size: 2rem;
   color: #1d1d1f;
+}
+
+.history {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(29,29,31,.1);
+}
+
+.history-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.history-heading h3 {
+  margin: 0;
+  font-size: .92rem;
+}
+
+.history-heading span {
+  color: #7a766d;
+  font-size: .75rem;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.history-day {
+  display: grid;
+  grid-template-rows: 40px auto auto;
+  gap: 5px;
+  align-items: end;
+  min-width: 0;
+  text-align: center;
+}
+
+.history-bar {
+  display: block;
+  width: 100%;
+  min-height: 4px;
+  border-radius: 8px;
+  background: #d9d4ca;
+}
+
+.history-bar.level-0 { height: 4px; opacity: .55; }
+.history-bar.level-1 { height: 12px; }
+.history-bar.level-2 { height: 20px; }
+.history-bar.level-3 { height: 30px; }
+.history-bar.level-4 { height: 40px; }
+
+.history-day strong {
+  font-size: .92rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-weekday {
+  overflow: hidden;
+  color: #7a766d;
+  font-size: .7rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 footer {
@@ -189,6 +266,7 @@ button:focus-visible, input:focus-visible {
 @media (max-width: 560px) {
   .shell { padding-top: 44px; }
   .card { padding: 22px; border-radius: 20px; }
+  .progress-stat { padding: 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -198,11 +276,14 @@ button:focus-visible, input:focus-visible {
 @media (prefers-color-scheme: dark) {
   :root { color: #f2efe7; background: #151515; }
   body { background: radial-gradient(circle at top left, #292825, transparent 32rem), #151515; }
-  .lead, .hint, footer, .streak { color: #aaa69d; }
+  .lead, .hint, footer, .progress-stat, .history-heading span, .history-weekday { color: #aaa69d; }
   .card { background: rgba(33,33,33,.78); border-color: rgba(255,255,255,.1); }
   input { border-color: #f2efe7; }
   .primary, .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
   .secondary { border-color: #f2efe7; }
   .presets button.active { background: #393733; color: #f2efe7; }
-  .streak strong { color: #f2efe7; }
+  .progress-stat { background: rgba(255,255,255,.06); }
+  .progress-stat strong { color: #f2efe7; }
+  .history { border-color: rgba(255,255,255,.1); }
+  .history-bar { background: #5b574f; }
 }
