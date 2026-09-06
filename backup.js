@@ -10,8 +10,7 @@ const MAX_BACKUP_BYTES = 100_000;
 const RECOVERY_STORAGE_KEY = 'one.restoreRecovery.v1';
 const RECOVERY_FORMAT = 'one-restore-recovery';
 const RECOVERY_VERSION = 1;
-const MAX_RECOVERY_BYTES = 60_000;
-const DATA_SIGNATURE_PATTERN = /^\d{1,6}:[0-9a-f]{8}$/;
+const MAX_RECOVERY_BYTES = 100_000;
 
 function isPlainBackupObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -50,24 +49,20 @@ function normalizedBackupData(data) {
   };
 }
 
-function dataSignature(data) {
-  const serialized = JSON.stringify(normalizedBackupData(data));
-  let hash = 2166136261;
-
-  for (let index = 0; index < serialized.length; index += 1) {
-    hash ^= serialized.charCodeAt(index);
-    hash = Math.imul(hash, 16777619);
-  }
-
-  return `${serialized.length}:${(hash >>> 0).toString(16).padStart(8, '0')}`;
+function backupDataGuard(data) {
+  return JSON.stringify(normalizedBackupData(data));
 }
 
-function currentRestoreSignature() {
-  return dataSignature({
+function currentBackupData() {
+  return {
     doneCount: readStoredDoneCount(),
     history: readHistory(),
     selectedMinutes: readPreferredMinutes(),
-  });
+  };
+}
+
+function currentRestoreGuard() {
+  return backupDataGuard(currentBackupData());
 }
 
 function readStableBackupSnapshot() {
@@ -164,17 +159,17 @@ function readRecoveryPoint() {
   try {
     const value = JSON.parse(raw);
     if (!isPlainBackupObject(value)) return null;
-    if (!hasOnlyKeys(value, new Set(['format', 'version', 'createdAt', 'expectedSignature', 'data']))) return null;
+    if (!hasOnlyKeys(value, new Set(['format', 'version', 'createdAt', 'expectedData', 'data']))) return null;
     if (value.format !== RECOVERY_FORMAT || value.version !== RECOVERY_VERSION) return null;
     if (typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))) return null;
-    if (typeof value.expectedSignature !== 'string' || !DATA_SIGNATURE_PATTERN.test(value.expectedSignature)) return null;
 
     const data = validateBackupData(value.data);
-    if (!data) return null;
+    const expectedData = validateBackupData(value.expectedData);
+    if (!data || !expectedData) return null;
 
     return {
       createdAt: value.createdAt,
-      expectedSignature: value.expectedSignature,
+      expectedData,
       data,
     };
   } catch {
@@ -182,14 +177,14 @@ function readRecoveryPoint() {
   }
 }
 
-function saveRecoveryPoint(data, expectedSignature) {
-  if (!tabCoordinationEnabled || !DATA_SIGNATURE_PATTERN.test(expectedSignature)) return false;
+function saveRecoveryPoint(data, expectedData) {
+  if (!tabCoordinationEnabled) return false;
 
   const payload = JSON.stringify({
     format: RECOVERY_FORMAT,
     version: RECOVERY_VERSION,
     createdAt: new Date().toISOString(),
-    expectedSignature,
+    expectedData: normalizedBackupData(expectedData),
     data: normalizedBackupData(data),
   });
   if (payload.length > MAX_RECOVERY_BYTES) return false;
@@ -213,7 +208,7 @@ function removeRecoveryPoint() {
 function refreshRecoveryAvailability() {
   const recovery = readRecoveryPoint();
   const matchesRestoredState = recovery !== null
-    && currentRestoreSignature() === recovery.expectedSignature;
+    && currentRestoreGuard() === backupDataGuard(recovery.expectedData);
 
   backupUndoButton.hidden = !matchesRestoredState;
   backupUndoButton.disabled = matchesRestoredState && !canRestoreBackup();
@@ -301,7 +296,7 @@ async function importBackup(file) {
     return;
   }
 
-  const restoreSignature = currentRestoreSignature();
+  const restoreGuard = currentRestoreGuard();
   const historyDays = Object.keys(restored.history).length;
   const confirmed = window.confirm(
     `現在の累計と日次履歴を置き換えます。\n\n累計: ${restored.doneCount}回\n日次履歴: ${historyDays}日分\nタイマー: ${restored.selectedMinutes}分\n\nタスク本文は変更しません。復元しますか？`,
@@ -315,25 +310,25 @@ async function importBackup(file) {
     setBackupStatus('確認中にタイマー状態が変わったため復元を中止しました。データは変更していません。');
     return;
   }
-  if (restoreSignature !== currentRestoreSignature()) {
+  if (restoreGuard !== currentRestoreGuard()) {
     setBackupStatus('確認中に別タブで記録やタイマー設定が更新されたため復元を中止しました。最新状態を確認してからやり直してください。');
     return;
   }
 
   const recoveryData = readStableBackupSnapshot();
-  if (!recoveryData || dataSignature(recoveryData) !== restoreSignature) {
+  if (!recoveryData || backupDataGuard(recoveryData) !== restoreGuard) {
     setBackupStatus('復元前の状態を安全に退避できなかったため復元を中止しました。データは変更していません。');
     return;
   }
 
-  const expectedSignature = dataSignature(restored);
-  if (!saveRecoveryPoint(recoveryData, expectedSignature)) {
+  const expectedGuard = backupDataGuard(restored);
+  if (!saveRecoveryPoint(recoveryData, restored)) {
     setBackupStatus('復元前の状態を端末内に退避できなかったため復元を中止しました。データは変更していません。');
     return;
   }
 
   applyBackup(restored);
-  if (currentRestoreSignature() !== expectedSignature) {
+  if (currentRestoreGuard() !== expectedGuard) {
     applyBackup(recoveryData);
     removeRecoveryPoint();
     refreshRecoveryAvailability();
@@ -357,14 +352,15 @@ function undoLastRestore() {
   }
 
   const recovery = readRecoveryPoint();
-  if (!recovery || currentRestoreSignature() !== recovery.expectedSignature) {
+  const expectedGuard = recovery ? backupDataGuard(recovery.expectedData) : null;
+  if (!recovery || currentRestoreGuard() !== expectedGuard) {
     refreshRecoveryAvailability();
     setBackupStatus('復元後に記録またはタイマー設定が変わったため、直前の復元はもう取り消せません。');
     return;
   }
 
   const currentData = readStableBackupSnapshot();
-  if (!currentData || dataSignature(currentData) !== recovery.expectedSignature) {
+  if (!currentData || backupDataGuard(currentData) !== expectedGuard) {
     setBackupStatus('現在の記録を安全に確認できなかったため、取り消しを中止しました。');
     return;
   }
@@ -378,15 +374,15 @@ function undoLastRestore() {
     return;
   }
 
-  if (!canRestoreBackup() || currentRestoreSignature() !== recovery.expectedSignature) {
+  if (!canRestoreBackup() || currentRestoreGuard() !== expectedGuard) {
     refreshRecoveryAvailability();
     setBackupStatus('確認中に状態が変わったため、取り消しを中止しました。');
     return;
   }
 
-  const recoverySignature = dataSignature(recovery.data);
+  const recoveryGuard = backupDataGuard(recovery.data);
   applyBackup(recovery.data);
-  if (currentRestoreSignature() !== recoverySignature) {
+  if (currentRestoreGuard() !== recoveryGuard) {
     applyBackup(currentData);
     setBackupStatus('取り消し後の保存確認に失敗したため、可能な範囲で取り消し前の状態へ戻しました。');
     return;
