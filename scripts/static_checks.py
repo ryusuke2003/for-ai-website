@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
+REQUIRED_SCRIPT_ORDER = ["app.js", "tab-guard.js", "shortcuts.js"]
 
 
 class PageParser(HTMLParser):
@@ -62,6 +63,12 @@ def main():
         policy = parser.csp[0]
         for directive in ("connect-src 'none'", "object-src 'none'", "base-uri 'none'"):
             fail_if(directive not in policy, f"CSP に {directive} が必要です", errors)
+
+    fail_if(
+        parser.script_urls != REQUIRED_SCRIPT_ORDER,
+        f"JavaScriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください",
+        errors,
+    )
 
     for url in parser.resource_urls:
         fail_if(
