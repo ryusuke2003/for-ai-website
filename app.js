@@ -166,6 +166,12 @@ function setFocusMode(enabled, { persist = true, announce = true } = {}) {
   }
 }
 
+function revealCompletionRecord() {
+  if (document.body.classList.contains('focus-mode')) {
+    setFocusMode(false, { announce: false });
+  }
+}
+
 function stopTimer(label = 'スタート', persist = true) {
   clearTimerInterval();
   endAt = null;
@@ -177,6 +183,7 @@ function stopTimer(label = 'スタート', persist = true) {
 function finishTimer() {
   remainingSeconds = 0;
   setRecordAvailability(true);
+  revealCompletionRecord();
   stopTimer('もう一度');
   setTimerFeedback('集中スプリント完了。この1回を記録できます。', 'complete');
   document.title = '完了！ — ONE';
@@ -276,6 +283,7 @@ function restoreTimerState() {
     if (restoredRemaining <= 0) {
       remainingSeconds = 0;
       setRecordAvailability(true);
+      revealCompletionRecord();
       setStartButton('もう一度');
       setTimerFeedback('前回の集中スプリントは完了しています。この1回を記録できます。', 'complete');
       renderTimer();
@@ -289,6 +297,7 @@ function restoreTimerState() {
   const completed = remainingSeconds === 0;
   const legacyCompletedState = completed && state != null && typeof state.completionReady !== 'boolean';
   setRecordAvailability(completed && (state?.completionReady === true || legacyCompletedState));
+  if (completionReady) revealCompletionRecord();
   setStartButton(partiallyElapsed ? '再開' : completed ? 'もう一度' : 'スタート');
   setTimerFeedback(
     partiallyElapsed
