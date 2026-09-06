@@ -52,10 +52,26 @@
         <h2 id="done-title">終わったら記録する</h2>
       </div>
       <button class="done-button" id="done-button" type="button">今日はここまで進んだ ✓</button>
-      <div class="streak" aria-live="polite">
-        <strong id="done-count">0</strong>
-        <span>回の集中を、この端末で積み上げました。</span>
+
+      <div class="progress-summary" aria-live="polite">
+        <div class="progress-stat">
+          <strong id="today-count">0</strong>
+          <span>今日</span>
+        </div>
+        <div class="progress-stat">
+          <strong id="done-count">0</strong>
+          <span>累計</span>
+        </div>
       </div>
+
+      <div class="history" aria-labelledby="history-title">
+        <div class="history-heading">
+          <h3 id="history-title">直近7日</h3>
+          <span>集中した回数</span>
+        </div>
+        <div class="history-grid" id="history-grid" role="list"></div>
+      </div>
+      <p class="hint">日ごとの回数もこの端末だけに保存します。履歴は最大90日分です。</p>
     </section>
 
     <footer>
