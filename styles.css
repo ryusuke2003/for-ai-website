@@ -133,6 +133,10 @@ input::placeholder { color: #aaa69d; }
   color: inherit;
 }
 
+.secondary[aria-pressed="true"] {
+  background: #e3ded4;
+}
+
 .presets { margin-top: 18px; }
 .presets button {
   padding: 8px 12px;
@@ -239,6 +243,54 @@ input::placeholder { color: #aaa69d; }
   text-overflow: ellipsis;
 }
 
+body.focus-mode .shell {
+  display: grid;
+  align-content: center;
+  gap: 12px;
+  width: min(900px, calc(100% - 32px));
+  min-height: 100vh;
+  padding: 32px 0;
+}
+
+body.focus-mode .hero,
+body.focus-mode .progress-card,
+body.focus-mode footer {
+  display: none;
+}
+
+body.focus-mode .task-card,
+body.focus-mode .timer-card {
+  margin: 0;
+}
+
+body.focus-mode .task-card {
+  padding: 24px 36px;
+  text-align: center;
+}
+
+body.focus-mode .task-card .section-heading,
+body.focus-mode .task-card .hint,
+body.focus-mode .timer-card .section-heading,
+body.focus-mode .timer-card .presets,
+body.focus-mode .timer-card .hint {
+  display: none;
+}
+
+body.focus-mode .task-card input {
+  padding-top: 8px;
+  text-align: center;
+  font-size: clamp(1.6rem, 5vw, 2.8rem);
+}
+
+body.focus-mode .timer-card {
+  padding: 38px 28px 34px;
+}
+
+body.focus-mode .timer {
+  margin: 0 0 32px;
+  font-size: clamp(6rem, 22vw, 11rem);
+}
+
 footer {
   padding: 28px 4px 0;
   text-align: center;
@@ -267,6 +319,9 @@ button:focus-visible, input:focus-visible {
   .shell { padding-top: 44px; }
   .card { padding: 22px; border-radius: 20px; }
   .progress-stat { padding: 14px; }
+  body.focus-mode .shell { padding: 16px 0; }
+  body.focus-mode .task-card { padding: 20px; }
+  body.focus-mode .timer-card { padding: 28px 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -281,6 +336,7 @@ button:focus-visible, input:focus-visible {
   input { border-color: #f2efe7; }
   .primary, .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
   .secondary { border-color: #f2efe7; }
+  .secondary[aria-pressed="true"] { background: #393733; }
   .presets button.active { background: #393733; color: #f2efe7; }
   .progress-stat { background: rgba(255,255,255,.06); }
   .progress-stat strong { color: #f2efe7; }
