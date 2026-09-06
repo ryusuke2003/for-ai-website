@@ -25,7 +25,7 @@
       </div>
       <label class="sr-only" for="task-input">今日やる一つ</label>
       <input id="task-input" maxlength="120" autocomplete="off" placeholder="例：レポートの導入を300字書く">
-      <p class="hint">この内容はこのブラウザだけに保存されます。サーバー送信はしません。</p>
+      <p class="hint">この内容はこのブラウザだけに保存され、翌日に開くと新しい一日のため空欄になります。サーバー送信はしません。</p>
     </section>
 
     <section class="card timer-card" aria-labelledby="timer-title">
@@ -54,7 +54,7 @@
         <h2 id="done-title">完了した集中を記録する</h2>
       </div>
       <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
-      <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。</p>
+      <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。日付をまたいでも完了した日の回数に入ります。</p>
 
       <div class="progress-summary" aria-live="polite">
         <div class="progress-stat">
