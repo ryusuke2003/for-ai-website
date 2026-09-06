@@ -18,7 +18,7 @@
       <p class="lead">やることを一つ決めて、25分だけ始める。残りは、あとでいい。</p>
     </header>
 
-    <section class="card" aria-labelledby="task-title">
+    <section class="card task-card" aria-labelledby="task-title">
       <div class="section-heading">
         <span class="step">01</span>
         <h2 id="task-title">いま一番進めたいこと</h2>
@@ -37,6 +37,7 @@
       <div class="controls">
         <button class="primary" id="start-button" type="button">スタート</button>
         <button class="secondary" id="reset-button" type="button">リセット</button>
+        <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false">集中表示</button>
       </div>
       <div class="presets" aria-label="タイマー時間">
         <button type="button" data-minutes="10">10分</button>
@@ -46,7 +47,7 @@
       <p class="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
     </section>
 
-    <section class="card" aria-labelledby="done-title">
+    <section class="card progress-card" aria-labelledby="done-title">
       <div class="section-heading">
         <span class="step">03</span>
         <h2 id="done-title">終わったら記録する</h2>
@@ -73,6 +74,8 @@
       </div>
       <p class="hint">日ごとの回数もこの端末だけに保存します。履歴は最大90日分です。</p>
     </section>
+
+    <p id="focus-mode-status" class="sr-only" aria-live="polite"></p>
 
     <footer>
       <p>データ収集なし · アカウントなし · 外部通信なし</p>

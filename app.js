@@ -2,6 +2,8 @@ const taskInput = document.querySelector('#task-input');
 const timer = document.querySelector('#timer');
 const startButton = document.querySelector('#start-button');
 const resetButton = document.querySelector('#reset-button');
+const focusModeButton = document.querySelector('#focus-mode-button');
+const focusModeStatus = document.querySelector('#focus-mode-status');
 const presetButtons = [...document.querySelectorAll('[data-minutes]')];
 const doneButton = document.querySelector('#done-button');
 const doneCount = document.querySelector('#done-count');
@@ -19,6 +21,7 @@ const STORAGE_KEYS = {
   count: 'one.doneCount',
   timer: 'one.timer.v1',
   history: 'one.history.v1',
+  focusMode: 'one.focusMode.v1',
 };
 
 let selectedMinutes = DEFAULT_MINUTES;
@@ -126,6 +129,21 @@ function clearTimerInterval() {
 function setStartButton(label, running = false) {
   startButton.textContent = label;
   startButton.setAttribute('aria-pressed', String(running));
+}
+
+function setFocusMode(enabled, { persist = true, announce = true } = {}) {
+  const active = enabled === true;
+  document.body.classList.toggle('focus-mode', active);
+  focusModeButton.setAttribute('aria-pressed', String(active));
+  focusModeButton.textContent = active ? '通常表示' : '集中表示';
+  focusModeButton.setAttribute('aria-label', active ? '通常表示に戻る' : '集中表示に切り替える');
+
+  if (persist) safeWrite(STORAGE_KEYS.focusMode, active ? '1' : '0');
+  if (announce) {
+    focusModeStatus.textContent = active
+      ? '集中表示に切り替えました。Escapeキーでも通常表示に戻れます。'
+      : '通常表示に戻りました。';
+  }
 }
 
 function stopTimer(label = 'スタート', persist = true) {
@@ -284,6 +302,7 @@ function loadState() {
   doneCount.textContent = String(Number.isSafeInteger(count) && count >= 0 ? count : 0);
   focusHistory = readHistory();
   renderHistory();
+  setFocusMode(safeRead(STORAGE_KEYS.focusMode) === '1', { persist: false, announce: false });
   restoreTimerState();
 }
 
@@ -293,7 +312,17 @@ taskInput.addEventListener('input', () => {
 
 startButton.addEventListener('click', toggleTimer);
 resetButton.addEventListener('click', resetTimer);
+focusModeButton.addEventListener('click', () => {
+  setFocusMode(!document.body.classList.contains('focus-mode'));
+});
 presetButtons.forEach((button) => button.addEventListener('click', () => selectPreset(button)));
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && document.body.classList.contains('focus-mode')) {
+    setFocusMode(false);
+    focusModeButton.focus();
+  }
+});
 
 doneButton.addEventListener('click', () => {
   const current = Number.parseInt(doneCount.textContent, 10) || 0;
