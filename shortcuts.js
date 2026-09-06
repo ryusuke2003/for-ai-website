@@ -1,6 +1,12 @@
 function isInteractiveShortcutTarget(target) {
   return target instanceof Element
-    && Boolean(target.closest('input, textarea, select, button, [contenteditable="true"]'));
+    && Boolean(target.closest(
+      'input, textarea, select, button, a[href], summary, [contenteditable="true"], [role="button"], [role="link"]',
+    ));
+}
+
+function isImeComposition(event) {
+  return event.isComposing || event.key === 'Process';
 }
 
 function hasUnsupportedShortcutModifier(event) {
@@ -13,7 +19,7 @@ taskInput.addEventListener('keydown', (event) => {
     && !event.altKey
     && !event.shiftKey;
 
-  if (event.defaultPrevented || event.isComposing || event.repeat || !commandEnter) return;
+  if (event.defaultPrevented || isImeComposition(event) || event.repeat || !commandEnter) return;
 
   event.preventDefault();
   startButton.click();
@@ -22,7 +28,7 @@ taskInput.addEventListener('keydown', (event) => {
 document.addEventListener('keydown', (event) => {
   if (
     event.defaultPrevented
-    || event.isComposing
+    || isImeComposition(event)
     || event.repeat
     || hasUnsupportedShortcutModifier(event)
     || isInteractiveShortcutTarget(event.target)
