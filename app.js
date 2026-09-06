@@ -1,5 +1,7 @@
 const taskInput = document.querySelector('#task-input');
 const timer = document.querySelector('#timer');
+const timerCard = document.querySelector('.timer-card');
+const timerStatus = document.querySelector('#timer-status');
 const startButton = document.querySelector('#start-button');
 const resetButton = document.querySelector('#reset-button');
 const focusModeButton = document.querySelector('#focus-mode-button');
@@ -105,9 +107,17 @@ function formatTime(totalSeconds) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
+function setTimerFeedback(message, state = 'idle') {
+  timerStatus.textContent = message;
+  timerCard.classList.toggle('is-running', state === 'running');
+  timerCard.classList.toggle('is-complete', state === 'complete');
+}
+
 function renderTimer() {
-  timer.textContent = formatTime(remainingSeconds);
-  document.title = timerId ? `${formatTime(remainingSeconds)} — ONE` : 'ONE — 今日やる一つだけ';
+  const formatted = formatTime(remainingSeconds);
+  timer.textContent = formatted;
+  timer.setAttribute('aria-label', `残り時間 ${formatted}`);
+  document.title = timerId ? `${formatted} — ONE` : 'ONE — 今日やる一つだけ';
 }
 
 function saveTimerState() {
@@ -157,6 +167,8 @@ function stopTimer(label = 'スタート', persist = true) {
 function finishTimer() {
   remainingSeconds = 0;
   stopTimer('もう一度');
+  setTimerFeedback('集中スプリント完了。記録して、少し休憩しよう。', 'complete');
+  document.title = '完了！ — ONE';
 }
 
 function tick() {
@@ -171,6 +183,7 @@ function startTimer() {
   endAt = Date.now() + remainingSeconds * 1000;
   timerId = window.setInterval(tick, 250);
   setStartButton('一時停止', true);
+  setTimerFeedback('集中中。今の一つだけに集中。', 'running');
   saveTimerState();
   tick();
 }
@@ -181,6 +194,10 @@ function toggleTimer() {
       remainingSeconds = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
     }
     stopTimer(remainingSeconds > 0 ? '再開' : 'もう一度');
+    setTimerFeedback(
+      remainingSeconds > 0 ? '一時停止中。準備ができたら再開。' : '集中スプリント完了。',
+      remainingSeconds > 0 ? 'paused' : 'complete',
+    );
     return;
   }
   startTimer();
@@ -190,6 +207,7 @@ function resetTimer() {
   stopTimer('スタート', false);
   remainingSeconds = selectedMinutes * 60;
   renderTimer();
+  setTimerFeedback(`${selectedMinutes}分にリセットしました。`);
   saveTimerState();
 }
 
@@ -235,6 +253,7 @@ function restoreTimerState() {
       endAt = storedEndAt;
       timerId = window.setInterval(tick, 250);
       setStartButton('一時停止', true);
+      setTimerFeedback('集中中。再読み込み前の続きから再開しました。', 'running');
       renderTimer();
       saveTimerState();
       return;
@@ -243,14 +262,23 @@ function restoreTimerState() {
     if (restoredRemaining <= 0) {
       remainingSeconds = 0;
       setStartButton('もう一度');
+      setTimerFeedback('前回の集中スプリントは完了しています。', 'complete');
       renderTimer();
+      document.title = '完了！ — ONE';
       saveTimerState();
       return;
     }
   }
 
-  setStartButton(remainingSeconds > 0 && remainingSeconds < fullDuration ? '再開' : remainingSeconds === 0 ? 'もう一度' : 'スタート');
+  const partiallyElapsed = remainingSeconds > 0 && remainingSeconds < fullDuration;
+  const completed = remainingSeconds === 0;
+  setStartButton(partiallyElapsed ? '再開' : completed ? 'もう一度' : 'スタート');
+  setTimerFeedback(
+    partiallyElapsed ? '一時停止中。準備ができたら再開。' : completed ? '前回の集中スプリントは完了しています。' : '準備できたらスタート。',
+    completed ? 'complete' : partiallyElapsed ? 'paused' : 'idle',
+  );
   renderTimer();
+  if (completed) document.title = '完了！ — ONE';
   saveTimerState();
 }
 
@@ -331,6 +359,7 @@ doneButton.addEventListener('click', () => {
   safeWrite(STORAGE_KEYS.count, String(next));
   incrementFocusHistory();
   resetTimer();
+  setTimerFeedback('集中を記録しました。次のスプリントを始められます。');
 });
 
 loadState();
