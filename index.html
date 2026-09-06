@@ -9,6 +9,7 @@
   <title>ONE — 今日やる一つだけ</title>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
+  <script src="shortcuts.js" defer></script>
 </head>
 <body>
   <main class="shell">
@@ -36,10 +37,11 @@
       <div class="timer" id="timer" role="timer" aria-label="残り時間">25:00</div>
       <p class="timer-status" id="timer-status" role="status" aria-live="polite">準備できたらスタート。</p>
       <div class="controls">
-        <button class="primary" id="start-button" type="button">スタート</button>
+        <button class="primary" id="start-button" type="button" aria-keyshortcuts="Space Control+Enter Meta+Enter">スタート</button>
         <button class="secondary" id="reset-button" type="button">リセット</button>
-        <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false">集中表示</button>
+        <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false" aria-keyshortcuts="F Escape">集中表示</button>
       </div>
+      <p class="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除 · タスク入力中は⌘/Ctrl+Enterで開始/一時停止</p>
       <div class="presets" aria-label="タイマー時間">
         <button type="button" data-minutes="10">10分</button>
         <button type="button" data-minutes="25" class="active" aria-pressed="true">25分</button>

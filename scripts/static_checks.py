@@ -4,7 +4,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
-APP_PATH = ROOT / "app.js"
 
 
 class PageParser(HTMLParser):
@@ -13,6 +12,7 @@ class PageParser(HTMLParser):
         self.by_id = {}
         self.csp = []
         self.resource_urls = []
+        self.script_urls = []
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
@@ -25,6 +25,7 @@ class PageParser(HTMLParser):
 
         if tag == "script" and values.get("src"):
             self.resource_urls.append(values["src"])
+            self.script_urls.append(values["src"])
         if tag == "link" and values.get("href"):
             self.resource_urls.append(values["href"])
 
@@ -64,16 +65,39 @@ def main():
             errors,
         )
 
-    app_source = APP_PATH.read_text(encoding="utf-8")
+    script_sources = []
+    for url in parser.script_urls:
+        if url.startswith(("http://", "https://", "//")):
+            continue
+
+        script_ref = Path(url)
+        unsafe_path = script_ref.is_absolute() or ".." in script_ref.parts
+        fail_if(unsafe_path, f"安全でないスクリプトパスです: {url}", errors)
+        if unsafe_path:
+            continue
+
+        script_path = ROOT / script_ref
+        fail_if(not script_path.is_file(), f"読み込み対象のJavaScriptが見つかりません: {url}", errors)
+        if script_path.is_file():
+            script_sources.append(script_path.read_text(encoding="utf-8"))
+
+    fail_if(not script_sources, "検査対象のJavaScriptが見つかりません", errors)
+    javascript_source = "\n".join(script_sources)
+
     forbidden_js = (
         ".innerHTML",
         "insertAdjacentHTML",
         "document.write",
         "eval(",
         "new Function(",
+        "fetch(",
+        "XMLHttpRequest",
+        "WebSocket(",
+        "EventSource(",
+        "navigator.sendBeacon",
     )
     for token in forbidden_js:
-        fail_if(token in app_source, f"危険なDOM/コード実行APIを検出しました: {token}", errors)
+        fail_if(token in javascript_source, f"禁止しているDOM/コード実行/通信APIを検出しました: {token}", errors)
 
     if errors:
         for error in errors:
