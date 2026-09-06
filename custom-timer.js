@@ -71,13 +71,14 @@ function applyCustomTimerMinutes() {
   }
 
   customPresetButton.dataset.minutes = String(minutes);
-  if (!writeCustomTimerMinutes(minutes)) {
-    setCustomTimerStatus('時間は設定しましたが、このブラウザには自由設定値を保存できませんでした。');
-  }
-
+  const persisted = writeCustomTimerMinutes(minutes);
   selectPreset(customPresetButton);
   syncCustomTimerPresentation();
-  setCustomTimerStatus(`${minutes}分に設定しました。`);
+  setCustomTimerStatus(
+    persisted
+      ? `${minutes}分に設定しました。`
+      : `${minutes}分に設定しましたが、再読み込み後の自由設定値は保存できませんでした。`,
+  );
   startButton.focus();
 }
 
