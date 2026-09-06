@@ -291,6 +291,7 @@ body.focus-mode .shell {
 
 body.focus-mode .hero,
 body.focus-mode .progress-card,
+body.focus-mode .backup-card,
 body.focus-mode footer {
   display: none;
 }
