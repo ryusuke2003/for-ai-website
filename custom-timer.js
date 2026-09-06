@@ -17,22 +17,6 @@ function parseCustomTimerMinutes() {
   return isAllowedCustomTimerMinutes(minutes) ? minutes : null;
 }
 
-function writeCustomTimerMinutes(minutes) {
-  if (!isAllowedCustomTimerMinutes(minutes)) return false;
-  try {
-    localStorage.setItem(CUSTOM_TIMER_STORAGE_KEY, String(minutes));
-    return localStorage.getItem(CUSTOM_TIMER_STORAGE_KEY) === String(minutes);
-  } catch {
-    return false;
-  }
-}
-
-function isStandardTimerMinutes(minutes) {
-  return standardPresetButtons.some(
-    (button) => Number.parseInt(button.dataset.minutes, 10) === minutes,
-  );
-}
-
 function syncCustomTimerPresentation() {
   customMinutesInput.value = String(selectedMinutes);
   customMinutesInput.setAttribute('aria-invalid', 'false');
@@ -71,14 +55,9 @@ function applyCustomTimerMinutes() {
   }
 
   customPresetButton.dataset.minutes = String(minutes);
-  const persisted = writeCustomTimerMinutes(minutes);
   selectPreset(customPresetButton);
   syncCustomTimerPresentation();
-  setCustomTimerStatus(
-    persisted
-      ? `${minutes}分に設定しました。`
-      : `${minutes}分に設定しましたが、再読み込み後の自由設定値は保存できませんでした。`,
-  );
+  setCustomTimerStatus(`${minutes}分に設定しました。`);
   startButton.focus();
 }
 
@@ -94,9 +73,6 @@ const applyBackupWithoutCustomTimerSync = applyBackup;
 applyBackup = function applyBackupWithCustomTimerSync(restored) {
   if (isAllowedCustomTimerMinutes(restored?.selectedMinutes)) {
     customPresetButton.dataset.minutes = String(restored.selectedMinutes);
-    if (!isStandardTimerMinutes(restored.selectedMinutes)) {
-      writeCustomTimerMinutes(restored.selectedMinutes);
-    }
   }
 
   applyBackupWithoutCustomTimerSync(restored);
