@@ -51,9 +51,10 @@
     <section class="card progress-card" aria-labelledby="done-title">
       <div class="section-heading">
         <span class="step">03</span>
-        <h2 id="done-title">終わったら記録する</h2>
+        <h2 id="done-title">完了した集中を記録する</h2>
       </div>
-      <button class="done-button" id="done-button" type="button">今日はここまで進んだ ✓</button>
+      <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
+      <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。</p>
 
       <div class="progress-summary" aria-live="polite">
         <div class="progress-stat">
