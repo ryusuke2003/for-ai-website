@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
+APP_PATH = ROOT / "app.js"
 REQUIRED_SCRIPT_ORDER = [
     "timer-bootstrap.js",
     "app.js",
@@ -176,6 +177,18 @@ def main():
     )
     for token in forbidden_js:
         fail_if(token in javascript_source, f"禁止しているDOM/コード実行/通信APIを検出しました: {token}", errors)
+
+    app_source = APP_PATH.read_text(encoding="utf-8")
+    required_timer_boundary_flow = """if (remainingSeconds <= 0) {
+      finishTimer();
+      return;
+    }
+    stopTimer('再開');"""
+    fail_if(
+        required_timer_boundary_flow not in app_source,
+        "0秒到達時は一時停止より先に finishTimer() へ流してください",
+        errors,
+    )
 
     if errors:
         for error in errors:
