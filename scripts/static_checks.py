@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
-REQUIRED_SCRIPT_ORDER = ["app.js", "tab-guard.js", "backup.js", "shortcuts.js"]
+REQUIRED_SCRIPT_ORDER = ["app.js", "stats.js", "tab-guard.js", "backup.js", "shortcuts.js"]
 
 
 class PageParser(HTMLParser):
@@ -57,6 +57,13 @@ def main():
     fail_if(discard_button is None, "#discard-button が見つかりません", errors)
     if discard_button is not None:
         fail_if("hidden" not in discard_button, "#discard-button は初期状態で hidden にしてください", errors)
+
+    for element_id in ("today-count", "week-count", "streak-count", "done-count", "streak-status"):
+        fail_if(parser.by_id.get(element_id) is None, f"#{element_id} が見つかりません", errors)
+
+    streak_count = parser.by_id.get("streak-count")
+    if streak_count is not None:
+        fail_if("aria-label" not in streak_count, "#streak-count は日数を読み上げられる aria-label を維持してください", errors)
 
     backup_export = parser.by_id.get("backup-export-button")
     backup_import = parser.by_id.get("backup-import-button")
