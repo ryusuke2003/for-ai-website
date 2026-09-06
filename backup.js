@@ -1,11 +1,16 @@
 const backupExportButton = document.querySelector('#backup-export-button');
 const backupImportButton = document.querySelector('#backup-import-button');
+const backupUndoButton = document.querySelector('#backup-undo-button');
 const backupFileInput = document.querySelector('#backup-file-input');
 const backupStatus = document.querySelector('#backup-status');
 
 const BACKUP_FORMAT = 'one-focus-backup';
 const BACKUP_VERSION = 1;
 const MAX_BACKUP_BYTES = 100_000;
+const RECOVERY_STORAGE_KEY = 'one.restoreRecovery.v1';
+const RECOVERY_FORMAT = 'one-restore-recovery';
+const RECOVERY_VERSION = 1;
+const MAX_RECOVERY_BYTES = 100_000;
 
 function isPlainBackupObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -34,6 +39,30 @@ function readStoredDoneCount() {
 
 function historyTotal(history) {
   return Object.values(history).reduce((sum, count) => sum + count, 0);
+}
+
+function normalizedBackupData(data) {
+  return {
+    doneCount: data.doneCount,
+    history: normalizeHistory(data.history),
+    selectedMinutes: data.selectedMinutes,
+  };
+}
+
+function backupDataGuard(data) {
+  return JSON.stringify(normalizedBackupData(data));
+}
+
+function currentBackupData() {
+  return {
+    doneCount: readStoredDoneCount(),
+    history: readHistory(),
+    selectedMinutes: readPreferredMinutes(),
+  };
+}
+
+function currentRestoreGuard() {
+  return backupDataGuard(currentBackupData());
 }
 
 function readStableBackupSnapshot() {
@@ -84,15 +113,11 @@ function isStrictHistory(value) {
   ));
 }
 
-function validateBackupPayload(value) {
+function validateBackupData(value) {
   if (!isPlainBackupObject(value)) return null;
-  if (!hasOnlyKeys(value, new Set(['format', 'version', 'exportedAt', 'data']))) return null;
-  if (value.format !== BACKUP_FORMAT || value.version !== BACKUP_VERSION) return null;
-  if (typeof value.exportedAt !== 'string' || !Number.isFinite(Date.parse(value.exportedAt))) return null;
-  if (!isPlainBackupObject(value.data)) return null;
-  if (!hasOnlyKeys(value.data, new Set(['doneCount', 'history', 'selectedMinutes']))) return null;
+  if (!hasOnlyKeys(value, new Set(['doneCount', 'history', 'selectedMinutes']))) return null;
 
-  const { doneCount, history, selectedMinutes: restoredMinutes } = value.data;
+  const { doneCount, history, selectedMinutes: restoredMinutes } = value;
   if (!Number.isSafeInteger(doneCount) || doneCount < 0) return null;
   if (!isStrictHistory(history)) return null;
   if (!availablePresetMinutes().includes(restoredMinutes)) return null;
@@ -107,6 +132,14 @@ function validateBackupPayload(value) {
   };
 }
 
+function validateBackupPayload(value) {
+  if (!isPlainBackupObject(value)) return null;
+  if (!hasOnlyKeys(value, new Set(['format', 'version', 'exportedAt', 'data']))) return null;
+  if (value.format !== BACKUP_FORMAT || value.version !== BACKUP_VERSION) return null;
+  if (typeof value.exportedAt !== 'string' || !Number.isFinite(Date.parse(value.exportedAt))) return null;
+  return validateBackupData(value.data);
+}
+
 function canRestoreBackup() {
   if (!tabCoordinationEnabled || hasActiveDailyTaskContext()) return false;
 
@@ -115,12 +148,70 @@ function canRestoreBackup() {
   return !(storedSessionId && isTimerStateActive(storedState));
 }
 
-function currentRestoreGuard() {
-  return `${safeRead(STORAGE_KEYS.count, '0')}\n${safeRead(STORAGE_KEYS.history, '{}')}`;
-}
-
 function setBackupStatus(message) {
   backupStatus.textContent = message;
+}
+
+function readRecoveryPoint() {
+  const raw = safeRead(RECOVERY_STORAGE_KEY);
+  if (!raw || raw.length > MAX_RECOVERY_BYTES) return null;
+
+  try {
+    const value = JSON.parse(raw);
+    if (!isPlainBackupObject(value)) return null;
+    if (!hasOnlyKeys(value, new Set(['format', 'version', 'createdAt', 'expectedData', 'data']))) return null;
+    if (value.format !== RECOVERY_FORMAT || value.version !== RECOVERY_VERSION) return null;
+    if (typeof value.createdAt !== 'string' || !Number.isFinite(Date.parse(value.createdAt))) return null;
+
+    const data = validateBackupData(value.data);
+    const expectedData = validateBackupData(value.expectedData);
+    if (!data || !expectedData) return null;
+
+    return {
+      createdAt: value.createdAt,
+      expectedData,
+      data,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveRecoveryPoint(data, expectedData) {
+  if (!tabCoordinationEnabled) return false;
+
+  const payload = JSON.stringify({
+    format: RECOVERY_FORMAT,
+    version: RECOVERY_VERSION,
+    createdAt: new Date().toISOString(),
+    expectedData: normalizedBackupData(expectedData),
+    data: normalizedBackupData(data),
+  });
+  if (payload.length > MAX_RECOVERY_BYTES) return false;
+
+  try {
+    localStorage.setItem(RECOVERY_STORAGE_KEY, payload);
+    return localStorage.getItem(RECOVERY_STORAGE_KEY) === payload;
+  } catch {
+    return false;
+  }
+}
+
+function removeRecoveryPoint() {
+  try {
+    localStorage.removeItem(RECOVERY_STORAGE_KEY);
+  } catch {
+    // Storage failures are reported by the operation that requested the removal.
+  }
+}
+
+function refreshRecoveryAvailability() {
+  const recovery = readRecoveryPoint();
+  const matchesRestoredState = recovery !== null
+    && currentRestoreGuard() === backupDataGuard(recovery.expectedData);
+
+  backupUndoButton.hidden = !matchesRestoredState;
+  backupUndoButton.disabled = matchesRestoredState && !canRestoreBackup();
 }
 
 function exportBackup() {
@@ -220,12 +311,86 @@ async function importBackup(file) {
     return;
   }
   if (restoreGuard !== currentRestoreGuard()) {
-    setBackupStatus('確認中に別タブで記録が更新されたため復元を中止しました。最新状態を確認してからやり直してください。');
+    setBackupStatus('確認中に別タブで記録やタイマー設定が更新されたため復元を中止しました。最新状態を確認してからやり直してください。');
+    return;
+  }
+
+  const recoveryData = readStableBackupSnapshot();
+  if (!recoveryData || backupDataGuard(recoveryData) !== restoreGuard) {
+    setBackupStatus('復元前の状態を安全に退避できなかったため復元を中止しました。データは変更していません。');
+    return;
+  }
+
+  const expectedGuard = backupDataGuard(restored);
+  if (!saveRecoveryPoint(recoveryData, restored)) {
+    setBackupStatus('復元前の状態を端末内に退避できなかったため復元を中止しました。データは変更していません。');
     return;
   }
 
   applyBackup(restored);
-  setBackupStatus('バックアップを復元しました。累計・日次履歴・タイマー時間を反映しました。');
+  if (currentRestoreGuard() !== expectedGuard) {
+    applyBackup(recoveryData);
+    removeRecoveryPoint();
+    refreshRecoveryAvailability();
+    setBackupStatus('復元後の保存確認に失敗したため、可能な範囲で復元前の状態へ戻しました。');
+    return;
+  }
+
+  refreshRecoveryAvailability();
+  setBackupStatus('バックアップを復元しました。必要なら「直前の復元を取り消す」で復元前の記録へ戻せます。');
+  backupUndoButton.focus();
+}
+
+function undoLastRestore() {
+  if (!tabCoordinationEnabled) {
+    setBackupStatus('ブラウザの保存領域を利用できないため復元を取り消せません。');
+    return;
+  }
+  if (!canRestoreBackup()) {
+    setBackupStatus('集中タイマーの進行中・一時停止中・未記録完了中は復元を取り消せません。');
+    return;
+  }
+
+  const recovery = readRecoveryPoint();
+  const expectedGuard = recovery ? backupDataGuard(recovery.expectedData) : null;
+  if (!recovery || currentRestoreGuard() !== expectedGuard) {
+    refreshRecoveryAvailability();
+    setBackupStatus('復元後に記録またはタイマー設定が変わったため、直前の復元はもう取り消せません。');
+    return;
+  }
+
+  const currentData = readStableBackupSnapshot();
+  if (!currentData || backupDataGuard(currentData) !== expectedGuard) {
+    setBackupStatus('現在の記録を安全に確認できなかったため、取り消しを中止しました。');
+    return;
+  }
+
+  const historyDays = Object.keys(recovery.data.history).length;
+  const confirmed = window.confirm(
+    `復元前の状態へ戻します。\n\n累計: ${recovery.data.doneCount}回\n日次履歴: ${historyDays}日分\nタイマー: ${recovery.data.selectedMinutes}分\n\nこの取り消しは1回だけです。戻しますか？`,
+  );
+  if (!confirmed) {
+    setBackupStatus('取り消しをキャンセルしました。データは変更していません。');
+    return;
+  }
+
+  if (!canRestoreBackup() || currentRestoreGuard() !== expectedGuard) {
+    refreshRecoveryAvailability();
+    setBackupStatus('確認中に状態が変わったため、取り消しを中止しました。');
+    return;
+  }
+
+  const recoveryGuard = backupDataGuard(recovery.data);
+  applyBackup(recovery.data);
+  if (currentRestoreGuard() !== recoveryGuard) {
+    applyBackup(currentData);
+    setBackupStatus('取り消し後の保存確認に失敗したため、可能な範囲で取り消し前の状態へ戻しました。');
+    return;
+  }
+
+  removeRecoveryPoint();
+  refreshRecoveryAvailability();
+  setBackupStatus('直前の復元を取り消し、復元前の記録へ戻しました。');
   backupExportButton.focus();
 }
 
@@ -241,9 +406,29 @@ backupImportButton.addEventListener('click', () => {
   }
   backupFileInput.click();
 });
+backupUndoButton.addEventListener('click', undoLastRestore);
 
 backupFileInput.addEventListener('change', async () => {
   const [file] = backupFileInput.files ?? [];
   backupFileInput.value = '';
   if (file) await importBackup(file);
 });
+
+window.addEventListener('storage', (event) => {
+  if ([
+    STORAGE_KEYS.count,
+    STORAGE_KEYS.history,
+    STORAGE_KEYS.timer,
+    RECOVERY_STORAGE_KEY,
+  ].includes(event.key)) {
+    refreshRecoveryAvailability();
+  }
+});
+
+startButton.addEventListener('click', refreshRecoveryAvailability);
+resetButton.addEventListener('click', refreshRecoveryAvailability);
+doneButton.addEventListener('click', refreshRecoveryAvailability);
+discardButton.addEventListener('click', refreshRecoveryAvailability);
+presetButtons.forEach((button) => button.addEventListener('click', refreshRecoveryAvailability));
+
+refreshRecoveryAvailability();
