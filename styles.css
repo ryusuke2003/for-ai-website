@@ -17,6 +17,7 @@ body {
 
 button, input { font: inherit; }
 button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
 
 .shell {
   width: min(760px, calc(100% - 32px));
@@ -178,6 +179,12 @@ input::placeholder { color: #aaa69d; }
 }
 
 .done-button { width: 100%; }
+.done-button:disabled {
+  border-color: rgba(29,29,31,.18);
+  background: transparent;
+  color: #8b877e;
+  opacity: .8;
+}
 
 .progress-summary {
   display: grid;
@@ -371,6 +378,7 @@ button:focus-visible, input:focus-visible {
   .timer-card.is-complete { border-color: rgba(255,255,255,.28); box-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06); }
   input { border-color: #f2efe7; }
   .primary, .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
+  .done-button:disabled { border-color: rgba(255,255,255,.16); background: transparent; color: #77736a; }
   .secondary { border-color: #f2efe7; }
   .secondary[aria-pressed="true"] { background: #393733; }
   .presets button.active { background: #393733; color: #f2efe7; }
