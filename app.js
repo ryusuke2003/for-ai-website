@@ -6,12 +6,15 @@ const presetButtons = [...document.querySelectorAll('[data-minutes]')];
 const doneButton = document.querySelector('#done-button');
 const doneCount = document.querySelector('#done-count');
 
+const DEFAULT_MINUTES = 25;
+const MAX_MINUTES = 180;
 const STORAGE_KEYS = {
   task: 'one.task',
   count: 'one.doneCount',
+  timer: 'one.timer.v1',
 };
 
-let selectedMinutes = 25;
+let selectedMinutes = DEFAULT_MINUTES;
 let remainingSeconds = selectedMinutes * 60;
 let timerId = null;
 let endAt = null;
@@ -32,6 +35,18 @@ function safeWrite(key, value) {
   }
 }
 
+function readTimerState() {
+  const raw = safeRead(STORAGE_KEYS.timer);
+  if (!raw) return null;
+
+  try {
+    const state = JSON.parse(raw);
+    return state && typeof state === 'object' && !Array.isArray(state) ? state : null;
+  } catch {
+    return null;
+  }
+}
+
 function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
@@ -43,33 +58,53 @@ function renderTimer() {
   document.title = timerId ? `${formatTime(remainingSeconds)} — ONE` : 'ONE — 今日やる一つだけ';
 }
 
-function stopTimer() {
+function saveTimerState() {
+  safeWrite(STORAGE_KEYS.timer, JSON.stringify({
+    selectedMinutes,
+    remainingSeconds,
+    running: timerId !== null && endAt !== null,
+    endAt: timerId !== null ? endAt : null,
+  }));
+}
+
+function clearTimerInterval() {
   if (timerId !== null) {
     window.clearInterval(timerId);
     timerId = null;
   }
+}
+
+function setStartButton(label, running = false) {
+  startButton.textContent = label;
+  startButton.setAttribute('aria-pressed', String(running));
+}
+
+function stopTimer(label = 'スタート', persist = true) {
+  clearTimerInterval();
   endAt = null;
-  startButton.textContent = 'スタート';
-  startButton.setAttribute('aria-pressed', 'false');
+  setStartButton(label);
   renderTimer();
+  if (persist) saveTimerState();
+}
+
+function finishTimer() {
+  remainingSeconds = 0;
+  stopTimer('もう一度');
 }
 
 function tick() {
   if (endAt === null) return;
   remainingSeconds = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
   renderTimer();
-  if (remainingSeconds === 0) {
-    stopTimer();
-    startButton.textContent = 'もう一度';
-  }
+  if (remainingSeconds === 0) finishTimer();
 }
 
 function startTimer() {
   if (remainingSeconds <= 0) remainingSeconds = selectedMinutes * 60;
   endAt = Date.now() + remainingSeconds * 1000;
   timerId = window.setInterval(tick, 250);
-  startButton.textContent = '一時停止';
-  startButton.setAttribute('aria-pressed', 'true');
+  setStartButton('一時停止', true);
+  saveTimerState();
   tick();
 }
 
@@ -78,21 +113,22 @@ function toggleTimer() {
     if (endAt !== null) {
       remainingSeconds = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
     }
-    stopTimer();
+    stopTimer(remainingSeconds > 0 ? '再開' : 'もう一度');
     return;
   }
   startTimer();
 }
 
 function resetTimer() {
-  stopTimer();
+  stopTimer('スタート', false);
   remainingSeconds = selectedMinutes * 60;
   renderTimer();
+  saveTimerState();
 }
 
 function selectPreset(button) {
   const minutes = Number.parseInt(button.dataset.minutes, 10);
-  if (!Number.isInteger(minutes) || minutes <= 0 || minutes > 180) return;
+  if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_MINUTES) return;
 
   selectedMinutes = minutes;
   presetButtons.forEach((item) => {
@@ -103,15 +139,59 @@ function selectPreset(button) {
   resetTimer();
 }
 
+function restoreTimerState() {
+  const state = readTimerState();
+  const availableMinutes = presetButtons
+    .map((button) => Number.parseInt(button.dataset.minutes, 10))
+    .filter((minutes) => Number.isInteger(minutes) && minutes > 0 && minutes <= MAX_MINUTES);
+
+  const storedMinutes = Number.parseInt(state?.selectedMinutes, 10);
+  selectedMinutes = availableMinutes.includes(storedMinutes) ? storedMinutes : DEFAULT_MINUTES;
+
+  presetButtons.forEach((button) => {
+    const active = Number.parseInt(button.dataset.minutes, 10) === selectedMinutes;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
+  const fullDuration = selectedMinutes * 60;
+  const storedRemaining = Number.parseInt(state?.remainingSeconds, 10);
+  remainingSeconds = Number.isInteger(storedRemaining) && storedRemaining >= 0 && storedRemaining <= fullDuration
+    ? storedRemaining
+    : fullDuration;
+
+  const storedEndAt = Number(state?.endAt);
+  if (state?.running === true && Number.isFinite(storedEndAt)) {
+    const restoredRemaining = Math.ceil((storedEndAt - Date.now()) / 1000);
+    if (restoredRemaining > 0 && restoredRemaining <= fullDuration) {
+      remainingSeconds = restoredRemaining;
+      endAt = storedEndAt;
+      timerId = window.setInterval(tick, 250);
+      setStartButton('一時停止', true);
+      renderTimer();
+      saveTimerState();
+      return;
+    }
+
+    if (restoredRemaining <= 0) {
+      remainingSeconds = 0;
+      setStartButton('もう一度');
+      renderTimer();
+      saveTimerState();
+      return;
+    }
+  }
+
+  setStartButton(remainingSeconds > 0 && remainingSeconds < fullDuration ? '再開' : remainingSeconds === 0 ? 'もう一度' : 'スタート');
+  renderTimer();
+  saveTimerState();
+}
+
 function loadState() {
   taskInput.value = safeRead(STORAGE_KEYS.task);
   const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
   doneCount.textContent = String(Number.isFinite(count) && count >= 0 ? count : 0);
-  presetButtons.forEach((button) => {
-    button.setAttribute('aria-pressed', button.classList.contains('active') ? 'true' : 'false');
-  });
-  startButton.setAttribute('aria-pressed', 'false');
-  renderTimer();
+  restoreTimerState();
 }
 
 taskInput.addEventListener('input', () => {
