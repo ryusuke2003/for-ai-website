@@ -20,6 +20,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check app.js
+          node --check stats.js
           node --check tab-guard.js
           node --check backup.js
           node --check shortcuts.js
