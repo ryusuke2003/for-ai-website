@@ -266,11 +266,12 @@ function toggleTimer() {
     if (endAt !== null) {
       remainingSeconds = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
     }
-    stopTimer(remainingSeconds > 0 ? '再開' : 'もう一度');
-    setTimerFeedback(
-      remainingSeconds > 0 ? '一時停止中。準備ができたら再開。' : '集中スプリント完了。',
-      remainingSeconds > 0 ? 'paused' : 'complete',
-    );
+    if (remainingSeconds <= 0) {
+      finishTimer();
+      return;
+    }
+    stopTimer('再開');
+    setTimerFeedback('一時停止中。準備ができたら再開。', 'paused');
     return;
   }
   startTimer();
