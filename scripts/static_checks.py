@@ -52,6 +52,11 @@ def main():
     if done_button is not None:
         fail_if("disabled" not in done_button, "#done-button は初期状態で disabled にしてください", errors)
 
+    discard_button = parser.by_id.get("discard-button")
+    fail_if(discard_button is None, "#discard-button が見つかりません", errors)
+    if discard_button is not None:
+        fail_if("hidden" not in discard_button, "#discard-button は初期状態で hidden にしてください", errors)
+
     fail_if(not parser.csp, "Content-Security-Policy が見つかりません", errors)
     if parser.csp:
         policy = parser.csp[0]
