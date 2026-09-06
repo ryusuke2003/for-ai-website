@@ -178,6 +178,11 @@ input::placeholder { color: #aaa69d; }
   font-weight: 800;
 }
 
+.timer-card .controls button:disabled,
+.timer-card .presets button:disabled {
+  opacity: .45;
+}
+
 .done-button { width: 100%; }
 .done-button:disabled {
   border-color: rgba(29,29,31,.18);

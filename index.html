@@ -55,8 +55,11 @@
         <span class="step">03</span>
         <h2 id="done-title">完了した集中を記録する</h2>
       </div>
-      <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
-      <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。日付をまたいでも完了した日の回数に入ります。</p>
+      <div class="controls">
+        <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
+        <button class="secondary" id="discard-button" type="button" aria-describedby="done-hint" hidden>記録せず破棄する</button>
+      </div>
+      <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。完了後は「記録する」か「記録せず破棄する」を選ぶまで次のタイマー操作をロックします。日付をまたいでも完了した日の回数に入ります。</p>
 
       <div class="progress-summary" aria-live="polite">
         <div class="progress-stat">
