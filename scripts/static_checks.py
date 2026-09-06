@@ -4,7 +4,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
-REQUIRED_SCRIPT_ORDER = ["app.js", "stats.js", "tab-guard.js", "backup.js", "shortcuts.js"]
+REQUIRED_SCRIPT_ORDER = [
+    "timer-bootstrap.js",
+    "app.js",
+    "stats.js",
+    "tab-guard.js",
+    "backup.js",
+    "custom-timer.js",
+    "shortcuts.js",
+]
 
 
 class PageParser(HTMLParser):
@@ -47,6 +55,30 @@ def main():
     if timer is not None:
         fail_if(timer.get("role") != "timer", "#timer は role=timer を維持してください", errors)
         fail_if("aria-live" in timer, "#timer に aria-live を付けないでください。毎秒の読み上げにつながります", errors)
+
+    custom_minutes = parser.by_id.get("custom-minutes")
+    custom_apply = parser.by_id.get("custom-minutes-apply")
+    custom_preset = parser.by_id.get("custom-preset")
+    custom_status = parser.by_id.get("custom-minutes-status")
+    fail_if(custom_minutes is None, "#custom-minutes が見つかりません", errors)
+    fail_if(custom_apply is None, "#custom-minutes-apply が見つかりません", errors)
+    fail_if(custom_preset is None, "#custom-preset が見つかりません", errors)
+    fail_if(custom_status is None, "#custom-minutes-status が見つかりません", errors)
+    if custom_minutes is not None:
+        fail_if(custom_minutes.get("type") != "number", "#custom-minutes は type=number にしてください", errors)
+        fail_if(custom_minutes.get("min") != "1", "#custom-minutes の min は 1 にしてください", errors)
+        fail_if(custom_minutes.get("max") != "180", "#custom-minutes の max は 180 にしてください", errors)
+        fail_if(custom_minutes.get("step") != "1", "#custom-minutes の step は 1 にしてください", errors)
+        fail_if(
+            custom_minutes.get("aria-describedby") != "custom-minutes-status",
+            "#custom-minutes は #custom-minutes-status を説明として参照してください",
+            errors,
+        )
+    if custom_preset is not None:
+        fail_if("hidden" not in custom_preset, "#custom-preset は画面に表示しないでください", errors)
+        fail_if("data-minutes" not in custom_preset, "#custom-preset は data-minutes を維持してください", errors)
+    if custom_status is not None:
+        fail_if(custom_status.get("role") != "status", "#custom-minutes-status は role=status を維持してください", errors)
 
     done_button = parser.by_id.get("done-button")
     fail_if(done_button is None, "#done-button が見つかりません", errors)
