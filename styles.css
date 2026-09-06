@@ -178,6 +178,31 @@ input::placeholder { color: #aaa69d; }
   font-weight: 800;
 }
 
+.custom-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #77736a;
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.custom-minutes-input {
+  width: 4.8rem;
+  padding: 7px 9px;
+  border: 1px solid rgba(29,29,31,.25);
+  border-radius: 999px;
+  background: rgba(255,255,255,.45);
+  font-size: .9rem;
+  font-weight: 800;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.custom-minutes-input:focus { border-width: 1px; }
+.custom-minutes-input:disabled { cursor: not-allowed; opacity: .45; }
+.custom-minutes-input[aria-invalid="true"] { border-color: currentColor; border-width: 2px; }
+
 .timer-card .controls button:disabled,
 .timer-card .presets button:disabled {
   opacity: .45;
@@ -396,6 +421,8 @@ button:focus-visible, input:focus-visible {
   .shell { padding-top: 44px; }
   .card { padding: 22px; border-radius: 20px; }
   .progress-stat { padding: 14px; }
+  .custom-time { width: 100%; justify-content: center; }
+  .custom-minutes-input { width: 4.2rem; }
   .activity-grid { grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 4px; }
   .activity-day { width: 12px; height: 12px; border-radius: 3px; }
   body.focus-mode .shell { padding: 16px 0; }
@@ -418,6 +445,7 @@ button:focus-visible, input:focus-visible {
   .timer-card.is-running .timer-status { color: #f2efe7; }
   .timer-card.is-complete { border-color: rgba(255,255,255,.28); box-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06); }
   input { border-color: #f2efe7; }
+  .custom-minutes-input { border-color: rgba(242,239,231,.3); background: rgba(255,255,255,.04); }
   .primary, .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
   .done-button:disabled { border-color: rgba(255,255,255,.16); background: transparent; color: #77736a; }
   .secondary { border-color: #f2efe7; }

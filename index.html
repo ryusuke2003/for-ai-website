@@ -4,14 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="今日やる一つだけを決めて、25分だけ集中するための小さなWebアプリ。">
+  <meta name="description" content="今日やる一つだけを決めて、短い時間だけ集中するための小さなWebアプリ。">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <title>ONE — 今日やる一つだけ</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="tab-guard.js" defer></script>
   <script src="backup.js" defer></script>
+  <script src="custom-timer.js" defer></script>
   <script src="shortcuts.js" defer></script>
 </head>
 <body>
@@ -19,7 +21,7 @@
     <header class="hero">
       <p class="eyebrow">ONE THING / ONE SPRINT</p>
       <h1>今日やる一つだけ。</h1>
-      <p class="lead">やることを一つ決めて、25分だけ始める。残りは、あとでいい。</p>
+      <p class="lead">やることを一つ決めて、まずは25分から始める。時間は、自分に合わせて変えられる。</p>
     </header>
 
     <section class="card task-card" aria-labelledby="task-title">
@@ -35,7 +37,7 @@
     <section class="card timer-card" aria-labelledby="timer-title">
       <div class="section-heading">
         <span class="step">02</span>
-        <h2 id="timer-title">25分だけ集中する</h2>
+        <h2 id="timer-title">時間を決めて集中する</h2>
       </div>
       <div class="timer" id="timer" role="timer" aria-label="残り時間">25:00</div>
       <p class="timer-status" id="timer-status" role="status" aria-live="polite">準備できたらスタート。</p>
@@ -49,7 +51,15 @@
         <button type="button" data-minutes="10">10分</button>
         <button type="button" data-minutes="25" class="active" aria-pressed="true">25分</button>
         <button type="button" data-minutes="50">50分</button>
+        <span class="custom-time">
+          <label for="custom-minutes">自由設定</label>
+          <input class="custom-minutes-input" id="custom-minutes" type="number" min="1" max="180" step="1" inputmode="numeric" value="25" aria-describedby="custom-minutes-status">
+          <span aria-hidden="true">分</span>
+          <button id="custom-minutes-apply" type="button" aria-describedby="custom-minutes-status">設定</button>
+        </span>
+        <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
       </div>
+      <p class="hint" id="custom-minutes-status" role="status" aria-live="polite">1〜180分の整数でも設定できます。</p>
       <p class="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
     </section>
 
