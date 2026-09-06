@@ -71,6 +71,9 @@ function validateBackupPayload(value) {
   if (!isStrictHistory(history)) return null;
   if (!availablePresetMinutes().includes(restoredMinutes)) return null;
 
+  const historyTotal = Object.values(history).reduce((sum, count) => sum + count, 0);
+  if (!Number.isSafeInteger(historyTotal) || doneCount < historyTotal) return null;
+
   return {
     doneCount,
     history: normalizeHistory(history),
@@ -153,6 +156,20 @@ async function importBackup(file) {
 
   if (!canRestoreBackup()) {
     setBackupStatus('読み込み中にタイマー状態が変わったため復元を中止しました。データは変更していません。');
+    return;
+  }
+
+  const historyDays = Object.keys(restored.history).length;
+  const confirmed = window.confirm(
+    `現在の累計と日次履歴を置き換えます。\n\n累計: ${restored.doneCount}回\n日次履歴: ${historyDays}日分\nタイマー: ${restored.selectedMinutes}分\n\nタスク本文は変更しません。復元しますか？`,
+  );
+  if (!confirmed) {
+    setBackupStatus('復元をキャンセルしました。データは変更していません。');
+    return;
+  }
+
+  if (!canRestoreBackup()) {
+    setBackupStatus('確認中にタイマー状態が変わったため復元を中止しました。データは変更していません。');
     return;
   }
 
