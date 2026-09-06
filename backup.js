@@ -140,8 +140,11 @@ function exportBackup() {
   const link = document.createElement('a');
   link.href = url;
   link.download = `one-backup-${dateKey()}.json`;
+  link.hidden = true;
+  document.body.append(link);
   link.click();
-  URL.revokeObjectURL(url);
+  link.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
   setBackupStatus('バックアップを書き出しました。タスク本文や実行中タイマーは含まれていません。');
 }
 
