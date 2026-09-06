@@ -92,7 +92,11 @@ function claimPendingCompletion(event) {
     refreshProgressFromStorage();
     return true;
   }
-  if (!completionReady || !localSessionId) return false;
+  if (!completionReady) return false;
+  if (!localSessionId) {
+    blockStaleTabAction(event, 'このタブでは集中セッションを確認できません。再読み込みして最新状態に合わせてください。');
+    return false;
+  }
 
   const storedState = readTimerState();
   const storedSessionId = readStoredSessionId();
