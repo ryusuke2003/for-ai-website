@@ -31,6 +31,7 @@ let remainingSeconds = selectedMinutes * 60;
 let timerId = null;
 let endAt = null;
 let focusHistory = {};
+let completionReady = false;
 
 function safeRead(key, fallback = '') {
   try {
@@ -113,6 +114,14 @@ function setTimerFeedback(message, state = 'idle') {
   timerCard.classList.toggle('is-complete', state === 'complete');
 }
 
+function setRecordAvailability(ready) {
+  completionReady = ready === true;
+  doneButton.disabled = !completionReady;
+  doneButton.textContent = completionReady
+    ? 'この集中を記録する ✓'
+    : 'タイマー完了後に記録できます';
+}
+
 function renderTimer() {
   const formatted = formatTime(remainingSeconds);
   timer.textContent = formatted;
@@ -126,6 +135,7 @@ function saveTimerState() {
     remainingSeconds,
     running: timerId !== null && endAt !== null,
     endAt: timerId !== null ? endAt : null,
+    completionReady,
   }));
 }
 
@@ -166,8 +176,9 @@ function stopTimer(label = 'スタート', persist = true) {
 
 function finishTimer() {
   remainingSeconds = 0;
+  setRecordAvailability(true);
   stopTimer('もう一度');
-  setTimerFeedback('集中スプリント完了。記録して、少し休憩しよう。', 'complete');
+  setTimerFeedback('集中スプリント完了。この1回を記録できます。', 'complete');
   document.title = '完了！ — ONE';
 }
 
@@ -180,6 +191,7 @@ function tick() {
 
 function startTimer() {
   if (remainingSeconds <= 0) remainingSeconds = selectedMinutes * 60;
+  setRecordAvailability(false);
   endAt = Date.now() + remainingSeconds * 1000;
   timerId = window.setInterval(tick, 250);
   setStartButton('一時停止', true);
@@ -204,6 +216,7 @@ function toggleTimer() {
 }
 
 function resetTimer() {
+  setRecordAvailability(false);
   stopTimer('スタート', false);
   remainingSeconds = selectedMinutes * 60;
   renderTimer();
@@ -250,6 +263,7 @@ function restoreTimerState() {
     const restoredRemaining = Math.ceil((storedEndAt - Date.now()) / 1000);
     if (restoredRemaining > 0 && restoredRemaining <= fullDuration) {
       remainingSeconds = restoredRemaining;
+      setRecordAvailability(false);
       endAt = storedEndAt;
       timerId = window.setInterval(tick, 250);
       setStartButton('一時停止', true);
@@ -261,8 +275,9 @@ function restoreTimerState() {
 
     if (restoredRemaining <= 0) {
       remainingSeconds = 0;
+      setRecordAvailability(true);
       setStartButton('もう一度');
-      setTimerFeedback('前回の集中スプリントは完了しています。', 'complete');
+      setTimerFeedback('前回の集中スプリントは完了しています。この1回を記録できます。', 'complete');
       renderTimer();
       document.title = '完了！ — ONE';
       saveTimerState();
@@ -272,9 +287,17 @@ function restoreTimerState() {
 
   const partiallyElapsed = remainingSeconds > 0 && remainingSeconds < fullDuration;
   const completed = remainingSeconds === 0;
+  const legacyCompletedState = completed && state != null && typeof state.completionReady !== 'boolean';
+  setRecordAvailability(completed && (state?.completionReady === true || legacyCompletedState));
   setStartButton(partiallyElapsed ? '再開' : completed ? 'もう一度' : 'スタート');
   setTimerFeedback(
-    partiallyElapsed ? '一時停止中。準備ができたら再開。' : completed ? '前回の集中スプリントは完了しています。' : '準備できたらスタート。',
+    partiallyElapsed
+      ? '一時停止中。準備ができたら再開。'
+      : completionReady
+        ? '前回の集中スプリントは完了しています。この1回を記録できます。'
+        : completed
+          ? '前回の集中スプリントは記録済みです。もう一度始められます。'
+          : '準備できたらスタート。',
     completed ? 'complete' : partiallyElapsed ? 'paused' : 'idle',
   );
   renderTimer();
@@ -353,13 +376,16 @@ document.addEventListener('keydown', (event) => {
 });
 
 doneButton.addEventListener('click', () => {
+  if (!completionReady) return;
+
+  setRecordAvailability(false);
   const current = Number.parseInt(doneCount.textContent, 10) || 0;
   const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
   doneCount.textContent = String(next);
   safeWrite(STORAGE_KEYS.count, String(next));
   incrementFocusHistory();
   resetTimer();
-  setTimerFeedback('集中を記録しました。次のスプリントを始められます。');
+  setTimerFeedback('完了した集中を1回記録しました。次のスプリントを始められます。');
 });
 
 loadState();
