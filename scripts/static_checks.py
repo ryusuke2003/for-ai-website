@@ -46,6 +46,11 @@ def main():
         fail_if(timer.get("role") != "timer", "#timer は role=timer を維持してください", errors)
         fail_if("aria-live" in timer, "#timer に aria-live を付けないでください。毎秒の読み上げにつながります", errors)
 
+    done_button = parser.by_id.get("done-button")
+    fail_if(done_button is None, "#done-button が見つかりません", errors)
+    if done_button is not None:
+        fail_if("disabled" not in done_button, "#done-button は初期状態で disabled にしてください", errors)
+
     fail_if(not parser.csp, "Content-Security-Policy が見つかりません", errors)
     if parser.csp:
         policy = parser.csp[0]
