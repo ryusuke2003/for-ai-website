@@ -280,6 +280,39 @@ input::placeholder { color: #aaa69d; }
   text-overflow: ellipsis;
 }
 
+.activity {
+  margin-top: 24px;
+  padding-top: 22px;
+  border-top: 1px solid rgba(29,29,31,.1);
+}
+
+.activity-grid {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(7, 14px);
+  grid-auto-columns: 14px;
+  gap: 5px;
+  width: max-content;
+  max-width: 100%;
+  overflow-x: auto;
+  padding: 3px;
+}
+
+.activity-day {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  background: rgba(29,29,31,.08);
+}
+
+.activity-day.level-1 { background: rgba(29,29,31,.28); }
+.activity-day.level-2 { background: rgba(29,29,31,.48); }
+.activity-day.level-3 { background: rgba(29,29,31,.68); }
+.activity-day.level-4 { background: rgba(29,29,31,.9); }
+.activity-day.is-placeholder { visibility: hidden; }
+.activity-day.is-today { outline: 2px solid currentColor; outline-offset: 1px; }
+
 body.focus-mode .shell {
   display: grid;
   align-content: center;
@@ -363,6 +396,8 @@ button:focus-visible, input:focus-visible {
   .shell { padding-top: 44px; }
   .card { padding: 22px; border-radius: 20px; }
   .progress-stat { padding: 14px; }
+  .activity-grid { grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 4px; }
+  .activity-day { width: 12px; height: 12px; border-radius: 3px; }
   body.focus-mode .shell { padding: 16px 0; }
   body.focus-mode .task-card { padding: 20px; }
   body.focus-mode .timer-card { padding: 28px 18px; }
@@ -390,6 +425,11 @@ button:focus-visible, input:focus-visible {
   .presets button.active { background: #393733; color: #f2efe7; }
   .progress-stat { background: rgba(255,255,255,.06); }
   .progress-stat strong { color: #f2efe7; }
-  .history { border-color: rgba(255,255,255,.1); }
+  .history, .activity { border-color: rgba(255,255,255,.1); }
   .history-bar { background: #5b574f; }
+  .activity-day { background: rgba(242,239,231,.08); }
+  .activity-day.level-1 { background: rgba(242,239,231,.28); }
+  .activity-day.level-2 { background: rgba(242,239,231,.48); }
+  .activity-day.level-3 { background: rgba(242,239,231,.68); }
+  .activity-day.level-4 { background: rgba(242,239,231,.9); }
 }

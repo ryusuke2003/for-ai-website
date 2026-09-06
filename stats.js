@@ -1,6 +1,10 @@
 const weekCount = document.querySelector('#week-count');
 const streakCount = document.querySelector('#streak-count');
 const streakStatus = document.querySelector('#streak-status');
+const activityGrid = document.querySelector('#activity-grid');
+const activitySummary = document.querySelector('#activity-summary');
+
+const ACTIVITY_DAYS = 30;
 
 function localNoon(date = new Date()) {
   const value = new Date(date);
@@ -47,6 +51,60 @@ function calculateCurrentStreak(history, today = new Date()) {
   };
 }
 
+function calculateActivityWindow(history, today = new Date()) {
+  const start = localNoon(today);
+  start.setDate(start.getDate() - (ACTIVITY_DAYS - 1));
+
+  const days = [];
+  let total = 0;
+  let activeDays = 0;
+
+  for (let offset = 0; offset < ACTIVITY_DAYS; offset += 1) {
+    const day = new Date(start);
+    day.setDate(start.getDate() + offset);
+    const key = dateKey(day);
+    const storedCount = history[key] ?? 0;
+    const count = Number.isInteger(storedCount) && storedCount > 0 ? storedCount : 0;
+
+    total += count;
+    if (count > 0) activeDays += 1;
+    days.push({ key, count });
+  }
+
+  return {
+    days,
+    total,
+    activeDays,
+    leadingPlaceholders: (start.getDay() + 6) % 7,
+  };
+}
+
+function renderActivityMap() {
+  const history = normalizeHistory(focusHistory);
+  const activity = calculateActivityWindow(history);
+  const todayKey = dateKey();
+  const cells = [];
+
+  for (let index = 0; index < activity.leadingPlaceholders; index += 1) {
+    const placeholder = document.createElement('span');
+    placeholder.className = 'activity-day is-placeholder';
+    placeholder.setAttribute('aria-hidden', 'true');
+    cells.push(placeholder);
+  }
+
+  activity.days.forEach(({ key, count }) => {
+    const item = document.createElement('span');
+    item.className = `activity-day level-${Math.min(count, 4)}`;
+    item.setAttribute('role', 'listitem');
+    item.setAttribute('aria-label', `${key}: ${count}回`);
+    if (key === todayKey) item.classList.add('is-today');
+    cells.push(item);
+  });
+
+  activityGrid.replaceChildren(...cells);
+  activitySummary.textContent = `直近30日: ${activity.total}回 · ${activity.activeDays}日活動`;
+}
+
 function renderProgressInsights() {
   const history = normalizeHistory(focusHistory);
   const weekly = calculateCurrentWeekCount(history);
@@ -74,6 +132,8 @@ const renderHistoryWithoutInsights = renderHistory;
 renderHistory = function renderHistoryWithInsights() {
   renderHistoryWithoutInsights();
   renderProgressInsights();
+  renderActivityMap();
 };
 
 renderProgressInsights();
+renderActivityMap();

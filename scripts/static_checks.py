@@ -65,6 +65,18 @@ def main():
     if streak_count is not None:
         fail_if("aria-label" not in streak_count, "#streak-count は日数を読み上げられる aria-label を維持してください", errors)
 
+    activity_grid = parser.by_id.get("activity-grid")
+    activity_summary = parser.by_id.get("activity-summary")
+    fail_if(activity_grid is None, "#activity-grid が見つかりません", errors)
+    fail_if(activity_summary is None, "#activity-summary が見つかりません", errors)
+    if activity_grid is not None:
+        fail_if(activity_grid.get("role") != "list", "#activity-grid は role=list を維持してください", errors)
+        fail_if(
+            activity_grid.get("aria-describedby") != "activity-summary",
+            "#activity-grid は #activity-summary を説明として参照してください",
+            errors,
+        )
+
     backup_export = parser.by_id.get("backup-export-button")
     backup_import = parser.by_id.get("backup-import-button")
     backup_undo = parser.by_id.get("backup-undo-button")
