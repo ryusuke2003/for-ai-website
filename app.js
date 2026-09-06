@@ -5,19 +5,27 @@ const resetButton = document.querySelector('#reset-button');
 const presetButtons = [...document.querySelectorAll('[data-minutes]')];
 const doneButton = document.querySelector('#done-button');
 const doneCount = document.querySelector('#done-count');
+const todayCount = document.querySelector('#today-count');
+const historyGrid = document.querySelector('#history-grid');
 
 const DEFAULT_MINUTES = 25;
 const MAX_MINUTES = 180;
+const HISTORY_LIMIT = 90;
+const MAX_DAILY_COUNT = 1000;
+const MAX_HISTORY_BYTES = 50_000;
+const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STORAGE_KEYS = {
   task: 'one.task',
   count: 'one.doneCount',
   timer: 'one.timer.v1',
+  history: 'one.history.v1',
 };
 
 let selectedMinutes = DEFAULT_MINUTES;
 let remainingSeconds = selectedMinutes * 60;
 let timerId = null;
 let endAt = null;
+let focusHistory = {};
 
 function safeRead(key, fallback = '') {
   try {
@@ -45,6 +53,47 @@ function readTimerState() {
   } catch {
     return null;
   }
+}
+
+function dateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isValidDateKey(key) {
+  if (!DATE_KEY_PATTERN.test(key)) return false;
+  const [year, month, day] = key.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
+}
+
+function normalizeHistory(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key, count]) => isValidDateKey(key) && Number.isInteger(count) && count >= 0 && count <= MAX_DAILY_COUNT)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .slice(0, HISTORY_LIMIT),
+  );
+}
+
+function readHistory() {
+  const raw = safeRead(STORAGE_KEYS.history);
+  if (!raw || raw.length > MAX_HISTORY_BYTES) return {};
+
+  try {
+    return normalizeHistory(JSON.parse(raw));
+  } catch {
+    return {};
+  }
+}
+
+function saveHistory() {
+  focusHistory = normalizeHistory(focusHistory);
+  safeWrite(STORAGE_KEYS.history, JSON.stringify(focusHistory));
 }
 
 function formatTime(totalSeconds) {
@@ -187,10 +236,54 @@ function restoreTimerState() {
   saveTimerState();
 }
 
+function renderHistory() {
+  const todayKey = dateKey();
+  todayCount.textContent = String(focusHistory[todayKey] ?? 0);
+  historyGrid.replaceChildren();
+
+  const weekdayFormatter = new Intl.DateTimeFormat('ja-JP', { weekday: 'short' });
+
+  for (let offset = 6; offset >= 0; offset -= 1) {
+    const day = new Date();
+    day.setHours(12, 0, 0, 0);
+    day.setDate(day.getDate() - offset);
+
+    const key = dateKey(day);
+    const count = focusHistory[key] ?? 0;
+    const item = document.createElement('div');
+    const bar = document.createElement('span');
+    const weekday = document.createElement('span');
+    const value = document.createElement('strong');
+
+    item.className = 'history-day';
+    item.setAttribute('role', 'listitem');
+    item.setAttribute('aria-label', `${key}: ${count}回`);
+
+    bar.className = `history-bar level-${Math.min(count, 4)}`;
+    bar.setAttribute('aria-hidden', 'true');
+    weekday.className = 'history-weekday';
+    weekday.textContent = offset === 0 ? '今日' : weekdayFormatter.format(day);
+    value.textContent = String(count);
+
+    item.append(bar, value, weekday);
+    historyGrid.append(item);
+  }
+}
+
+function incrementFocusHistory() {
+  const key = dateKey();
+  const current = Number.isInteger(focusHistory[key]) ? focusHistory[key] : 0;
+  focusHistory[key] = Math.min(current + 1, MAX_DAILY_COUNT);
+  saveHistory();
+  renderHistory();
+}
+
 function loadState() {
-  taskInput.value = safeRead(STORAGE_KEYS.task);
+  taskInput.value = safeRead(STORAGE_KEYS.task).slice(0, 120);
   const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
-  doneCount.textContent = String(Number.isFinite(count) && count >= 0 ? count : 0);
+  doneCount.textContent = String(Number.isSafeInteger(count) && count >= 0 ? count : 0);
+  focusHistory = readHistory();
+  renderHistory();
   restoreTimerState();
 }
 
@@ -207,6 +300,7 @@ doneButton.addEventListener('click', () => {
   const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
   doneCount.textContent = String(next);
   safeWrite(STORAGE_KEYS.count, String(next));
+  incrementFocusHistory();
   resetTimer();
 });
 
