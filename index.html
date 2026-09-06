@@ -9,6 +9,7 @@
   <title>ONE — 今日やる一つだけ</title>
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
+  <script src="stats.js" defer></script>
   <script src="tab-guard.js" defer></script>
   <script src="backup.js" defer></script>
   <script src="shortcuts.js" defer></script>
@@ -69,10 +70,19 @@
           <span>今日</span>
         </div>
         <div class="progress-stat">
+          <strong id="week-count">0</strong>
+          <span>今週</span>
+        </div>
+        <div class="progress-stat">
+          <strong id="streak-count" aria-label="0日">0</strong>
+          <span>連続日</span>
+        </div>
+        <div class="progress-stat">
           <strong id="done-count">0</strong>
           <span>累計</span>
         </div>
       </div>
+      <p class="hint" id="streak-status">今日1回から連続記録を始められます。</p>
 
       <div class="history" aria-labelledby="history-title">
         <div class="history-heading">
