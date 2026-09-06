@@ -78,7 +78,14 @@ function isValidDateKey(key) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
-function loadDailyTask() {
+function hasActiveDailyTaskContext() {
+  const fullDuration = selectedMinutes * 60;
+  return timerId !== null
+    || completionReady
+    || (remainingSeconds > 0 && remainingSeconds < fullDuration);
+}
+
+function loadDailyTask({ preserveActiveSession = false } = {}) {
   const today = dateKey();
   const storedTask = safeRead(STORAGE_KEYS.task).slice(0, 120);
   const storedTaskDate = safeRead(STORAGE_KEYS.taskDate);
@@ -90,6 +97,11 @@ function loadDailyTask() {
   }
 
   if (storedTaskDate === today) {
+    taskInput.value = storedTask;
+    return;
+  }
+
+  if (preserveActiveSession && hasActiveDailyTaskContext()) {
     taskInput.value = storedTask;
     return;
   }
@@ -260,6 +272,7 @@ function resetTimer() {
   renderTimer();
   setTimerFeedback(`${selectedMinutes}分にリセットしました。`);
   saveTimerState();
+  refreshDateSensitiveUi();
 }
 
 function selectPreset(button) {
@@ -388,6 +401,7 @@ function renderHistory() {
 
 function refreshDateSensitiveUi() {
   if (renderedDateKey !== dateKey()) renderHistory();
+  loadDailyTask({ preserveActiveSession: true });
 }
 
 function incrementFocusHistory(key = dateKey()) {
@@ -399,15 +413,17 @@ function incrementFocusHistory(key = dateKey()) {
 }
 
 function loadState() {
-  loadDailyTask();
   const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
   doneCount.textContent = String(Number.isSafeInteger(count) && count >= 0 ? count : 0);
   focusHistory = readHistory();
   renderHistory();
   setFocusMode(safeRead(STORAGE_KEYS.focusMode) === '1', { persist: false, announce: false });
   restoreTimerState();
+  loadDailyTask({ preserveActiveSession: true });
 }
 
+taskInput.addEventListener('focus', refreshDateSensitiveUi);
+taskInput.addEventListener('beforeinput', refreshDateSensitiveUi);
 taskInput.addEventListener('input', () => {
   safeWrite(STORAGE_KEYS.task, taskInput.value.slice(0, 120));
   safeWrite(STORAGE_KEYS.taskDate, dateKey());
@@ -430,6 +446,7 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDateSensitiveUi();
 });
+window.addEventListener('focus', refreshDateSensitiveUi);
 
 doneButton.addEventListener('click', () => {
   if (!completionReady) return;
