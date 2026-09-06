@@ -60,10 +60,14 @@ def main():
 
     backup_export = parser.by_id.get("backup-export-button")
     backup_import = parser.by_id.get("backup-import-button")
+    backup_undo = parser.by_id.get("backup-undo-button")
     backup_file = parser.by_id.get("backup-file-input")
     fail_if(backup_export is None, "#backup-export-button が見つかりません", errors)
     fail_if(backup_import is None, "#backup-import-button が見つかりません", errors)
+    fail_if(backup_undo is None, "#backup-undo-button が見つかりません", errors)
     fail_if(backup_file is None, "#backup-file-input が見つかりません", errors)
+    if backup_undo is not None:
+        fail_if("hidden" not in backup_undo, "#backup-undo-button は初期状態で hidden にしてください", errors)
     if backup_file is not None:
         fail_if(backup_file.get("type") != "file", "#backup-file-input は type=file にしてください", errors)
         fail_if("hidden" not in backup_file, "#backup-file-input は初期状態で hidden にしてください", errors)
