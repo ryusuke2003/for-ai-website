@@ -18,7 +18,10 @@ jobs:
           persist-credentials: false
 
       - name: Check JavaScript syntax
-        run: node --check app.js
+        run: |
+          node --check app.js
+          node --check tab-guard.js
+          node --check shortcuts.js
 
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
