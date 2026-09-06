@@ -20,6 +20,7 @@ const MAX_HISTORY_BYTES = 50_000;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STORAGE_KEYS = {
   task: 'one.task',
+  taskDate: 'one.taskDate.v1',
   count: 'one.doneCount',
   timer: 'one.timer.v1',
   history: 'one.history.v1',
@@ -32,6 +33,8 @@ let timerId = null;
 let endAt = null;
 let focusHistory = {};
 let completionReady = false;
+let completionDateKey = null;
+let renderedDateKey = null;
 
 function safeRead(key, fallback = '') {
   try {
@@ -75,6 +78,27 @@ function isValidDateKey(key) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
+function loadDailyTask() {
+  const today = dateKey();
+  const storedTask = safeRead(STORAGE_KEYS.task).slice(0, 120);
+  const storedTaskDate = safeRead(STORAGE_KEYS.taskDate);
+
+  if (!storedTaskDate) {
+    taskInput.value = storedTask;
+    safeWrite(STORAGE_KEYS.taskDate, today);
+    return;
+  }
+
+  if (storedTaskDate === today) {
+    taskInput.value = storedTask;
+    return;
+  }
+
+  taskInput.value = '';
+  safeWrite(STORAGE_KEYS.task, '');
+  safeWrite(STORAGE_KEYS.taskDate, today);
+}
+
 function normalizeHistory(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
 
@@ -114,8 +138,13 @@ function setTimerFeedback(message, state = 'idle') {
   timerCard.classList.toggle('is-complete', state === 'complete');
 }
 
-function setRecordAvailability(ready) {
+function setRecordAvailability(ready, completedOn = null) {
   completionReady = ready === true;
+  completionDateKey = completionReady && typeof completedOn === 'string' && isValidDateKey(completedOn)
+    ? completedOn
+    : completionReady
+      ? dateKey()
+      : null;
   doneButton.disabled = !completionReady;
   doneButton.textContent = completionReady
     ? 'この集中を記録する ✓'
@@ -136,6 +165,7 @@ function saveTimerState() {
     running: timerId !== null && endAt !== null,
     endAt: timerId !== null ? endAt : null,
     completionReady,
+    completionDate: completionReady ? completionDateKey : null,
   }));
 }
 
@@ -181,8 +211,9 @@ function stopTimer(label = 'スタート', persist = true) {
 }
 
 function finishTimer() {
+  const completedOn = dateKey(new Date(endAt ?? Date.now()));
   remainingSeconds = 0;
-  setRecordAvailability(true);
+  setRecordAvailability(true, completedOn);
   revealCompletionRecord();
   stopTimer('もう一度');
   setTimerFeedback('集中スプリント完了。この1回を記録できます。', 'complete');
@@ -282,7 +313,7 @@ function restoreTimerState() {
 
     if (restoredRemaining <= 0) {
       remainingSeconds = 0;
-      setRecordAvailability(true);
+      setRecordAvailability(true, dateKey(new Date(storedEndAt)));
       revealCompletionRecord();
       setStartButton('もう一度');
       setTimerFeedback('前回の集中スプリントは完了しています。この1回を記録できます。', 'complete');
@@ -296,7 +327,13 @@ function restoreTimerState() {
   const partiallyElapsed = remainingSeconds > 0 && remainingSeconds < fullDuration;
   const completed = remainingSeconds === 0;
   const legacyCompletedState = completed && state != null && typeof state.completionReady !== 'boolean';
-  setRecordAvailability(completed && (state?.completionReady === true || legacyCompletedState));
+  const storedCompletionDate = typeof state?.completionDate === 'string' && isValidDateKey(state.completionDate)
+    ? state.completionDate
+    : null;
+  setRecordAvailability(
+    completed && (state?.completionReady === true || legacyCompletedState),
+    storedCompletionDate ?? dateKey(),
+  );
   if (completionReady) revealCompletionRecord();
   setStartButton(partiallyElapsed ? '再開' : completed ? 'もう一度' : 'スタート');
   setTimerFeedback(
@@ -316,6 +353,7 @@ function restoreTimerState() {
 
 function renderHistory() {
   const todayKey = dateKey();
+  renderedDateKey = todayKey;
   todayCount.textContent = String(focusHistory[todayKey] ?? 0);
   historyGrid.replaceChildren();
 
@@ -348,16 +386,20 @@ function renderHistory() {
   }
 }
 
-function incrementFocusHistory() {
-  const key = dateKey();
-  const current = Number.isInteger(focusHistory[key]) ? focusHistory[key] : 0;
-  focusHistory[key] = Math.min(current + 1, MAX_DAILY_COUNT);
+function refreshDateSensitiveUi() {
+  if (renderedDateKey !== dateKey()) renderHistory();
+}
+
+function incrementFocusHistory(key = dateKey()) {
+  const historyKey = isValidDateKey(key) ? key : dateKey();
+  const current = Number.isInteger(focusHistory[historyKey]) ? focusHistory[historyKey] : 0;
+  focusHistory[historyKey] = Math.min(current + 1, MAX_DAILY_COUNT);
   saveHistory();
   renderHistory();
 }
 
 function loadState() {
-  taskInput.value = safeRead(STORAGE_KEYS.task).slice(0, 120);
+  loadDailyTask();
   const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
   doneCount.textContent = String(Number.isSafeInteger(count) && count >= 0 ? count : 0);
   focusHistory = readHistory();
@@ -368,6 +410,7 @@ function loadState() {
 
 taskInput.addEventListener('input', () => {
   safeWrite(STORAGE_KEYS.task, taskInput.value.slice(0, 120));
+  safeWrite(STORAGE_KEYS.taskDate, dateKey());
 });
 
 startButton.addEventListener('click', toggleTimer);
@@ -384,17 +427,26 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshDateSensitiveUi();
+});
+
 doneButton.addEventListener('click', () => {
   if (!completionReady) return;
 
+  const completedOn = completionDateKey;
   setRecordAvailability(false);
   const current = Number.parseInt(doneCount.textContent, 10) || 0;
   const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
   doneCount.textContent = String(next);
   safeWrite(STORAGE_KEYS.count, String(next));
-  incrementFocusHistory();
+  incrementFocusHistory(completedOn);
   resetTimer();
-  setTimerFeedback('完了した集中を1回記録しました。次のスプリントを始められます。');
+  setTimerFeedback(
+    completedOn && completedOn !== dateKey()
+      ? `${completedOn}に完了した集中を1回記録しました。`
+      : '完了した集中を1回記録しました。次のスプリントを始められます。',
+  );
 });
 
 loadState();
