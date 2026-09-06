@@ -4,7 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
-REQUIRED_SCRIPT_ORDER = ["app.js", "tab-guard.js", "shortcuts.js"]
+REQUIRED_SCRIPT_ORDER = ["app.js", "tab-guard.js", "backup.js", "shortcuts.js"]
 
 
 class PageParser(HTMLParser):
@@ -57,6 +57,17 @@ def main():
     fail_if(discard_button is None, "#discard-button が見つかりません", errors)
     if discard_button is not None:
         fail_if("hidden" not in discard_button, "#discard-button は初期状態で hidden にしてください", errors)
+
+    backup_export = parser.by_id.get("backup-export-button")
+    backup_import = parser.by_id.get("backup-import-button")
+    backup_file = parser.by_id.get("backup-file-input")
+    fail_if(backup_export is None, "#backup-export-button が見つかりません", errors)
+    fail_if(backup_import is None, "#backup-import-button が見つかりません", errors)
+    fail_if(backup_file is None, "#backup-file-input が見つかりません", errors)
+    if backup_file is not None:
+        fail_if(backup_file.get("type") != "file", "#backup-file-input は type=file にしてください", errors)
+        fail_if("hidden" not in backup_file, "#backup-file-input は初期状態で hidden にしてください", errors)
+        fail_if(".json" not in backup_file.get("accept", ""), "#backup-file-input はJSONファイルだけを選べるようにしてください", errors)
 
     fail_if(not parser.csp, "Content-Security-Policy が見つかりません", errors)
     if parser.csp:

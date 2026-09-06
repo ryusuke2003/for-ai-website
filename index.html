@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="app.js" defer></script>
   <script src="tab-guard.js" defer></script>
+  <script src="backup.js" defer></script>
   <script src="shortcuts.js" defer></script>
 </head>
 <body>
@@ -81,6 +82,20 @@
         <div class="history-grid" id="history-grid" role="list"></div>
       </div>
       <p class="hint">日ごとの回数もこの端末だけに保存します。履歴は最大90日分です。</p>
+    </section>
+
+    <section class="card backup-card" aria-labelledby="backup-title">
+      <div class="section-heading">
+        <span class="step">04</span>
+        <h2 id="backup-title">記録をバックアップする</h2>
+      </div>
+      <div class="controls">
+        <button class="secondary" id="backup-export-button" type="button" aria-describedby="backup-hint">JSONを書き出す</button>
+        <button class="secondary" id="backup-import-button" type="button" aria-describedby="backup-hint">JSONから復元</button>
+      </div>
+      <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
+      <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。タスク本文、実行中タイマー、タブ間セッションIDは含めません。復元はタイマーが完全に停止しているときだけ行えます。</p>
+      <p class="hint" id="backup-status" role="status" aria-live="polite"></p>
     </section>
 
     <p id="focus-mode-status" class="sr-only" aria-live="polite"></p>
