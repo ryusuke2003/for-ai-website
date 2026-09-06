@@ -127,3 +127,4 @@ customTimerLockObserver.observe(customPresetButton, { attributes: true, attribut
 
 syncCustomTimerPresentation();
 syncCustomTimerLock();
+refreshRecoveryAvailability();
