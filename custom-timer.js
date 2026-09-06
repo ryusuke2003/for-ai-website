@@ -55,7 +55,7 @@ function applyCustomTimerMinutes() {
   }
 
   customPresetButton.dataset.minutes = String(minutes);
-  selectPreset(customPresetButton);
+  customPresetButton.click();
   syncCustomTimerPresentation();
   setCustomTimerStatus(`${minutes}分に設定しました。`);
   startButton.focus();
