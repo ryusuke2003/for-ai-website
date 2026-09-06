@@ -92,9 +92,10 @@
       <div class="controls">
         <button class="secondary" id="backup-export-button" type="button" aria-describedby="backup-hint">JSONを書き出す</button>
         <button class="secondary" id="backup-import-button" type="button" aria-describedby="backup-hint">JSONから復元</button>
+        <button class="secondary" id="backup-undo-button" type="button" aria-describedby="backup-hint" hidden>直前の復元を取り消す</button>
       </div>
       <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
-      <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。タスク本文、実行中タイマー、タブ間セッションIDは含めません。復元はタイマーが完全に停止しているときだけ行えます。</p>
+      <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。タスク本文、実行中タイマー、タブ間セッションIDは含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。</p>
       <p class="hint" id="backup-status" role="status" aria-live="polite"></p>
     </section>
 
