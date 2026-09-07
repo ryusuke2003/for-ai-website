@@ -5,11 +5,17 @@ const completionNotificationStatus = document.querySelector('#completion-notific
 
 const COMPLETION_SOUND_STORAGE_KEY = 'one.completionSound.v1';
 const COMPLETION_NOTIFICATION_STORAGE_KEY = 'one.completionNotification.v1';
+const COMPLETION_EFFECT_CLAIM_STORAGE_KEY = 'one.completionEffectClaim.v1';
+const COMPLETION_EFFECT_LOCK_NAME = 'one-completion-effect-v1';
+const COMPLETION_EFFECT_FALLBACK_SETTLE_MS = 80;
+const MAX_COMPLETION_EFFECT_CLAIM_BYTES = 256;
 const CompletionAudioContext = window.AudioContext || window.webkitAudioContext;
 const completionNotificationSupported = (
   'Notification' in window
   && typeof Notification.requestPermission === 'function'
 );
+
+let completionEffectFallbackCounter = 0;
 
 function parseCompletionSoundPreference(value) {
   if (value === '1') return true;
@@ -21,6 +27,63 @@ function parseCompletionNotificationPreference(value) {
   if (value === '1') return true;
   if (value === '0' || value === null) return false;
   return null;
+}
+
+function buildCompletionEffectKey(completionEndAt, minutes) {
+  const endAtValue = Number.isFinite(completionEndAt) ? Math.trunc(completionEndAt) : null;
+  if (!Number.isSafeInteger(endAtValue) || endAtValue <= 0) return null;
+  if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_MINUTES) return null;
+  return `${endAtValue}:${minutes}`;
+}
+
+function createCompletionEffectClaimToken() {
+  if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    try {
+      const bytes = new Uint8Array(8);
+      globalThis.crypto.getRandomValues(bytes);
+      return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+    } catch {
+      // A claim token is not a secret. Fall back to a local uniqueness token below.
+    }
+  }
+
+  completionEffectFallbackCounter = (completionEffectFallbackCounter + 1) % 1_000_000;
+  return `fallback-${Date.now().toString(36)}-${completionEffectFallbackCounter.toString(36)}`;
+}
+
+function isCompletionEffectClaimToken(value) {
+  return value === null
+    || (typeof value === 'string' && /^[a-z0-9-]{8,80}$/.test(value));
+}
+
+function parseCompletionEffectClaim(raw) {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_COMPLETION_EFFECT_CLAIM_BYTES) return null;
+
+  try {
+    const value = JSON.parse(raw);
+    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
+    if (
+      Object.keys(value).length !== 4
+      || !Object.hasOwn(value, 'key')
+      || !Object.hasOwn(value, 'soundClaim')
+      || !Object.hasOwn(value, 'notificationClaim')
+      || !Object.hasOwn(value, 'updatedAt')
+    ) {
+      return null;
+    }
+    if (typeof value.key !== 'string' || !/^\d{10,16}:\d{1,3}$/.test(value.key)) return null;
+    const [endAtRaw, minutesRaw] = value.key.split(':');
+    const endAtValue = Number(endAtRaw);
+    const minutes = Number(minutesRaw);
+    if (!Number.isSafeInteger(endAtValue) || endAtValue <= 0) return null;
+    if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_MINUTES) return null;
+    if (!isCompletionEffectClaimToken(value.soundClaim)) return null;
+    if (!isCompletionEffectClaimToken(value.notificationClaim)) return null;
+    if (!Number.isSafeInteger(value.updatedAt) || value.updatedAt <= 0) return null;
+    return value;
+  } catch {
+    return null;
+  }
 }
 
 let completionSoundEnabled = parseCompletionSoundPreference(safeRead(COMPLETION_SOUND_STORAGE_KEY)) === true;
@@ -209,15 +272,15 @@ function refreshCompletionNotificationFromBrowser({ closeVisibleNotification = f
   syncCompletionNotificationUi();
 }
 
+function canShowCompletionNotification() {
+  return completionNotificationEnabled
+    && completionNotificationSupported
+    && Notification.permission === 'granted'
+    && document.visibilityState !== 'visible';
+}
+
 function showCompletionNotification() {
-  if (
-    !completionNotificationEnabled
-    || !completionNotificationSupported
-    || Notification.permission !== 'granted'
-    || document.visibilityState === 'visible'
-  ) {
-    return;
-  }
+  if (!canShowCompletionNotification()) return;
 
   closeActiveCompletionNotification();
   try {
@@ -235,6 +298,74 @@ function showCompletionNotification() {
     }, { once: true });
   } catch {
     syncCompletionNotificationUi('完了通知を表示できませんでした。タイマー機能はそのまま利用できます。');
+  }
+}
+
+function completionEffectClaimPayload(completionKey, claimField, claimToken, previousClaim) {
+  const sameCompletion = previousClaim?.key === completionKey;
+  const next = {
+    key: completionKey,
+    soundClaim: sameCompletion ? previousClaim.soundClaim : null,
+    notificationClaim: sameCompletion ? previousClaim.notificationClaim : null,
+    updatedAt: Date.now(),
+  };
+  next[claimField] = claimToken;
+  return JSON.stringify(next);
+}
+
+async function claimCompletionEffectWithStorage(completionKey, effect, { settle = false } = {}) {
+  if (storageAccessFailed) return true;
+
+  const claimField = effect === 'sound'
+    ? 'soundClaim'
+    : effect === 'notification'
+      ? 'notificationClaim'
+      : null;
+  if (claimField === null) return false;
+
+  const raw = safeRead(COMPLETION_EFFECT_CLAIM_STORAGE_KEY);
+  if (storageAccessFailed) return true;
+  const previousClaim = parseCompletionEffectClaim(raw);
+  if (previousClaim?.key === completionKey && previousClaim[claimField] !== null) return false;
+
+  const claimToken = createCompletionEffectClaimToken();
+  const payload = completionEffectClaimPayload(completionKey, claimField, claimToken, previousClaim);
+  if (!safeWrite(COMPLETION_EFFECT_CLAIM_STORAGE_KEY, payload)) return true;
+
+  if (settle) {
+    await new Promise((resolve) => window.setTimeout(resolve, COMPLETION_EFFECT_FALLBACK_SETTLE_MS));
+  }
+
+  const persistedRaw = safeRead(COMPLETION_EFFECT_CLAIM_STORAGE_KEY);
+  if (storageAccessFailed) return true;
+  const persisted = parseCompletionEffectClaim(persistedRaw);
+  return persisted?.key === completionKey && persisted[claimField] === claimToken;
+}
+
+async function claimCompletionEffect(completionKey, effect) {
+  if (completionKey === null) return true;
+
+  if (navigator.locks && typeof navigator.locks.request === 'function' && !storageAccessFailed) {
+    try {
+      return await navigator.locks.request(
+        COMPLETION_EFFECT_LOCK_NAME,
+        () => claimCompletionEffectWithStorage(completionKey, effect),
+      );
+    } catch {
+      // Fall through to a storage-only best-effort claim.
+    }
+  }
+
+  return claimCompletionEffectWithStorage(completionKey, effect, { settle: true });
+}
+
+async function runCompletionEffectsOnce(completionKey) {
+  if (completionSoundEnabled && await claimCompletionEffect(completionKey, 'sound')) {
+    void playCompletionSound();
+  }
+
+  if (canShowCompletionNotification() && await claimCompletionEffect(completionKey, 'notification')) {
+    showCompletionNotification();
   }
 }
 
@@ -320,9 +451,9 @@ function primeCompletionAudioFromGesture() {
 
 const finishTimerWithoutCompletionSound = finishTimer;
 finishTimer = function finishTimerWithCompletionSound() {
+  const completionKey = buildCompletionEffectKey(endAt, selectedMinutes);
   finishTimerWithoutCompletionSound();
-  void playCompletionSound();
-  showCompletionNotification();
+  void runCompletionEffectsOnce(completionKey);
 };
 
 completionSoundToggle.addEventListener('click', () => {
