@@ -15,6 +15,7 @@
   <script src="app.js" defer></script>
   <script src="storage-status.js" defer></script>
   <script src="completion-sound.js" defer></script>
+  <script src="completion-notification.js" defer></script>
   <script src="wake-lock.js" defer></script>
   <script src="theme.js" defer></script>
   <script src="stats.js" defer></script>
@@ -75,11 +76,13 @@
           <button id="custom-minutes-apply" type="button" aria-describedby="custom-minutes-status">設定</button>
         </span>
         <button id="completion-sound-toggle" type="button" aria-pressed="false" aria-describedby="completion-sound-status">完了音 OFF</button>
+        <button id="completion-notification-toggle" type="button" aria-pressed="false" aria-describedby="completion-notification-status">完了通知 OFF</button>
         <button id="wake-lock-toggle" type="button" aria-pressed="false" aria-describedby="wake-lock-status">画面維持 OFF</button>
         <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
       </div>
       <p class="hint" id="custom-minutes-status" role="status" aria-live="polite">1〜180分の整数でも設定できます。</p>
       <p class="hint" id="completion-sound-status" role="status" aria-live="polite">完了音はオフです。オンにすると短い試聴音が鳴ります。</p>
+      <p class="hint" id="completion-notification-status" role="status" aria-live="polite">完了通知はオフです。オンにするとブラウザの通知許可を確認します。</p>
       <p class="hint" id="wake-lock-status" role="status" aria-live="polite">画面維持はオフです。オンにすると集中中だけ画面のスリープを抑えます。</p>
       <p class="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
     </section>
@@ -154,7 +157,7 @@
           <h3 id="data-reset-title">この端末のONEデータ</h3>
           <span>プライバシー</span>
         </div>
-        <p class="hint" id="data-reset-hint">タスク、タイマー、集中記録、復元用データ、表示テーマ、完了音、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
+        <p class="hint" id="data-reset-hint">タスク、タイマー、集中記録、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
         <div class="controls">
           <button class="secondary" id="data-reset-button" type="button" aria-describedby="data-reset-hint data-reset-status">この端末のデータを削除</button>
         </div>
