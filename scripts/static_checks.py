@@ -5,9 +5,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
 APP_PATH = ROOT / "app.js"
+SOUND_PATH = ROOT / "completion-sound.js"
 REQUIRED_SCRIPT_ORDER = [
     "timer-bootstrap.js",
     "app.js",
+    "completion-sound.js",
     "stats.js",
     "tab-guard.js",
     "backup.js",
@@ -80,6 +82,24 @@ def main():
         fail_if("data-minutes" not in custom_preset, "#custom-preset は data-minutes を維持してください", errors)
     if custom_status is not None:
         fail_if(custom_status.get("role") != "status", "#custom-minutes-status は role=status を維持してください", errors)
+
+    sound_toggle = parser.by_id.get("completion-sound-toggle")
+    sound_status = parser.by_id.get("completion-sound-status")
+    fail_if(sound_toggle is None, "#completion-sound-toggle が見つかりません", errors)
+    fail_if(sound_status is None, "#completion-sound-status が見つかりません", errors)
+    if sound_toggle is not None:
+        fail_if(
+            sound_toggle.get("aria-pressed") != "false",
+            "完了音は初期HTMLでオフにしてください",
+            errors,
+        )
+        fail_if(
+            sound_toggle.get("aria-describedby") != "completion-sound-status",
+            "#completion-sound-toggle は #completion-sound-status を説明として参照してください",
+            errors,
+        )
+    if sound_status is not None:
+        fail_if(sound_status.get("role") != "status", "#completion-sound-status は role=status を維持してください", errors)
 
     done_button = parser.by_id.get("done-button")
     fail_if(done_button is None, "#done-button が見つかりません", errors)
@@ -189,6 +209,11 @@ def main():
         "0秒到達時は一時停止より先に finishTimer() へ流してください",
         errors,
     )
+
+    sound_source = SOUND_PATH.read_text(encoding="utf-8") if SOUND_PATH.is_file() else ""
+    fail_if("const finishTimerWithoutCompletionSound = finishTimer;" not in sound_source, "完了音は既存 finishTimer() を保持して拡張してください", errors)
+    fail_if("finishTimerWithoutCompletionSound();" not in sound_source, "完了音より先に本来の完了処理を実行してください", errors)
+    fail_if("COMPLETION_SOUND_STORAGE_KEY = 'one.completionSound.v1'" not in sound_source, "完了音設定キーを変更する場合は互換性を確認してください", errors)
 
     if errors:
         for error in errors:
