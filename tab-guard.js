@@ -57,9 +57,21 @@ function clearStoredSessionId() {
 }
 
 function createSessionId() {
-  const timePart = Date.now().toString(36);
-  const randomPart = Math.random().toString(36).slice(2, 12);
-  return `${timePart}-${randomPart}`;
+  if (!globalThis.crypto || typeof globalThis.crypto.getRandomValues !== 'function') {
+    disableTabCoordination();
+    return null;
+  }
+
+  try {
+    const bytes = new Uint8Array(16);
+    globalThis.crypto.getRandomValues(bytes);
+    return [...bytes]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('');
+  } catch {
+    disableTabCoordination();
+    return null;
+  }
 }
 
 function ensureStoredSessionId() {
@@ -67,6 +79,7 @@ function ensureStoredSessionId() {
   if (existing) return existing;
 
   const candidate = createSessionId();
+  if (!candidate) return null;
   writeStoredSessionId(candidate);
   if (storageCoordinationUnavailable()) return candidate;
   return readStoredSessionId() ?? candidate;
@@ -206,6 +219,7 @@ startButton.addEventListener('click', (event) => {
   }
 
   localSessionId = createSessionId();
+  if (!localSessionId) return;
   writeStoredSessionId(localSessionId);
 }, true);
 
