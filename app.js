@@ -103,9 +103,14 @@ function hasActiveDailyTaskContext() {
 }
 
 function loadDailyTask({ preserveActiveSession = false } = {}) {
+  if (storageAccessFailed) return;
+
   const today = dateKey();
   const storedTask = safeRead(STORAGE_KEYS.task).slice(0, 120);
+  if (storageAccessFailed) return;
+
   const storedTaskDate = safeRead(STORAGE_KEYS.taskDate);
+  if (storageAccessFailed) return;
 
   if (!storedTaskDate) {
     taskInput.value = storedTask;
@@ -215,7 +220,7 @@ function clearTimerInterval() {
   }
 }
 
-function setStartButton(label, running = false) {
+function setStartButton(label = 'スタート', running = false) {
   startButton.textContent = label;
   startButton.setAttribute('aria-pressed', String(running));
 }
