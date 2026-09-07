@@ -5,34 +5,55 @@ const SESSION_ID_PATTERN = /^[a-z0-9-]{8,80}$/;
 let localSessionId = null;
 let tabCoordinationEnabled = false;
 
+function disableTabCoordination() {
+  tabCoordinationEnabled = false;
+  localSessionId = null;
+}
+
+function storageCoordinationUnavailable() {
+  if (!storageAccessFailed) return false;
+  disableTabCoordination();
+  return true;
+}
+
 function detectTabStorage() {
   try {
     localStorage.setItem(TAB_STORAGE_PROBE_KEY, '1');
+    const persisted = localStorage.getItem(TAB_STORAGE_PROBE_KEY) === '1';
     localStorage.removeItem(TAB_STORAGE_PROBE_KEY);
-    return true;
+    if (persisted) return true;
   } catch {
-    return false;
+    // Report below so the app-wide storage status changes too.
   }
+
+  reportStorageFailure();
+  return false;
 }
 
 function readStoredSessionId() {
-  if (!tabCoordinationEnabled) return null;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return null;
   const value = safeRead(TAB_SESSION_KEY);
+  if (storageCoordinationUnavailable()) return null;
   return SESSION_ID_PATTERN.test(value) ? value : null;
 }
 
 function writeStoredSessionId(value) {
-  if (!tabCoordinationEnabled || !SESSION_ID_PATTERN.test(value)) return;
-  safeWrite(TAB_SESSION_KEY, value);
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || !SESSION_ID_PATTERN.test(value)) return;
+  if (!safeWrite(TAB_SESSION_KEY, value)) disableTabCoordination();
 }
 
 function clearStoredSessionId() {
-  if (!tabCoordinationEnabled) return;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return;
+
   try {
     localStorage.removeItem(TAB_SESSION_KEY);
+    if (localStorage.getItem(TAB_SESSION_KEY) === null) return;
   } catch {
-    // The app remains usable when storage is disabled.
+    // Report below and keep the app usable without cross-tab coordination.
   }
+
+  reportStorageFailure();
+  disableTabCoordination();
 }
 
 function createSessionId() {
@@ -47,6 +68,7 @@ function ensureStoredSessionId() {
 
   const candidate = createSessionId();
   writeStoredSessionId(candidate);
+  if (storageCoordinationUnavailable()) return candidate;
   return readStoredSessionId() ?? candidate;
 }
 
@@ -69,9 +91,16 @@ function hasLocalTimerContext() {
 }
 
 function refreshProgressFromStorage() {
-  doneCount.textContent = String(readDoneCount());
-  focusHistory = readHistory();
+  if (storageCoordinationUnavailable()) return false;
+
+  const storedDoneCount = readDoneCount();
+  const storedHistory = readHistory();
+  if (storageCoordinationUnavailable()) return false;
+
+  doneCount.textContent = String(storedDoneCount);
+  focusHistory = storedHistory;
   renderHistory();
+  return true;
 }
 
 function stopCrossTabAction(event, message, state = 'idle') {
@@ -81,43 +110,53 @@ function stopCrossTabAction(event, message, state = 'idle') {
 }
 
 function blockStaleTabAction(event, message) {
+  if (!refreshProgressFromStorage()) return false;
   stopCrossTabAction(event, message, 'complete');
-  refreshProgressFromStorage();
   setRecordAvailability(false);
+  return true;
 }
 
 function claimPendingCompletion(event) {
-  if (!tabCoordinationEnabled) return true;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return true;
   if (!completionReady) return false;
   if (!localSessionId) {
-    blockStaleTabAction(event, 'このタブでは集中セッションを確認できません。再読み込みして最新状態に合わせてください。');
-    return false;
+    return !blockStaleTabAction(
+      event,
+      'このタブでは集中セッションを確認できません。再読み込みして最新状態に合わせてください。',
+    );
   }
 
   const storedState = readTimerState();
   const storedSessionId = readStoredSessionId();
+  if (storageCoordinationUnavailable()) return true;
+
   const storedRemaining = storedState?.remainingSeconds;
   const stillPending = storedState?.completionReady === true
     && storedRemaining === 0
     && storedSessionId === localSessionId;
 
   if (!stillPending) {
-    blockStaleTabAction(event, 'この集中は別のタブですでに処理されています。最新の記録を反映しました。');
-    localSessionId = null;
-    return false;
+    const blocked = blockStaleTabAction(
+      event,
+      'この集中は別のタブですでに処理されています。最新の記録を反映しました。',
+    );
+    if (blocked) localSessionId = null;
+    return !blocked;
   }
 
   clearStoredSessionId();
   localSessionId = null;
+  if (storageCoordinationUnavailable()) return true;
   refreshProgressFromStorage();
   return true;
 }
 
 function blockIfAnotherTabOwnsTimer(event) {
-  if (!tabCoordinationEnabled) return false;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
 
   const storedState = readTimerState();
   const storedSessionId = readStoredSessionId();
+  if (storageCoordinationUnavailable()) return false;
   if (!isTimerStateActive(storedState) || !storedSessionId) return false;
   if (localSessionId === storedSessionId) return false;
 
@@ -129,8 +168,11 @@ function blockIfAnotherTabOwnsTimer(event) {
 }
 
 function blockIfLocalSessionIsStale(event) {
-  if (!tabCoordinationEnabled) return false;
-  if (localSessionId && readStoredSessionId() === localSessionId) return false;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
+
+  const storedSessionId = readStoredSessionId();
+  if (storageCoordinationUnavailable()) return false;
+  if (localSessionId && storedSessionId === localSessionId) return false;
 
   stopCrossTabAction(
     event,
@@ -153,7 +195,7 @@ function initializeTabGuard() {
 }
 
 startButton.addEventListener('click', (event) => {
-  if (!tabCoordinationEnabled || timerId !== null || completionReady) return;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || timerId !== null || completionReady) return;
   if (blockIfAnotherTabOwnsTimer(event)) return;
 
   const fullDuration = selectedMinutes * 60;
@@ -168,14 +210,14 @@ startButton.addEventListener('click', (event) => {
 }, true);
 
 resetButton.addEventListener('click', () => {
-  if (!tabCoordinationEnabled || completionReady) return;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || completionReady) return;
   localSessionId = null;
   clearStoredSessionId();
 }, true);
 
 presetButtons.forEach((button) => {
   button.addEventListener('click', () => {
-    if (!tabCoordinationEnabled || completionReady) return;
+    if (!tabCoordinationEnabled || storageCoordinationUnavailable() || completionReady) return;
     localSessionId = null;
     clearStoredSessionId();
   }, true);
@@ -195,13 +237,16 @@ window.addEventListener('storage', (event) => {
     return;
   }
 
-  if (!tabCoordinationEnabled || event.key !== TAB_SESSION_KEY || !completionReady || !localSessionId) return;
-  if (readStoredSessionId() === localSessionId) return;
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || event.key !== TAB_SESSION_KEY || !completionReady || !localSessionId) return;
+  const storedSessionId = readStoredSessionId();
+  if (storageCoordinationUnavailable() || storedSessionId === localSessionId) return;
+  if (!refreshProgressFromStorage()) return;
 
-  refreshProgressFromStorage();
   setRecordAvailability(false);
   setTimerFeedback('この集中は別のタブで処理されました。最新の記録を反映しました。', 'complete');
   localSessionId = null;
 });
+
+window.addEventListener('one:storage-error', disableTabCoordination);
 
 initializeTabGuard();
