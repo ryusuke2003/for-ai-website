@@ -79,6 +79,28 @@ function calculateActivityWindow(history, today = new Date()) {
   };
 }
 
+function currentDayAriaLabel(key, count) {
+  return `今日 ${key}: ${count}回`;
+}
+
+function markCurrentHistoryDay() {
+  const todayKey = dateKey();
+  const storedCount = focusHistory[todayKey] ?? 0;
+  const count = Number.isInteger(storedCount) && storedCount > 0 ? storedCount : 0;
+  const items = [...historyGrid.querySelectorAll('.history-day[role="listitem"]')];
+
+  items.forEach((item) => {
+    const label = item.getAttribute('aria-label') ?? '';
+    if (!label.startsWith(`${todayKey}:`)) {
+      item.removeAttribute('aria-current');
+      return;
+    }
+
+    item.setAttribute('aria-current', 'date');
+    item.setAttribute('aria-label', currentDayAriaLabel(todayKey, count));
+  });
+}
+
 function renderActivityMap() {
   const history = normalizeHistory(focusHistory);
   const activity = calculateActivityWindow(history);
@@ -94,10 +116,14 @@ function renderActivityMap() {
 
   activity.days.forEach(({ key, count }) => {
     const item = document.createElement('span');
+    const isToday = key === todayKey;
     item.className = `activity-day level-${Math.min(count, 4)}`;
     item.setAttribute('role', 'listitem');
-    item.setAttribute('aria-label', `${key}: ${count}回`);
-    if (key === todayKey) item.classList.add('is-today');
+    item.setAttribute('aria-label', isToday ? currentDayAriaLabel(key, count) : `${key}: ${count}回`);
+    if (isToday) {
+      item.classList.add('is-today');
+      item.setAttribute('aria-current', 'date');
+    }
     cells.push(item);
   });
 
@@ -131,9 +157,11 @@ function renderProgressInsights() {
 const renderHistoryWithoutInsights = renderHistory;
 renderHistory = function renderHistoryWithInsights() {
   renderHistoryWithoutInsights();
+  markCurrentHistoryDay();
   renderProgressInsights();
   renderActivityMap();
 };
 
+markCurrentHistoryDay();
 renderProgressInsights();
 renderActivityMap();
