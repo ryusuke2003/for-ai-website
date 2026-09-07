@@ -22,6 +22,7 @@ jobs:
           node --check theme-bootstrap.js
           node --check timer-bootstrap.js
           node --check app.js
+          node --check storage-status.js
           node --check completion-sound.js
           node --check theme.js
           node --check stats.js
