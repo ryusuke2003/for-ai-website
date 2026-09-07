@@ -73,6 +73,9 @@ jobs:
       - name: Check tab session ID generation
         run: python3 scripts/tab_session_id_checks.py
 
+      - name: Check idle timer cross-tab sync
+        run: python3 scripts/idle_timer_sync_checks.py
+
       - name: Check theme storage behavior
         run: python3 scripts/theme_storage_checks.py
 

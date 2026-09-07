@@ -138,6 +138,16 @@ customMinutesInput.addEventListener('keydown', (event) => {
   applyCustomTimerMinutes();
 });
 
+window.addEventListener('one:idle-timer-sync', (event) => {
+  const minutes = event.detail?.selectedMinutes;
+  if (!isAllowedCustomTimerMinutes(minutes)) return;
+
+  customPresetButton.dataset.minutes = String(minutes);
+  syncCustomTimerPresentation();
+  syncCustomTimerLock();
+  setCustomTimerStatus(`別のタブで${minutes}分に変更されました。`);
+});
+
 const customTimerLockObserver = new MutationObserver(syncCustomTimerLock);
 customTimerLockObserver.observe(customPresetButton, { attributes: true, attributeFilter: ['disabled'] });
 
