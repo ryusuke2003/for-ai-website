@@ -269,7 +269,7 @@ function refreshBackupControlAvailability({ announce = false } = {}) {
 }
 
 function refreshRecoveryAvailability() {
-  if (!refreshBackupControlAvailability()) return;
+  if (!refreshBackupControlAvailability({ announce: true })) return;
 
   const recovery = readRecoveryPoint();
   const matchesRestoredState = recovery !== null
