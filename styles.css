@@ -450,8 +450,9 @@ footer {
 }
 
 button:focus-visible, input:focus-visible {
-  outline: 3px solid currentColor;
+  outline: 3px solid #1d1d1f;
   outline-offset: 3px;
+  box-shadow: 0 0 0 6px #f2efe7;
 }
 
 @media (max-width: 560px) {
