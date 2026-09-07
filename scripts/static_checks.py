@@ -6,6 +6,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
 APP_PATH = ROOT / "app.js"
+STORAGE_STATUS_PATH = ROOT / "storage-status.js"
 SOUND_PATH = ROOT / "completion-sound.js"
 THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_PATH = ROOT / "theme.js"
@@ -14,6 +15,7 @@ REQUIRED_SCRIPT_ORDER = [
     "theme-bootstrap.js",
     "timer-bootstrap.js",
     "app.js",
+    "storage-status.js",
     "completion-sound.js",
     "theme.js",
     "stats.js",
@@ -130,6 +132,12 @@ def main():
         fail_if(parser.theme_choices[0].get("aria-pressed") != "true", "表示テーマの初期選択は自動にしてください", errors)
         for choice in parser.theme_choices[1:]:
             fail_if(choice.get("aria-pressed") != "false", "ライト・ダークは初期HTMLで未選択にしてください", errors)
+
+    storage_health_status = parser.by_id.get("storage-health-status")
+    fail_if(storage_health_status is None, "#storage-health-status が見つかりません", errors)
+    if storage_health_status is not None:
+        fail_if(storage_health_status.get("role") != "status", "#storage-health-status は role=status を維持してください", errors)
+        fail_if(storage_health_status.get("aria-live") != "polite", "#storage-health-status は aria-live=polite を維持してください", errors)
 
     done_button = parser.by_id.get("done-button")
     fail_if(done_button is None, "#done-button が見つかりません", errors)
@@ -266,6 +274,14 @@ def main():
         "0秒到達時は一時停止より先に finishTimer() へ流してください",
         errors,
     )
+    fail_if("let storageAccessFailed = false;" not in app_source, "端末保存の失敗状態を保持してください", errors)
+    fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in app_source, "保存失敗時は表示側へ通知してください", errors)
+    fail_if("return false;" not in app_source.split("function safeWrite", 1)[-1].split("function readTimerState", 1)[0], "safeWrite() は保存失敗を呼び出し側から判別できるようにしてください", errors)
+
+    storage_status_source = STORAGE_STATUS_PATH.read_text(encoding="utf-8") if STORAGE_STATUS_PATH.is_file() else ""
+    fail_if("STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1'" not in storage_status_source, "端末保存確認は既存の一時プローブキーを再利用してください", errors)
+    fail_if("addEventListener('one:storage-error'" not in storage_status_source, "利用中の保存失敗を端末保存表示へ反映してください", errors)
+    fail_if("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token" not in storage_status_source, "端末保存確認は書き込み後の読み戻しまで確認してください", errors)
 
     sound_source = SOUND_PATH.read_text(encoding="utf-8") if SOUND_PATH.is_file() else ""
     fail_if("const finishTimerWithoutCompletionSound = finishTimer;" not in sound_source, "完了音は既存 finishTimer() を保持して拡張してください", errors)
