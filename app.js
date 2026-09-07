@@ -18,7 +18,6 @@ const MAX_MINUTES = 180;
 const HISTORY_LIMIT = 90;
 const MAX_DAILY_COUNT = 1000;
 const MAX_HISTORY_BYTES = 50_000;
-const MAX_TIMER_STATE_BYTES = 10_000;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STORAGE_KEYS = {
   task: 'one.task',
@@ -65,14 +64,7 @@ function safeWrite(key, value) {
 
 function readTimerState() {
   const raw = safeRead(STORAGE_KEYS.timer);
-  if (!raw || raw.length > MAX_TIMER_STATE_BYTES) return null;
-
-  try {
-    const state = JSON.parse(raw);
-    return state && typeof state === 'object' && !Array.isArray(state) ? state : null;
-  } catch {
-    return null;
-  }
+  return globalThis.ONE_TIMER_STATE_GUARD?.parse(raw) ?? null;
 }
 
 function dateKey(date = new Date()) {
