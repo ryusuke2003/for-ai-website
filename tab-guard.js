@@ -207,6 +207,129 @@ function claimPendingCompletion(event) {
   return true;
 }
 
+function verifyCompletionConsumedState() {
+  if (storageAccessFailed) return false;
+
+  const storedState = readTimerState();
+  if (storageAccessFailed) return false;
+
+  const fullDuration = selectedMinutes * 60;
+  const persisted = storedState?.selectedMinutes === selectedMinutes
+    && storedState?.remainingSeconds === fullDuration
+    && storedState?.running === false
+    && storedState?.endAt === null
+    && storedState?.completionReady === false
+    && storedState?.completionDate === null;
+
+  if (persisted) return true;
+  reportStorageFailure();
+  return false;
+}
+
+function persistDoneCountAtLeast(expectedCount) {
+  if (!safeWrite(STORAGE_KEYS.count, String(expectedCount))) return false;
+
+  const storedCount = readDoneCount();
+  if (storageAccessFailed) return false;
+  if (storedCount >= expectedCount) return true;
+
+  reportStorageFailure();
+  return false;
+}
+
+function incrementFocusHistoryInMemory(key = dateKey()) {
+  const historyKey = isValidDateKey(key) ? key : dateKey();
+  const current = Number.isInteger(focusHistory[historyKey]) ? focusHistory[historyKey] : 0;
+  const next = Math.min(current + 1, MAX_DAILY_COUNT);
+  focusHistory[historyKey] = next;
+  focusHistory = normalizeHistory(focusHistory);
+  renderHistory();
+  return { historyKey, expectedCount: focusHistory[historyKey] ?? next };
+}
+
+function persistHistoryEntryAtLeast(historyKey, expectedCount) {
+  if (!safeWrite(STORAGE_KEYS.history, JSON.stringify(focusHistory))) return false;
+
+  const storedHistory = readHistory();
+  if (storageAccessFailed) return false;
+  if ((storedHistory[historyKey] ?? 0) >= expectedCount) return true;
+
+  reportStorageFailure();
+  return false;
+}
+
+function refreshRecoveryAfterCompletionAction() {
+  if (typeof refreshRecoveryAvailability === 'function') refreshRecoveryAvailability();
+}
+
+function recordPendingCompletion(event) {
+  if (!completionReady || !claimPendingCompletion(event)) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  const completedOn = completionDateKey;
+  const current = parseDoneCount(doneCount.textContent);
+  const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
+
+  resetTimer();
+  const completionConsumed = verifyCompletionConsumedState();
+
+  doneCount.textContent = String(next);
+  const historyUpdate = incrementFocusHistoryInMemory(completedOn);
+
+  let countPersisted = false;
+  let historyPersisted = false;
+  if (completionConsumed && !storageAccessFailed) {
+    countPersisted = persistDoneCountAtLeast(next);
+    if (countPersisted && !storageAccessFailed) {
+      historyPersisted = persistHistoryEntryAtLeast(
+        historyUpdate.historyKey,
+        historyUpdate.expectedCount,
+      );
+    }
+  }
+
+  if (completionConsumed && countPersisted && historyPersisted) {
+    setTimerFeedback(
+      completedOn && completedOn !== dateKey()
+        ? `${completedOn}に完了した集中を1回記録しました。`
+        : '完了した集中を1回記録しました。次のスプリントを始められます。',
+    );
+  } else {
+    setTimerFeedback(
+      'このタブでは集中を1回記録しましたが、端末保存を最後まで確認できませんでした。再読み込みせず「JSONを書き出す」で現在の記録を救出してください。',
+      'complete',
+    );
+  }
+
+  refreshRecoveryAfterCompletionAction();
+  startButton.focus();
+}
+
+function discardPendingCompletion(event) {
+  if (!completionReady || !claimPendingCompletion(event)) return;
+
+  event.preventDefault();
+  event.stopImmediatePropagation();
+
+  const discardedOn = completionDateKey;
+  resetTimer();
+  const completionConsumed = verifyCompletionConsumedState();
+
+  setTimerFeedback(
+    completionConsumed
+      ? discardedOn && discardedOn !== dateKey()
+        ? `${discardedOn}に完了した集中を記録せず破棄しました。`
+        : '完了した集中を記録せず破棄しました。次のスプリントを始められます。'
+      : 'このタブでは完了した集中を破棄しましたが、端末保存を確認できませんでした。再読み込みすると未処理の完了として戻る可能性があります。',
+    completionConsumed ? 'idle' : 'complete',
+  );
+
+  refreshRecoveryAfterCompletionAction();
+  startButton.focus();
+}
+
 function blockIfAnotherTabOwnsTimer(event) {
   if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
 
@@ -280,13 +403,8 @@ presetButtons.forEach((button) => {
   }, true);
 });
 
-doneButton.addEventListener('click', (event) => {
-  if (completionReady) claimPendingCompletion(event);
-}, true);
-
-discardButton.addEventListener('click', (event) => {
-  if (completionReady) claimPendingCompletion(event);
-}, true);
+doneButton.addEventListener('click', recordPendingCompletion, true);
+discardButton.addEventListener('click', discardPendingCompletion, true);
 
 window.addEventListener('storage', (event) => {
   if (event.key === STORAGE_KEYS.timer) {
