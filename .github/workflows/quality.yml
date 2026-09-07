@@ -43,6 +43,9 @@ jobs:
       - name: Check focus visibility
         run: python3 scripts/focus_visibility_checks.py
 
+      - name: Check focus mode storage behavior
+        run: python3 scripts/focus_mode_storage_checks.py
+
       - name: Check timer state integration
         run: python3 scripts/timer_state_checks.py
 
