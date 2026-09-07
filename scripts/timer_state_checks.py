@@ -85,8 +85,12 @@ def main():
 
     if "renderTimer = function renderTimerWithProgress()" not in custom_timer_source:
         raise SystemExit("ERROR: renderTimer() 更新時に進捗バーも同期してください")
-    if "renderTimerProgress();\nrefreshRecoveryAvailability();" not in custom_timer_source:
-        raise SystemExit("ERROR: 初期表示でも保存済みタイマーの進捗を反映してください")
+
+    observer_position = custom_timer_source.find("customTimerLockObserver.observe")
+    initial_progress_position = custom_timer_source.rfind("renderTimerProgress();")
+    recovery_position = custom_timer_source.rfind("refreshRecoveryAvailability();")
+    if not (observer_position < initial_progress_position < recovery_position):
+        raise SystemExit("ERROR: 初期表示でも保存済みタイマーの進捗を復元可否更新より前に反映してください")
 
     print("Timer state parsing and visible progress stay synchronized behind the shared timer state.")
 
