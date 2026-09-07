@@ -24,6 +24,7 @@ jobs:
           node --check app.js
           node --check storage-status.js
           node --check completion-sound.js
+          node --check wake-lock.js
           node --check theme.js
           node --check stats.js
           node --check tab-guard.js
@@ -47,6 +48,9 @@ jobs:
 
       - name: Check timer state behavior
         run: node scripts/timer_state_behavior_checks.js
+
+      - name: Check wake lock behavior
+        run: python3 scripts/wake_lock_checks.py
 
       - name: Check backup recovery preservation
         run: python3 scripts/backup_recovery_checks.py

@@ -8,6 +8,7 @@ INDEX_PATH = ROOT / "index.html"
 APP_PATH = ROOT / "app.js"
 STORAGE_STATUS_PATH = ROOT / "storage-status.js"
 SOUND_PATH = ROOT / "completion-sound.js"
+WAKE_LOCK_PATH = ROOT / "wake-lock.js"
 THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_PATH = ROOT / "theme.js"
 PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
@@ -17,6 +18,7 @@ REQUIRED_SCRIPT_ORDER = [
     "app.js",
     "storage-status.js",
     "completion-sound.js",
+    "wake-lock.js",
     "theme.js",
     "stats.js",
     "tab-guard.js",
@@ -120,6 +122,24 @@ def main():
         )
     if sound_status is not None:
         fail_if(sound_status.get("role") != "status", "#completion-sound-status は role=status を維持してください", errors)
+
+    wake_lock_toggle = parser.by_id.get("wake-lock-toggle")
+    wake_lock_status = parser.by_id.get("wake-lock-status")
+    fail_if(wake_lock_toggle is None, "#wake-lock-toggle が見つかりません", errors)
+    fail_if(wake_lock_status is None, "#wake-lock-status が見つかりません", errors)
+    if wake_lock_toggle is not None:
+        fail_if(
+            wake_lock_toggle.get("aria-pressed") != "false",
+            "画面維持は初期HTMLでオフにしてください",
+            errors,
+        )
+        fail_if(
+            wake_lock_toggle.get("aria-describedby") != "wake-lock-status",
+            "#wake-lock-toggle は #wake-lock-status を説明として参照してください",
+            errors,
+        )
+    if wake_lock_status is not None:
+        fail_if(wake_lock_status.get("role") != "status", "#wake-lock-status は role=status を維持してください", errors)
 
     theme_status = parser.by_id.get("theme-status")
     fail_if(theme_status is None, "#theme-status が見つかりません", errors)
@@ -287,6 +307,12 @@ def main():
     fail_if("const finishTimerWithoutCompletionSound = finishTimer;" not in sound_source, "完了音は既存 finishTimer() を保持して拡張してください", errors)
     fail_if("finishTimerWithoutCompletionSound();" not in sound_source, "完了音より先に本来の完了処理を実行してください", errors)
     fail_if("COMPLETION_SOUND_STORAGE_KEY = 'one.completionSound.v1'" not in sound_source, "完了音設定キーを変更する場合は互換性を確認してください", errors)
+
+    wake_lock_source = WAKE_LOCK_PATH.read_text(encoding="utf-8") if WAKE_LOCK_PATH.is_file() else ""
+    fail_if("WAKE_LOCK_STORAGE_KEY = 'one.wakeLock.v1'" not in wake_lock_source, "画面維持設定キーを変更する場合は互換性を確認してください", errors)
+    fail_if("navigator.wakeLock.request('screen')" not in wake_lock_source, "画面維持はScreen Wake Lock APIのscreenロックだけを使用してください", errors)
+    fail_if("document.visibilityState !== 'visible'" not in wake_lock_source, "非表示タブでは画面維持を取得しないでください", errors)
+    fail_if("window.addEventListener('pagehide'" not in wake_lock_source, "ページ離脱時は画面維持を解放してください", errors)
 
     theme_bootstrap_source = THEME_BOOTSTRAP_PATH.read_text(encoding="utf-8") if THEME_BOOTSTRAP_PATH.is_file() else ""
     theme_source = THEME_PATH.read_text(encoding="utf-8") if THEME_PATH.is_file() else ""
