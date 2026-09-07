@@ -60,6 +60,30 @@ def main():
     require("permission !== 'granted'" in enable, "通知が許可されなければONにしないでください")
     require("completionNotificationEnabled = true;" in enable, "許可後だけ完了通知をONにしてください")
 
+    refresh = section(
+        source,
+        "function refreshCompletionNotificationFromBrowser",
+        "function showCompletionNotification",
+    )
+    require(
+        "closeVisibleNotification && document.visibilityState === 'visible'" in refresh,
+        "前面へ戻ったときだけ残っている完了通知を閉じてください",
+    )
+    require(
+        "closeActiveCompletionNotification();" in refresh,
+        "前面復帰時はOS側の古い完了通知を閉じてください",
+    )
+    permission_check = refresh.find("Notification.permission !== 'granted'")
+    disable_position = refresh.find("completionNotificationEnabled = false;", permission_check)
+    storage_guard = refresh.find("if (!storageAccessFailed)")
+    safe_read = refresh.find("safeRead(COMPLETION_NOTIFICATION_STORAGE_KEY)")
+    post_read_guard = refresh.find("if (!storageAccessFailed)", storage_guard + 1)
+    apply_stored = refresh.find("parseCompletionNotificationPreference(storedPreference) === true")
+    require(permission_check >= 0, "タブ復帰時に通知権限を再確認してください")
+    require(disable_position > permission_check, "権限が外れていたら完了通知を即OFFにしてください")
+    require(0 <= storage_guard < safe_read, "保存障害中は設定を再読込しないでください")
+    require(safe_read < post_read_guard < apply_stored, "設定読込中に保存障害が起きた場合は現在タブの状態を上書きしないでください")
+
     show = section(source, "function showCompletionNotification", "async function toggleCompletionSound")
     require("Notification.permission !== 'granted'" in show, "通知表示前に権限を再確認してください")
     require("document.visibilityState === 'visible'" in show, "前面タブではデスクトップ通知を出さないでください")
@@ -84,9 +108,28 @@ def main():
     require("Notification.requestPermission" not in storage_handler, "別タブ同期で通知権限を要求しないでください")
     require("safeWrite(" not in storage_handler, "別タブ同期で保存値を書き戻さないでください")
 
+    visibility = section(
+        source,
+        "document.addEventListener('visibilitychange'",
+        "window.addEventListener('pageshow'",
+    )
+    require("document.visibilityState !== 'visible'" in visibility, "背景へ移るだけでは完了通知を閉じないでください")
+    require(
+        "refreshCompletionNotificationFromBrowser({ closeVisibleNotification: true })" in visibility,
+        "タブへ戻った瞬間に通知と権限状態を整理してください",
+    )
+
+    pageshow = source.split("window.addEventListener('pageshow'", 1)[-1]
+    require(
+        "refreshCompletionNotificationFromBrowser({ closeVisibleNotification: true })" in pageshow,
+        "BFCacheなどから復元された場合も通知と権限状態を整理してください",
+    )
+    require("Notification.requestPermission" not in visibility, "タブ復帰だけで通知権限を要求しないでください")
+    require("Notification.requestPermission" not in pageshow, "ページ復元だけで通知権限を要求しないでください")
+
     require("'one.completionNotification.v1'" in privacy_reset, "完了通知設定を端末データ削除対象へ含めてください")
 
-    print("Completion notification is opt-in, permission-gated, background-only, and task-private.")
+    print("Completion notification is opt-in, permission-gated, background-only, task-private, and cleaned up on return.")
 
 
 if __name__ == "__main__":
