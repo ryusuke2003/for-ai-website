@@ -30,12 +30,17 @@ function setDataResetConfirmationVisible(visible) {
   dataResetConfirm.hidden = !active;
 }
 
+function reportDataResetStorageFailure() {
+  reportStorageFailure();
+  return false;
+}
+
 function clearStoredOneData() {
   try {
     PRIVACY_RESET_KEYS.forEach((key) => localStorage.removeItem(key));
     return [...PRIVACY_RESET_KEYS].every((key) => localStorage.getItem(key) === null);
   } catch {
-    return false;
+    return reportDataResetStorageFailure();
   }
 }
 
@@ -45,7 +50,7 @@ function broadcastDataReset() {
     localStorage.removeItem(RESET_SIGNAL_KEY);
     return true;
   } catch {
-    return false;
+    return reportDataResetStorageFailure();
   }
 }
 
