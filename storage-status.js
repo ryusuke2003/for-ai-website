@@ -1,4 +1,5 @@
 const storageHealthStatus = document.querySelector('#storage-health-status');
+const taskCharacterCount = document.querySelector('#task-character-count');
 const STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1';
 const TASK_STORAGE_FAILURE_MESSAGE = 'このタブでは入力を保持していますが、端末へ保存できませんでした。再読み込みすると内容が失われる可能性があります。';
 
@@ -7,8 +8,15 @@ taskStorageStatus.className = 'hint';
 taskStorageStatus.id = 'task-storage-status';
 taskStorageStatus.setAttribute('role', 'status');
 taskStorageStatus.setAttribute('aria-live', 'polite');
-taskInput.after(taskStorageStatus);
-taskInput.setAttribute('aria-describedby', taskStorageStatus.id);
+taskCharacterCount.after(taskStorageStatus);
+
+const taskDescriptionIds = new Set(
+  (taskInput.getAttribute('aria-describedby') ?? '')
+    .split(/\s+/)
+    .filter(Boolean),
+);
+taskDescriptionIds.add(taskStorageStatus.id);
+taskInput.setAttribute('aria-describedby', [...taskDescriptionIds].join(' '));
 
 function setStorageHealth(available) {
   const usable = available === true;
@@ -37,16 +45,33 @@ function probeLocalStorage() {
   }
 }
 
+function updateTaskCharacterCount() {
+  const maxLength = taskInput.maxLength > 0 ? taskInput.maxLength : 120;
+  const remaining = Math.max(0, maxLength - taskInput.value.length);
+  taskCharacterCount.textContent = `あと${remaining}文字`;
+}
+
 function revealTaskStorageFailureIfNeeded() {
   if (!storageAccessFailed) return;
   if (taskStorageStatus.textContent === TASK_STORAGE_FAILURE_MESSAGE) return;
   taskStorageStatus.textContent = TASK_STORAGE_FAILURE_MESSAGE;
 }
 
+function handleTaskInput() {
+  updateTaskCharacterCount();
+  revealTaskStorageFailureIfNeeded();
+}
+
 window.addEventListener('one:storage-error', () => {
   setStorageHealth(false);
 });
 
-taskInput.addEventListener('input', revealTaskStorageFailureIfNeeded);
+taskInput.addEventListener('input', handleTaskInput);
+taskInput.addEventListener('focus', updateTaskCharacterCount);
+window.addEventListener('focus', updateTaskCharacterCount);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') updateTaskCharacterCount();
+});
 
+updateTaskCharacterCount();
 setStorageHealth(probeLocalStorage());
