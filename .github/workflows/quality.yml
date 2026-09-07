@@ -43,6 +43,9 @@ jobs:
       - name: Check focus visibility
         run: python3 scripts/focus_visibility_checks.py
 
+      - name: Check current date semantics
+        run: python3 scripts/current_date_semantics_checks.py
+
       - name: Check focus mode storage behavior
         run: python3 scripts/focus_mode_storage_checks.py
 
