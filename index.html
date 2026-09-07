@@ -118,6 +118,17 @@
       </div>
       <p class="hint" id="streak-status">今日1回から連続記録を始められます。</p>
 
+      <div class="presets" aria-describedby="daily-goal-status">
+        <span class="custom-time">
+          <label for="daily-goal-input">今日の目標</label>
+          <input class="custom-minutes-input" id="daily-goal-input" type="number" min="1" max="12" step="1" inputmode="numeric" placeholder="3" aria-describedby="daily-goal-status">
+          <span aria-hidden="true">回</span>
+          <button id="daily-goal-apply" type="button" aria-describedby="daily-goal-status">設定</button>
+        </span>
+        <button id="daily-goal-clear" type="button" aria-describedby="daily-goal-status" hidden>目標を解除</button>
+      </div>
+      <p class="hint" id="daily-goal-status" role="status" aria-live="polite">今日の目標は未設定です。1〜12回で設定できます。</p>
+
       <div class="history" aria-labelledby="history-title">
         <div class="history-heading">
           <h3 id="history-title">直近7日</h3>
@@ -157,7 +168,7 @@
           <h3 id="data-reset-title">この端末のONEデータ</h3>
           <span>プライバシー</span>
         </div>
-        <p class="hint" id="data-reset-hint">タスク、タイマー、集中記録、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
+        <p class="hint" id="data-reset-hint">タスク、タイマー、集中記録、今日の目標、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
         <div class="controls">
           <button class="secondary" id="data-reset-button" type="button" aria-describedby="data-reset-hint data-reset-status">この端末のデータを削除</button>
         </div>

@@ -3,8 +3,20 @@ const streakCount = document.querySelector('#streak-count');
 const streakStatus = document.querySelector('#streak-status');
 const activityGrid = document.querySelector('#activity-grid');
 const activitySummary = document.querySelector('#activity-summary');
+const dailyGoalInput = document.querySelector('#daily-goal-input');
+const dailyGoalApplyButton = document.querySelector('#daily-goal-apply');
+const dailyGoalClearButton = document.querySelector('#daily-goal-clear');
+const dailyGoalStatus = document.querySelector('#daily-goal-status');
 
 const ACTIVITY_DAYS = 30;
+const DAILY_GOAL_STORAGE_KEY = 'one.dailyGoal.v1';
+const MIN_DAILY_GOAL = 1;
+const MAX_DAILY_GOAL = 12;
+const MAX_DAILY_GOAL_STATE_BYTES = 128;
+
+let dailyGoal = null;
+let dailyGoalDate = null;
+let dailyGoalPersistenceWarning = '';
 
 function localNoon(date = new Date()) {
   const value = new Date(date);
@@ -131,6 +143,170 @@ function renderActivityMap() {
   activitySummary.textContent = `直近30日: ${activity.total}回 · ${activity.activeDays}日活動`;
 }
 
+function isPlainDailyGoalState(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function parseDailyGoalState(raw) {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_DAILY_GOAL_STATE_BYTES) return null;
+
+  try {
+    const value = JSON.parse(raw);
+    if (!isPlainDailyGoalState(value)) return null;
+    if (Object.keys(value).length !== 2 || !Object.hasOwn(value, 'date') || !Object.hasOwn(value, 'goal')) return null;
+    if (typeof value.date !== 'string' || !isValidDateKey(value.date)) return null;
+    if (!Number.isInteger(value.goal) || value.goal < MIN_DAILY_GOAL || value.goal > MAX_DAILY_GOAL) return null;
+    return { date: value.date, goal: value.goal };
+  } catch {
+    return null;
+  }
+}
+
+function loadDailyGoal() {
+  if (storageAccessFailed) return;
+
+  const state = parseDailyGoalState(safeRead(DAILY_GOAL_STORAGE_KEY));
+  if (storageAccessFailed) return;
+  if (!state || state.date !== dateKey()) return;
+
+  dailyGoal = state.goal;
+  dailyGoalDate = state.date;
+  dailyGoalInput.value = String(state.goal);
+}
+
+function persistDailyGoal(goal) {
+  const payload = JSON.stringify({ date: dateKey(), goal });
+  if (!safeWrite(DAILY_GOAL_STORAGE_KEY, payload)) return false;
+
+  const stored = safeRead(DAILY_GOAL_STORAGE_KEY);
+  if (storageAccessFailed) return false;
+  if (stored === payload) return true;
+
+  reportStorageFailure();
+  return false;
+}
+
+function removeStoredDailyGoal() {
+  try {
+    localStorage.removeItem(DAILY_GOAL_STORAGE_KEY);
+    if (localStorage.getItem(DAILY_GOAL_STORAGE_KEY) === null) return true;
+  } catch {
+    reportStorageFailure();
+    return false;
+  }
+
+  reportStorageFailure();
+  return false;
+}
+
+function clearExpiredDailyGoal() {
+  if (dailyGoalDate === null || dailyGoalDate === dateKey()) return;
+
+  dailyGoal = null;
+  dailyGoalDate = null;
+  dailyGoalPersistenceWarning = '';
+  dailyGoalInput.value = '';
+  dailyGoalInput.removeAttribute('aria-invalid');
+}
+
+function todayFocusCount() {
+  const count = focusHistory[dateKey()] ?? 0;
+  return Number.isInteger(count) && count > 0 ? count : 0;
+}
+
+function renderDailyGoal() {
+  clearExpiredDailyGoal();
+  const today = todayFocusCount();
+
+  if (dailyGoal === null) {
+    dailyGoalClearButton.hidden = true;
+    todayCount.removeAttribute('aria-label');
+    dailyGoalStatus.textContent = `今日の目標は未設定です。1〜12回で設定できます。${dailyGoalPersistenceWarning}`;
+    return;
+  }
+
+  dailyGoalClearButton.hidden = false;
+  const remaining = Math.max(dailyGoal - today, 0);
+  const achieved = remaining === 0;
+  dailyGoalStatus.textContent = achieved
+    ? `今日の目標 ${dailyGoal}回を達成しました。現在${today}回です。${dailyGoalPersistenceWarning}`
+    : `今日の目標 ${dailyGoal}回 · 現在${today}回 · あと${remaining}回。${dailyGoalPersistenceWarning}`;
+  todayCount.setAttribute(
+    'aria-label',
+    achieved
+      ? `今日 ${today}回、目標${dailyGoal}回を達成`
+      : `今日 ${today}回、目標${dailyGoal}回まであと${remaining}回`,
+  );
+}
+
+function parseDailyGoalInput() {
+  const raw = dailyGoalInput.value.trim();
+  if (raw === '') return null;
+
+  const value = Number(raw);
+  return Number.isInteger(value) && value >= MIN_DAILY_GOAL && value <= MAX_DAILY_GOAL ? value : null;
+}
+
+function applyDailyGoal() {
+  const nextGoal = parseDailyGoalInput();
+  if (nextGoal === null) {
+    dailyGoalInput.setAttribute('aria-invalid', 'true');
+    dailyGoalPersistenceWarning = '';
+    dailyGoalStatus.textContent = '今日の目標は1〜12回の整数で設定してください。';
+    return;
+  }
+
+  dailyGoal = nextGoal;
+  dailyGoalDate = dateKey();
+  dailyGoalInput.value = String(nextGoal);
+  dailyGoalInput.removeAttribute('aria-invalid');
+  dailyGoalPersistenceWarning = persistDailyGoal(nextGoal)
+    ? ''
+    : ' このタブでは反映していますが、端末へ保存できませんでした。再読み込みすると目標が解除される可能性があります。';
+  renderDailyGoal();
+}
+
+function clearDailyGoal() {
+  dailyGoal = null;
+  dailyGoalDate = null;
+  dailyGoalInput.value = '';
+  dailyGoalInput.removeAttribute('aria-invalid');
+  dailyGoalPersistenceWarning = removeStoredDailyGoal()
+    ? ''
+    : ' このタブでは解除しましたが、端末の保存値を削除できませんでした。再読み込みすると目標が戻る可能性があります。';
+  renderDailyGoal();
+}
+
+function syncDailyGoalFromStorage(event) {
+  if (event.key !== DAILY_GOAL_STORAGE_KEY) return;
+
+  if (event.newValue === null) {
+    dailyGoal = null;
+    dailyGoalDate = null;
+    dailyGoalInput.value = '';
+    dailyGoalInput.removeAttribute('aria-invalid');
+    dailyGoalPersistenceWarning = '';
+    renderDailyGoal();
+    return;
+  }
+
+  const state = parseDailyGoalState(event.newValue);
+  if (!state) return;
+
+  if (state.date !== dateKey()) {
+    dailyGoal = null;
+    dailyGoalDate = null;
+    dailyGoalInput.value = '';
+  } else {
+    dailyGoal = state.goal;
+    dailyGoalDate = state.date;
+    dailyGoalInput.value = String(state.goal);
+  }
+  dailyGoalInput.removeAttribute('aria-invalid');
+  dailyGoalPersistenceWarning = '';
+  renderDailyGoal();
+}
+
 function renderProgressInsights() {
   const history = normalizeHistory(focusHistory);
   const weekly = calculateCurrentWeekCount(history);
@@ -152,7 +328,14 @@ function renderProgressInsights() {
       ? `昨日まで${streak.days}日以上連続。今日1回で継続できます。`
       : `昨日まで${streak.days}日連続。今日1回で継続できます。`;
   }
+
+  renderDailyGoal();
 }
+
+loadDailyGoal();
+dailyGoalApplyButton.addEventListener('click', applyDailyGoal);
+dailyGoalClearButton.addEventListener('click', clearDailyGoal);
+window.addEventListener('storage', syncDailyGoalFromStorage);
 
 const renderHistoryWithoutInsights = renderHistory;
 renderHistory = function renderHistoryWithInsights() {
