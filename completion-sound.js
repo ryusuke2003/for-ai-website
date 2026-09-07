@@ -4,7 +4,13 @@ const completionSoundStatus = document.querySelector('#completion-sound-status')
 const COMPLETION_SOUND_STORAGE_KEY = 'one.completionSound.v1';
 const CompletionAudioContext = window.AudioContext || window.webkitAudioContext;
 
-let completionSoundEnabled = safeRead(COMPLETION_SOUND_STORAGE_KEY) === '1';
+function parseCompletionSoundPreference(value) {
+  if (value === '1') return true;
+  if (value === '0' || value === null) return false;
+  return null;
+}
+
+let completionSoundEnabled = parseCompletionSoundPreference(safeRead(COMPLETION_SOUND_STORAGE_KEY)) === true;
 let completionAudioContext = null;
 
 function syncCompletionSoundUi(message = null) {
@@ -158,7 +164,22 @@ finishTimer = function finishTimerWithCompletionSound() {
 completionSoundToggle.addEventListener('click', () => {
   void toggleCompletionSound();
 });
+
 document.addEventListener('pointerdown', primeCompletionAudioFromGesture, true);
 document.addEventListener('keydown', primeCompletionAudioFromGesture, true);
+
+window.addEventListener('storage', (event) => {
+  if (event.key !== COMPLETION_SOUND_STORAGE_KEY) return;
+
+  const nextEnabled = parseCompletionSoundPreference(event.newValue);
+  if (nextEnabled === null) return;
+
+  completionSoundEnabled = nextEnabled;
+  syncCompletionSoundUi(
+    nextEnabled
+      ? '別のタブで完了音がオンになりました。次のタイマー完了からこのタブにも反映します。'
+      : '別のタブで完了音がオフになりました。このタブにも反映しました。',
+  );
+});
 
 syncCompletionSoundUi();
