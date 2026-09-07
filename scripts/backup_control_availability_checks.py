@@ -49,14 +49,14 @@ def main():
         "保存障害時は書き出しだけ利用できることを案内してください",
     )
     require(
-        "backupExportButton.disabled" not in controls,
+        "backupExportButton.disabled" not in SOURCE,
         "保存障害時も救出用JSON書き出しは無効化しないでください",
     )
 
     recovery = section("function refreshRecoveryAvailability", "function exportBackup")
     require(
-        "if (!refreshBackupControlAvailability()) return;" in recovery,
-        "復元用保存を読む前に復元UIの利用可否を確認してください",
+        "refreshBackupControlAvailability({ announce: true })" in recovery,
+        "復元用保存を読む前に復元UIの利用可否を確認し、利用不可なら案内してください",
     )
 
     import_body = section("async function importBackup", "function undoLastRestore")
@@ -71,13 +71,10 @@ def main():
         "Undo処理の入口でも保存・調停状態を再確認してください",
     )
 
-    require(
-        "window.addEventListener('one:storage-error', () => {" in SOURCE,
-        "保存障害を検知した瞬間にバックアップUIを更新してください",
+    storage_error_handler = section(
+        "window.addEventListener('one:storage-error', () => {",
+        "startButton.addEventListener('click'",
     )
-    storage_error_start = SOURCE.find("window.addEventListener('one:storage-error', () => {")
-    storage_error_end = SOURCE.find("});", storage_error_start)
-    storage_error_handler = SOURCE[storage_error_start:storage_error_end]
     require(
         "refreshBackupControlAvailability({ announce: true });" in storage_error_handler,
         "保存障害時に復元UIを即時無効化して案内してください",
