@@ -46,7 +46,8 @@
         <h2 id="task-title">いま一番進めたいこと</h2>
       </div>
       <label class="sr-only" for="task-input">今日やる一つ</label>
-      <input id="task-input" maxlength="120" autocomplete="off" placeholder="例：レポートの導入を300字書く">
+      <input id="task-input" maxlength="120" autocomplete="off" aria-describedby="task-character-count" placeholder="例：レポートの導入を300字書く">
+      <p class="hint" id="task-character-count">あと120文字</p>
       <p class="hint">この内容はこのブラウザだけに保存されます。翌日になると空欄へ切り替わりますが、進行中・一時停止中・未記録の集中がある間は、その1回が終わるまで保持します。サーバー送信はしません。</p>
     </section>
 
