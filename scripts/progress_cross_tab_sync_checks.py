@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STATS_SOURCE = (ROOT / "stats.js").read_text(encoding="utf-8")
+TAB_GUARD_SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
 
 
 def fail(message):
@@ -83,7 +84,34 @@ def main():
     require("document.addEventListener('visibilitychange', refreshProgressWhenVisible);" in STATS_SOURCE, "タブ復帰時の再確認を登録してください")
     require("window.addEventListener('pageshow', refreshProgressFromStorage);" in STATS_SOURCE, "BFCache復帰時にも統計を再確認してください")
 
-    print("Cross-tab progress sync checks passed.")
+    require(
+        "function refreshProgressFromStorage()" not in TAB_GUARD_SOURCE,
+        "stats.jsとtab-guard.jsで同名の統計再読込関数を定義しないでください",
+    )
+    require(
+        "function refreshGuardProgressFromStorage()" in TAB_GUARD_SOURCE,
+        "tab-guard側のclaim専用再読込は用途が分かる名前で維持してください",
+    )
+    guard_storage = section(
+        TAB_GUARD_SOURCE,
+        "window.addEventListener('storage', (event) => {",
+        "window.addEventListener('one:storage-error'",
+    )
+    require(
+        "event.key === STORAGE_KEYS.count" not in guard_storage
+        and "event.key === STORAGE_KEYS.history" not in guard_storage,
+        "通常の統計storage同期はstats.jsだけで処理してください",
+    )
+    require(
+        "refreshGuardProgressFromStorage()" in section(
+            TAB_GUARD_SOURCE,
+            "function claimPendingCompletion(event)",
+            "function verifyCompletionConsumedState()",
+        ),
+        "完了claim直後の最新統計再読込はtab-guard内に維持してください",
+    )
+
+    print("Cross-tab progress sync is owned by stats.js while tab-guard keeps only claim-specific refreshes.")
 
 
 if __name__ == "__main__":
