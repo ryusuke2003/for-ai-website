@@ -12,6 +12,8 @@ const RECOVERY_FORMAT = 'one-restore-recovery';
 const RECOVERY_VERSION = 1;
 const MAX_RECOVERY_BYTES = 100_000;
 
+let backupExportUsedMemoryFallback = false;
+
 function isPlainBackupObject(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
@@ -60,6 +62,14 @@ function currentBackupData() {
   };
 }
 
+function readInMemoryBackupSnapshot() {
+  return validateBackupData({
+    doneCount: parseDoneCount(doneCount.textContent),
+    history: normalizeHistory(focusHistory),
+    selectedMinutes,
+  });
+}
+
 function currentRestoreGuard() {
   return backupDataGuard(currentBackupData());
 }
@@ -88,7 +98,16 @@ function readStableBackupSnapshot() {
 }
 
 function createBackupPayload() {
-  const data = readStableBackupSnapshot();
+  backupExportUsedMemoryFallback = false;
+  let data = tabCoordinationEnabled && !storageAccessFailed
+    ? readStableBackupSnapshot()
+    : null;
+
+  if (storageAccessFailed) data = null;
+  if (!data && (!tabCoordinationEnabled || storageAccessFailed)) {
+    data = readInMemoryBackupSnapshot();
+    backupExportUsedMemoryFallback = data !== null;
+  }
   if (!data) return null;
 
   return {
@@ -243,9 +262,9 @@ function exportBackup() {
   const backup = createBackupPayload();
   if (!backup) {
     setBackupStatus(
-      tabCoordinationEnabled
+      tabCoordinationEnabled && !storageAccessFailed
         ? '別タブで記録が更新中のためバックアップを作れませんでした。少ししてからもう一度試してください。'
-        : 'ブラウザの保存領域を利用できないためバックアップを書き出せません。',
+        : '端末保存を利用できず、現在画面の記録も安全なバックアップ形式へ変換できませんでした。記録内容を確認してください。',
     );
     return;
   }
@@ -261,7 +280,11 @@ function exportBackup() {
   link.click();
   link.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  setBackupStatus('バックアップを書き出しました。タスク本文や実行中タイマーは含まれていません。');
+  setBackupStatus(
+    backupExportUsedMemoryFallback
+      ? '端末保存を利用できないため、このタブに残っている累計・日次履歴・タイマー時間を救出用JSONとして書き出しました。タスク本文や実行中タイマーは含まれていません。'
+      : 'バックアップを書き出しました。タスク本文や実行中タイマーは含まれていません。',
+  );
 }
 
 function applyBackup(restored) {
