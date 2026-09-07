@@ -103,6 +103,7 @@ function createBackupPayload() {
     ? readStableBackupSnapshot()
     : null;
 
+  if (storageAccessFailed) data = null;
   if (!data && (!tabCoordinationEnabled || storageAccessFailed)) {
     data = readInMemoryBackupSnapshot();
     backupExportUsedMemoryFallback = data !== null;
