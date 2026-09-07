@@ -51,6 +51,9 @@ jobs:
       - name: Check progress storage behavior
         run: python3 scripts/progress_storage_checks.py
 
+      - name: Check task storage failure behavior
+        run: python3 scripts/task_storage_checks.py
+
       - name: Reject common secret material
         shell: bash
         run: |
