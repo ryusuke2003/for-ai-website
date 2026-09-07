@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
+  <script src="completion-sound.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="tab-guard.js" defer></script>
   <script src="backup.js" defer></script>
@@ -47,7 +48,7 @@
         <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false" aria-keyshortcuts="F Escape">集中表示</button>
       </div>
       <p class="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除 · タスク入力中は⌘/Ctrl+Enterで開始/一時停止</p>
-      <div class="presets" aria-label="タイマー時間">
+      <div class="presets" aria-label="タイマー時間と完了通知">
         <button type="button" data-minutes="10">10分</button>
         <button type="button" data-minutes="25" class="active" aria-pressed="true">25分</button>
         <button type="button" data-minutes="50">50分</button>
@@ -57,9 +58,11 @@
           <span aria-hidden="true">分</span>
           <button id="custom-minutes-apply" type="button" aria-describedby="custom-minutes-status">設定</button>
         </span>
+        <button id="completion-sound-toggle" type="button" aria-pressed="false" aria-describedby="completion-sound-status">完了音 OFF</button>
         <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
       </div>
       <p class="hint" id="custom-minutes-status" role="status" aria-live="polite">1〜180分の整数でも設定できます。</p>
+      <p class="hint" id="completion-sound-status" role="status" aria-live="polite">完了音はオフです。オンにすると短い試聴音が鳴ります。</p>
       <p class="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
     </section>
 
