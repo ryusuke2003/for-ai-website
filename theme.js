@@ -2,12 +2,14 @@ const themeButtons = [...document.querySelectorAll('[data-theme-choice]')];
 const themeStatus = document.querySelector('#theme-status');
 
 function writeThemePreference(theme) {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, theme);
-    return localStorage.getItem(THEME_STORAGE_KEY) === theme;
-  } catch {
-    return false;
-  }
+  if (!safeWrite(THEME_STORAGE_KEY, theme)) return false;
+
+  const stored = safeRead(THEME_STORAGE_KEY);
+  if (storageAccessFailed) return false;
+  if (stored === theme) return true;
+
+  reportStorageFailure();
+  return false;
 }
 
 function applyThemePreference(theme, { persist = true, announce = true } = {}) {
@@ -43,7 +45,8 @@ themeButtons.forEach((button) => {
 
 window.addEventListener('storage', (event) => {
   if (event.key !== THEME_STORAGE_KEY) return;
-  applyThemePreference(readStoredTheme(), { persist: false });
+  const nextTheme = VALID_THEMES.has(event.newValue) ? event.newValue : 'system';
+  applyThemePreference(nextTheme, { persist: false });
 });
 
 applyThemePreference(initialTheme, { persist: false, announce: false });
