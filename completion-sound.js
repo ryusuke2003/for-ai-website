@@ -182,6 +182,33 @@ function closeActiveCompletionNotification() {
   activeCompletionNotification = null;
 }
 
+function refreshCompletionNotificationFromBrowser({ closeVisibleNotification = false } = {}) {
+  if (!completionNotificationSupported) {
+    completionNotificationEnabled = false;
+    syncCompletionNotificationUi();
+    return;
+  }
+
+  if (closeVisibleNotification && document.visibilityState === 'visible') {
+    closeActiveCompletionNotification();
+  }
+
+  if (Notification.permission !== 'granted') {
+    completionNotificationEnabled = false;
+    syncCompletionNotificationUi();
+    return;
+  }
+
+  if (!storageAccessFailed) {
+    const storedPreference = safeRead(COMPLETION_NOTIFICATION_STORAGE_KEY);
+    if (!storageAccessFailed) {
+      completionNotificationEnabled = parseCompletionNotificationPreference(storedPreference) === true;
+    }
+  }
+
+  syncCompletionNotificationUi();
+}
+
 function showCompletionNotification() {
   if (
     !completionNotificationEnabled
@@ -342,11 +369,13 @@ window.addEventListener('storage', (event) => {
   );
 });
 
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  refreshCompletionNotificationFromBrowser({ closeVisibleNotification: true });
+});
+
 window.addEventListener('pageshow', () => {
-  if (completionNotificationSupported && Notification.permission !== 'granted') {
-    completionNotificationEnabled = false;
-  }
-  syncCompletionNotificationUi();
+  refreshCompletionNotificationFromBrowser({ closeVisibleNotification: true });
 });
 
 syncCompletionSoundUi();
