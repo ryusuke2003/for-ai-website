@@ -30,19 +30,20 @@ function setDataResetConfirmationVisible(visible) {
   dataResetConfirm.hidden = !active;
 }
 
-function broadcastDataReset() {
+function clearStoredOneData() {
   try {
-    localStorage.setItem(RESET_SIGNAL_KEY, `${Date.now()}-${Math.random()}`);
-    return true;
+    PRIVACY_RESET_KEYS.forEach((key) => localStorage.removeItem(key));
+    return [...PRIVACY_RESET_KEYS].every((key) => localStorage.getItem(key) === null);
   } catch {
     return false;
   }
 }
 
-function clearStoredOneData() {
+function broadcastDataReset() {
   try {
-    PRIVACY_RESET_KEYS.forEach((key) => localStorage.removeItem(key));
-    return [...PRIVACY_RESET_KEYS].every((key) => localStorage.getItem(key) === null);
+    localStorage.setItem(RESET_SIGNAL_KEY, `${Date.now()}-${Math.random()}`);
+    localStorage.removeItem(RESET_SIGNAL_KEY);
+    return true;
   } catch {
     return false;
   }
@@ -74,7 +75,6 @@ dataResetConfirmButton.addEventListener('click', () => {
   dataResetConfirmButton.disabled = true;
   dataResetCancelButton.disabled = true;
 
-  const broadcasted = broadcastDataReset();
   const cleared = clearStoredOneData();
   if (!cleared) {
     dataResetConfirmButton.disabled = false;
@@ -85,10 +85,11 @@ dataResetConfirmButton.addEventListener('click', () => {
     return;
   }
 
+  const broadcasted = broadcastDataReset();
   setDataResetStatus(
     broadcasted
       ? 'この端末のONEデータを削除しました。初期状態へ戻します。'
-      : 'このタブで確認できるONEデータを削除しました。別タブが開いている場合は閉じてください。',
+      : 'このタブのONEデータを削除しました。別タブが開いている場合は閉じてください。',
   );
   reloadAfterReset();
 });
