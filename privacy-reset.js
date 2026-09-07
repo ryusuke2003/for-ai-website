@@ -16,6 +16,7 @@ const PRIVACY_RESET_KEYS = new Set([
   'one.tabStorageProbe.v1',
   'one.restoreRecovery.v1',
   'one.completionSound.v1',
+  'one.wakeLock.v1',
   'one.theme.v1',
   RESET_SIGNAL_KEY,
 ]);
