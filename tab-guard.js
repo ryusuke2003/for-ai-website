@@ -103,6 +103,49 @@ function hasLocalTimerContext() {
     || (remainingSeconds > 0 && remainingSeconds < fullDuration);
 }
 
+function parseIdleTimerState(raw) {
+  const state = globalThis.ONE_TIMER_STATE_GUARD?.parse(raw) ?? null;
+  if (!state) return null;
+
+  const fullDuration = state.selectedMinutes * 60;
+  if (
+    state.running === true
+    || state.completionReady === true
+    || state.remainingSeconds !== fullDuration
+  ) {
+    return null;
+  }
+
+  return state;
+}
+
+function syncIdleTimerFromStorage(raw) {
+  if (storageCoordinationUnavailable() || hasLocalTimerContext()) return false;
+
+  const state = parseIdleTimerState(raw);
+  if (!state) return false;
+
+  selectedMinutes = state.selectedMinutes;
+  remainingSeconds = state.remainingSeconds;
+  endAt = null;
+  localSessionId = null;
+  setRecordAvailability(false);
+
+  presetButtons.forEach((button) => {
+    const active = button.id !== 'custom-preset'
+      && Number.parseInt(button.dataset.minutes, 10) === selectedMinutes;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-pressed', String(active));
+  });
+
+  renderTimer();
+  setTimerFeedback(`別のタブで${selectedMinutes}分に変更されました。`, 'idle');
+  window.dispatchEvent(new CustomEvent('one:idle-timer-sync', {
+    detail: { selectedMinutes },
+  }));
+  return true;
+}
+
 function refreshProgressFromStorage() {
   if (storageCoordinationUnavailable()) return false;
 
@@ -246,6 +289,11 @@ discardButton.addEventListener('click', (event) => {
 }, true);
 
 window.addEventListener('storage', (event) => {
+  if (event.key === STORAGE_KEYS.timer) {
+    syncIdleTimerFromStorage(event.newValue);
+    return;
+  }
+
   if (event.key === STORAGE_KEYS.count || event.key === STORAGE_KEYS.history) {
     refreshProgressFromStorage();
     return;
