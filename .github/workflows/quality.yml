@@ -66,6 +66,9 @@ jobs:
       - name: Check theme storage behavior
         run: python3 scripts/theme_storage_checks.py
 
+      - name: Check completion sound storage behavior
+        run: python3 scripts/completion_sound_storage_checks.py
+
       - name: Reject common secret material
         shell: bash
         run: |
