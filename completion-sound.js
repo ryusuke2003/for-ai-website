@@ -29,6 +29,15 @@ function syncCompletionSoundUi(message = null) {
   }
 }
 
+function persistCompletionSoundPreference(enabled) {
+  const value = enabled ? '1' : '0';
+  if (!safeWrite(COMPLETION_SOUND_STORAGE_KEY, value)) return false;
+
+  const persisted = safeRead(COMPLETION_SOUND_STORAGE_KEY) === value;
+  if (!persisted && !storageAccessFailed) reportStorageFailure();
+  return persisted && !storageAccessFailed;
+}
+
 function getCompletionAudioContext() {
   if (typeof CompletionAudioContext !== 'function') return null;
   if (!completionAudioContext || completionAudioContext.state === 'closed') {
@@ -87,7 +96,7 @@ function scheduleCompletionChime(context) {
   }
 }
 
-async function playCompletionSound({ preview = false } = {}) {
+async function playCompletionSound({ preview = false, previewMessage = null } = {}) {
   if (!completionSoundEnabled) return;
 
   const context = await unlockCompletionAudio();
@@ -97,7 +106,9 @@ async function playCompletionSound({ preview = false } = {}) {
   }
 
   if (preview) {
-    syncCompletionSoundUi('完了音をオンにしました。いまの短い音がタイマー完了時に鳴ります。');
+    syncCompletionSoundUi(
+      previewMessage ?? '完了音をオンにしました。いまの短い音がタイマー完了時に鳴ります。',
+    );
   }
 }
 
@@ -106,8 +117,12 @@ async function toggleCompletionSound() {
 
   if (completionSoundEnabled) {
     completionSoundEnabled = false;
-    safeWrite(COMPLETION_SOUND_STORAGE_KEY, '0');
-    syncCompletionSoundUi('完了音をオフにしました。');
+    const persisted = persistCompletionSoundPreference(false);
+    syncCompletionSoundUi(
+      persisted
+        ? '完了音をオフにしました。'
+        : '完了音をオフにしましたが、このブラウザには設定を保存できませんでした。再読み込みすると以前の設定へ戻る可能性があります。',
+    );
     return;
   }
 
@@ -119,9 +134,14 @@ async function toggleCompletionSound() {
   }
 
   completionSoundEnabled = true;
-  safeWrite(COMPLETION_SOUND_STORAGE_KEY, '1');
+  const persisted = persistCompletionSoundPreference(true);
   syncCompletionSoundUi();
-  await playCompletionSound({ preview: true });
+  await playCompletionSound({
+    preview: true,
+    previewMessage: persisted
+      ? '完了音をオンにしました。いまの短い音がタイマー完了時に鳴ります。'
+      : '完了音をオンにしました。今のタブでは鳴りますが、このブラウザには設定を保存できませんでした。再読み込みすると以前の設定へ戻る可能性があります。',
+  });
 }
 
 function primeCompletionAudioFromGesture() {
