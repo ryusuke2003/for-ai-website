@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 
-require('../timer-state.js');
+require('../timer-bootstrap.js');
 
 const guard = globalThis.ONE_TIMER_STATE_GUARD;
 assert.ok(guard, 'ONE_TIMER_STATE_GUARD must be available');
