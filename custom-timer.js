@@ -2,6 +2,7 @@ const customMinutesInput = document.querySelector('#custom-minutes');
 const customMinutesApplyButton = document.querySelector('#custom-minutes-apply');
 const customMinutesStatus = document.querySelector('#custom-minutes-status');
 const customPresetButton = document.querySelector('#custom-preset');
+const timerProgress = document.querySelector('#timer-progress');
 const standardPresetButtons = presetButtons.filter((button) => button !== customPresetButton);
 
 function isAllowedCustomTimerMinutes(value) {
@@ -39,6 +40,22 @@ function syncCustomTimerLock() {
 function setCustomTimerStatus(message) {
   customMinutesStatus.textContent = message;
 }
+
+function renderTimerProgress() {
+  const fullDuration = Math.max(1, selectedMinutes * 60);
+  const elapsedSeconds = Math.min(fullDuration, Math.max(0, fullDuration - remainingSeconds));
+  const percentage = Math.round((elapsedSeconds / fullDuration) * 100);
+
+  timerProgress.max = fullDuration;
+  timerProgress.value = elapsedSeconds;
+  timerProgress.setAttribute('aria-valuetext', `${percentage}%`);
+}
+
+const renderTimerWithoutProgress = renderTimer;
+renderTimer = function renderTimerWithProgress() {
+  renderTimerWithoutProgress();
+  renderTimerProgress();
+};
 
 function applyCustomTimerMinutes() {
   if (customPresetButton.disabled) {
@@ -103,4 +120,5 @@ customTimerLockObserver.observe(customPresetButton, { attributes: true, attribut
 
 syncCustomTimerPresentation();
 syncCustomTimerLock();
+renderTimerProgress();
 refreshRecoveryAvailability();
