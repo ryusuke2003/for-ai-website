@@ -7,10 +7,12 @@
   <meta name="description" content="今日やる一つだけを決めて、短い時間だけ集中するための小さなWebアプリ。">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
   <title>ONE — 今日やる一つだけ</title>
+  <script src="theme-bootstrap.js"></script>
   <link rel="stylesheet" href="styles.css">
   <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
   <script src="completion-sound.js" defer></script>
+  <script src="theme.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="tab-guard.js" defer></script>
   <script src="backup.js" defer></script>
@@ -20,6 +22,13 @@
 <body>
   <main class="shell">
     <header class="hero">
+      <div class="theme-switcher" role="group" aria-label="表示テーマ" aria-describedby="theme-status">
+        <span aria-hidden="true">表示</span>
+        <button type="button" data-theme-choice="system" aria-pressed="true">自動</button>
+        <button type="button" data-theme-choice="light" aria-pressed="false">ライト</button>
+        <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
+      </div>
+      <p id="theme-status" class="sr-only" role="status" aria-live="polite">表示テーマは自動です。</p>
       <p class="eyebrow">ONE THING / ONE SPRINT</p>
       <h1>今日やる一つだけ。</h1>
       <p class="lead">やることを一つ決めて、まずは25分から始める。時間は、自分に合わせて変えられる。</p>
