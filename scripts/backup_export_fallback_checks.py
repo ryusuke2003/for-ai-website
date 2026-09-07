@@ -35,11 +35,16 @@ def main():
 
     create_payload = section(backup, "function createBackupPayload()", "function isStrictHistory")
     stable_read = create_payload.find("readStableBackupSnapshot()")
+    discard_failed_read = create_payload.find("if (storageAccessFailed) data = null;")
     fallback_condition = create_payload.find("!tabCoordinationEnabled || storageAccessFailed")
     memory_read = create_payload.find("readInMemoryBackupSnapshot()")
     require(stable_read >= 0, "保存可能時の安定スナップショットを維持してください")
+    require(discard_failed_read >= 0, "読込途中に保存障害が起きたスナップショットは破棄してください")
     require(fallback_condition >= 0 and memory_read >= 0, "保存障害時のメモリフォールバックが必要です")
-    require(stable_read < fallback_condition < memory_read, "正常な保存スナップショットを先に試し、障害時だけメモリへフォールバックしてください")
+    require(
+        stable_read < discard_failed_read < fallback_condition < memory_read,
+        "保存読込後に障害を再確認してからメモリへフォールバックしてください",
+    )
     require("backupExportUsedMemoryFallback = data !== null;" in create_payload, "救出用バックアップをUIへ明示できる状態を保持してください")
 
     export = section(backup, "function exportBackup()", "function applyBackup(restored)")
