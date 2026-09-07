@@ -69,6 +69,9 @@ jobs:
       - name: Check completion sound storage behavior
         run: python3 scripts/completion_sound_storage_checks.py
 
+      - name: Check privacy reset storage behavior
+        run: python3 scripts/privacy_reset_storage_checks.py
+
       - name: Reject common secret material
         shell: bash
         run: |
