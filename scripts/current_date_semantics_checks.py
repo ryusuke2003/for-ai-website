@@ -67,16 +67,22 @@ def main():
     )
 
     wrapper_start = STATS_SOURCE.find("renderHistory = function renderHistoryWithInsights()")
-    wrapper_end = STATS_SOURCE.find("markCurrentHistoryDay();", wrapper_start)
+    wrapper_end = STATS_SOURCE.find("renderProgressInsights();", wrapper_start)
     require(wrapper_start >= 0 and wrapper_end >= 0, "7日履歴の再描画ラッパーを確認できません")
     wrapper = STATS_SOURCE[wrapper_start:wrapper_end]
+    render_index = wrapper.find("renderHistoryWithoutInsights();")
+    mark_index = wrapper.find("markCurrentHistoryDay();")
     require(
-        wrapper.find("renderHistoryWithoutInsights();") < wrapper.find("markCurrentHistoryDay();"),
+        render_index >= 0 and mark_index > render_index,
         "7日履歴DOMを描画した後に今日の意味付けを行ってください",
     )
+
+    initial_sequence = """markCurrentHistoryDay();
+renderProgressInsights();
+renderActivityMap();"""
     require(
-        STATS_SOURCE.rstrip().endswith("renderActivityMap();"),
-        "初期表示でも統計と今日の意味付けを実行してください",
+        STATS_SOURCE.rstrip().endswith(initial_sequence),
+        "初期表示でも今日の意味付けと統計描画を実行してください",
     )
 
     print("Current date semantics checks passed.")
