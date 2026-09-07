@@ -5,6 +5,13 @@
   font-synthesis: none;
 }
 
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] {
+  color: #f2efe7;
+  background: #151515;
+  color-scheme: dark;
+}
+
 * { box-sizing: border-box; }
 
 body {
@@ -26,6 +33,36 @@ button:disabled { cursor: not-allowed; }
 }
 
 .hero { margin-bottom: 48px; }
+.theme-switcher {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+  color: #77736a;
+  font-size: .76rem;
+  font-weight: 800;
+}
+
+.theme-switcher > span {
+  margin-right: 2px;
+  letter-spacing: .06em;
+}
+
+.theme-switcher button {
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
+  font-weight: 800;
+}
+
+.theme-switcher button[aria-pressed="true"] {
+  background: #e3ded4;
+  color: #1d1d1f;
+}
+
 .eyebrow {
   margin: 0 0 12px;
   font-size: .78rem;
@@ -420,6 +457,7 @@ button:focus-visible, input:focus-visible {
 @media (max-width: 560px) {
   .shell { padding-top: 44px; }
   .card { padding: 22px; border-radius: 20px; }
+  .theme-switcher { justify-content: flex-start; margin-bottom: 20px; }
   .progress-stat { padding: 14px; }
   .custom-time { width: 100%; justify-content: center; }
   .custom-minutes-input { width: 4.2rem; }
@@ -437,27 +475,71 @@ button:focus-visible, input:focus-visible {
   }
 }
 
+:root[data-theme="dark"] body {
+  background: radial-gradient(circle at top left, #292825, transparent 32rem), #151515;
+}
+:root[data-theme="dark"] .lead,
+:root[data-theme="dark"] .hint,
+:root[data-theme="dark"] footer,
+:root[data-theme="dark"] .progress-stat,
+:root[data-theme="dark"] .history-heading span,
+:root[data-theme="dark"] .history-weekday,
+:root[data-theme="dark"] .timer-status,
+:root[data-theme="dark"] .theme-switcher { color: #aaa69d; }
+:root[data-theme="dark"] .card { background: rgba(33,33,33,.78); border-color: rgba(255,255,255,.1); }
+:root[data-theme="dark"] .timer-card.is-running .timer-status { color: #f2efe7; }
+:root[data-theme="dark"] .timer-card.is-complete { border-color: rgba(255,255,255,.28); box-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06); }
+:root[data-theme="dark"] input { border-color: #f2efe7; }
+:root[data-theme="dark"] .custom-minutes-input { border-color: rgba(242,239,231,.3); background: rgba(255,255,255,.04); }
+:root[data-theme="dark"] .primary,
+:root[data-theme="dark"] .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
+:root[data-theme="dark"] .done-button:disabled { border-color: rgba(255,255,255,.16); background: transparent; color: #77736a; }
+:root[data-theme="dark"] .secondary { border-color: #f2efe7; }
+:root[data-theme="dark"] .secondary[aria-pressed="true"],
+:root[data-theme="dark"] .theme-switcher button[aria-pressed="true"] { background: #393733; color: #f2efe7; }
+:root[data-theme="dark"] .presets button.active { background: #393733; color: #f2efe7; }
+:root[data-theme="dark"] .progress-stat { background: rgba(255,255,255,.06); }
+:root[data-theme="dark"] .progress-stat strong { color: #f2efe7; }
+:root[data-theme="dark"] .history,
+:root[data-theme="dark"] .activity { border-color: rgba(255,255,255,.1); }
+:root[data-theme="dark"] .history-bar { background: #5b574f; }
+:root[data-theme="dark"] .activity-day { background: rgba(242,239,231,.08); }
+:root[data-theme="dark"] .activity-day.level-1 { background: rgba(242,239,231,.28); }
+:root[data-theme="dark"] .activity-day.level-2 { background: rgba(242,239,231,.48); }
+:root[data-theme="dark"] .activity-day.level-3 { background: rgba(242,239,231,.68); }
+:root[data-theme="dark"] .activity-day.level-4 { background: rgba(242,239,231,.9); }
+
 @media (prefers-color-scheme: dark) {
-  :root { color: #f2efe7; background: #151515; }
-  body { background: radial-gradient(circle at top left, #292825, transparent 32rem), #151515; }
-  .lead, .hint, footer, .progress-stat, .history-heading span, .history-weekday, .timer-status { color: #aaa69d; }
-  .card { background: rgba(33,33,33,.78); border-color: rgba(255,255,255,.1); }
-  .timer-card.is-running .timer-status { color: #f2efe7; }
-  .timer-card.is-complete { border-color: rgba(255,255,255,.28); box-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06); }
-  input { border-color: #f2efe7; }
-  .custom-minutes-input { border-color: rgba(242,239,231,.3); background: rgba(255,255,255,.04); }
-  .primary, .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
-  .done-button:disabled { border-color: rgba(255,255,255,.16); background: transparent; color: #77736a; }
-  .secondary { border-color: #f2efe7; }
-  .secondary[aria-pressed="true"] { background: #393733; }
-  .presets button.active { background: #393733; color: #f2efe7; }
-  .progress-stat { background: rgba(255,255,255,.06); }
-  .progress-stat strong { color: #f2efe7; }
-  .history, .activity { border-color: rgba(255,255,255,.1); }
-  .history-bar { background: #5b574f; }
-  .activity-day { background: rgba(242,239,231,.08); }
-  .activity-day.level-1 { background: rgba(242,239,231,.28); }
-  .activity-day.level-2 { background: rgba(242,239,231,.48); }
-  .activity-day.level-3 { background: rgba(242,239,231,.68); }
-  .activity-day.level-4 { background: rgba(242,239,231,.9); }
+  :root:not([data-theme]) { color: #f2efe7; background: #151515; }
+  :root:not([data-theme]) body { background: radial-gradient(circle at top left, #292825, transparent 32rem), #151515; }
+  :root:not([data-theme]) .lead,
+  :root:not([data-theme]) .hint,
+  :root:not([data-theme]) footer,
+  :root:not([data-theme]) .progress-stat,
+  :root:not([data-theme]) .history-heading span,
+  :root:not([data-theme]) .history-weekday,
+  :root:not([data-theme]) .timer-status,
+  :root:not([data-theme]) .theme-switcher { color: #aaa69d; }
+  :root:not([data-theme]) .card { background: rgba(33,33,33,.78); border-color: rgba(255,255,255,.1); }
+  :root:not([data-theme]) .timer-card.is-running .timer-status { color: #f2efe7; }
+  :root:not([data-theme]) .timer-card.is-complete { border-color: rgba(255,255,255,.28); box-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06); }
+  :root:not([data-theme]) input { border-color: #f2efe7; }
+  :root:not([data-theme]) .custom-minutes-input { border-color: rgba(242,239,231,.3); background: rgba(255,255,255,.04); }
+  :root:not([data-theme]) .primary,
+  :root:not([data-theme]) .done-button { background: #f2efe7; color: #151515; border-color: #f2efe7; }
+  :root:not([data-theme]) .done-button:disabled { border-color: rgba(255,255,255,.16); background: transparent; color: #77736a; }
+  :root:not([data-theme]) .secondary { border-color: #f2efe7; }
+  :root:not([data-theme]) .secondary[aria-pressed="true"],
+  :root:not([data-theme]) .theme-switcher button[aria-pressed="true"] { background: #393733; color: #f2efe7; }
+  :root:not([data-theme]) .presets button.active { background: #393733; color: #f2efe7; }
+  :root:not([data-theme]) .progress-stat { background: rgba(255,255,255,.06); }
+  :root:not([data-theme]) .progress-stat strong { color: #f2efe7; }
+  :root:not([data-theme]) .history,
+  :root:not([data-theme]) .activity { border-color: rgba(255,255,255,.1); }
+  :root:not([data-theme]) .history-bar { background: #5b574f; }
+  :root:not([data-theme]) .activity-day { background: rgba(242,239,231,.08); }
+  :root:not([data-theme]) .activity-day.level-1 { background: rgba(242,239,231,.28); }
+  :root:not([data-theme]) .activity-day.level-2 { background: rgba(242,239,231,.48); }
+  :root:not([data-theme]) .activity-day.level-3 { background: rgba(242,239,231,.68); }
+  :root:not([data-theme]) .activity-day.level-4 { background: rgba(242,239,231,.9); }
 }
