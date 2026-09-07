@@ -219,6 +219,7 @@ function saveRecoveryPoint(data, expectedData) {
     localStorage.setItem(RECOVERY_STORAGE_KEY, payload);
     return localStorage.getItem(RECOVERY_STORAGE_KEY) === payload ? payload : null;
   } catch {
+    reportStorageFailure();
     return null;
   }
 }
@@ -237,6 +238,7 @@ function restorePreviousRecoveryPoint(expectedCurrentRaw, previousRaw) {
 
     return localStorage.getItem(RECOVERY_STORAGE_KEY) === previousRaw;
   } catch {
+    reportStorageFailure();
     return false;
   }
 }
@@ -244,8 +246,10 @@ function restorePreviousRecoveryPoint(expectedCurrentRaw, previousRaw) {
 function removeRecoveryPoint() {
   try {
     localStorage.removeItem(RECOVERY_STORAGE_KEY);
+    return localStorage.getItem(RECOVERY_STORAGE_KEY) === null;
   } catch {
-    // Storage failures are reported by the operation that requested the removal.
+    reportStorageFailure();
+    return false;
   }
 }
 
@@ -447,8 +451,14 @@ function undoLastRestore() {
     return;
   }
 
-  removeRecoveryPoint();
+  const recoveryRemoved = removeRecoveryPoint();
   refreshRecoveryAvailability();
+  if (!recoveryRemoved) {
+    setBackupStatus('直前の復元は取り消しましたが、取り消し情報を安全に削除できませんでした。現在の記録を確認してください。');
+    backupExportButton.focus();
+    return;
+  }
+
   setBackupStatus('直前の復元を取り消し、復元前の記録へ戻しました。');
   backupExportButton.focus();
 }
