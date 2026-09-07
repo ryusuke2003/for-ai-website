@@ -5,6 +5,8 @@ const customPresetButton = document.querySelector('#custom-preset');
 const timerProgress = document.querySelector('#timer-progress');
 const standardPresetButtons = presetButtons.filter((button) => button !== customPresetButton);
 
+const DEFAULT_DOCUMENT_TITLE = 'ONE — 今日やる一つだけ';
+
 function isAllowedCustomTimerMinutes(value) {
   return Number.isInteger(value)
     && value >= CUSTOM_TIMER_MINUTES_MIN
@@ -51,10 +53,31 @@ function renderTimerProgress() {
   timerProgress.setAttribute('aria-valuetext', `${percentage}%`);
 }
 
+function renderTimerDocumentTitle() {
+  const formatted = formatTime(remainingSeconds);
+  const fullDuration = selectedMinutes * 60;
+  const partiallyElapsed = remainingSeconds > 0 && remainingSeconds < fullDuration;
+
+  if (completionReady) {
+    document.title = '完了！ — ONE';
+    return;
+  }
+
+  if (timerId !== null && endAt !== null) {
+    document.title = `${formatted} — ONE`;
+    return;
+  }
+
+  document.title = partiallyElapsed
+    ? `${formatted} 一時停止 — ONE`
+    : DEFAULT_DOCUMENT_TITLE;
+}
+
 const renderTimerWithoutProgress = renderTimer;
 renderTimer = function renderTimerWithProgress() {
   renderTimerWithoutProgress();
   renderTimerProgress();
+  renderTimerDocumentTitle();
 };
 
 function applyCustomTimerMinutes() {
@@ -121,4 +144,5 @@ customTimerLockObserver.observe(customPresetButton, { attributes: true, attribut
 syncCustomTimerPresentation();
 syncCustomTimerLock();
 renderTimerProgress();
+renderTimerDocumentTitle();
 refreshRecoveryAvailability();
