@@ -32,7 +32,12 @@ function syncCompletionSoundUi(message = null) {
 function getCompletionAudioContext() {
   if (typeof CompletionAudioContext !== 'function') return null;
   if (!completionAudioContext || completionAudioContext.state === 'closed') {
-    completionAudioContext = new CompletionAudioContext();
+    try {
+      completionAudioContext = new CompletionAudioContext();
+    } catch {
+      completionAudioContext = null;
+      return null;
+    }
   }
   return completionAudioContext;
 }
@@ -53,40 +58,44 @@ async function unlockCompletionAudio() {
 }
 
 function scheduleCompletionChime(context) {
-  const tones = [
-    { frequency: 660, offset: 0, duration: 0.11 },
-    { frequency: 880, offset: 0.14, duration: 0.16 },
-  ];
+  try {
+    const tones = [
+      { frequency: 660, offset: 0, duration: 0.11 },
+      { frequency: 880, offset: 0.14, duration: 0.16 },
+    ];
 
-  tones.forEach(({ frequency, offset, duration }) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    const start = context.currentTime + offset;
-    const end = start + duration;
+    tones.forEach(({ frequency, offset, duration }) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const start = context.currentTime + offset;
+      const end = start + duration;
 
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(frequency, start);
-    gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(0.035, start + 0.015);
-    gain.gain.exponentialRampToValueAtTime(0.0001, end);
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(frequency, start);
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.035, start + 0.015);
+      gain.gain.exponentialRampToValueAtTime(0.0001, end);
 
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(start);
-    oscillator.stop(end + 0.02);
-  });
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(start);
+      oscillator.stop(end + 0.02);
+    });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 async function playCompletionSound({ preview = false } = {}) {
   if (!completionSoundEnabled) return;
 
   const context = await unlockCompletionAudio();
-  if (!context) {
-    syncCompletionSoundUi('ブラウザの音声再生制限により完了音を鳴らせませんでした。ページを操作してから再度お試しください。');
+  if (!context || !scheduleCompletionChime(context)) {
+    syncCompletionSoundUi('ブラウザの音声再生制限により完了音を鳴らせませんでした。タイマー機能はそのまま利用できます。');
     return;
   }
 
-  scheduleCompletionChime(context);
   if (preview) {
     syncCompletionSoundUi('完了音をオンにしました。いまの短い音がタイマー完了時に鳴ります。');
   }
@@ -105,7 +114,7 @@ async function toggleCompletionSound() {
   const context = await unlockCompletionAudio();
   if (!context) {
     completionSoundEnabled = false;
-    syncCompletionSoundUi('完了音を有効にできませんでした。ブラウザの音声設定を確認してください。');
+    syncCompletionSoundUi('完了音を有効にできませんでした。タイマー機能はそのまま利用できます。');
     return;
   }
 
