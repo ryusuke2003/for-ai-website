@@ -225,6 +225,18 @@ function setStartButton(label = 'スタート', running = false) {
   startButton.setAttribute('aria-pressed', String(running));
 }
 
+function persistFocusModePreference(active) {
+  const value = active ? '1' : '0';
+  if (!safeWrite(STORAGE_KEYS.focusMode, value)) return false;
+
+  const stored = safeRead(STORAGE_KEYS.focusMode);
+  if (storageAccessFailed) return false;
+  if (stored === value) return true;
+
+  reportStorageFailure();
+  return false;
+}
+
 function setFocusMode(enabled, { persist = true, announce = true } = {}) {
   const active = enabled === true;
   document.body.classList.toggle('focus-mode', active);
@@ -232,8 +244,15 @@ function setFocusMode(enabled, { persist = true, announce = true } = {}) {
   focusModeButton.textContent = active ? '通常表示' : '集中表示';
   focusModeButton.setAttribute('aria-label', active ? '通常表示に戻る' : '集中表示に切り替える');
 
-  if (persist) safeWrite(STORAGE_KEYS.focusMode, active ? '1' : '0');
+  const persisted = !persist || persistFocusModePreference(active);
   if (announce) {
+    if (!persisted) {
+      focusModeStatus.textContent = active
+        ? '集中表示に切り替えましたが、このブラウザには設定を保存できませんでした。再読み込みすると通常表示に戻る可能性があります。'
+        : '通常表示に戻りましたが、このブラウザには設定を保存できませんでした。再読み込みすると集中表示へ戻る可能性があります。';
+      return;
+    }
+
     focusModeStatus.textContent = active
       ? '集中表示に切り替えました。Escapeキーでも通常表示に戻れます。'
       : '通常表示に戻りました。';
