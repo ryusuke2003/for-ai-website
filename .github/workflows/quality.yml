@@ -49,6 +49,9 @@ jobs:
       - name: Check daily focus goal
         run: python3 scripts/daily_goal_checks.py
 
+      - name: Check cross-tab progress sync
+        run: python3 scripts/progress_cross_tab_sync_checks.py
+
       - name: Check focus mode storage behavior
         run: python3 scripts/focus_mode_storage_checks.py
 
