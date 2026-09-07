@@ -162,12 +162,35 @@ function parseDailyGoalState(raw) {
   }
 }
 
+function removeStoredDailyGoal(expectedRaw) {
+  try {
+    const current = localStorage.getItem(DAILY_GOAL_STORAGE_KEY);
+    if (expectedRaw !== undefined && current !== expectedRaw) return true;
+
+    localStorage.removeItem(DAILY_GOAL_STORAGE_KEY);
+    if (localStorage.getItem(DAILY_GOAL_STORAGE_KEY) === null) return true;
+  } catch {
+    reportStorageFailure();
+    return false;
+  }
+
+  reportStorageFailure();
+  return false;
+}
+
 function loadDailyGoal() {
   if (storageAccessFailed) return;
 
-  const state = parseDailyGoalState(safeRead(DAILY_GOAL_STORAGE_KEY));
-  if (storageAccessFailed) return;
-  if (!state || state.date !== dateKey()) return;
+  const raw = safeRead(DAILY_GOAL_STORAGE_KEY);
+  if (storageAccessFailed || raw === '') return;
+
+  const state = parseDailyGoalState(raw);
+  if (!state || state.date !== dateKey()) {
+    dailyGoalPersistenceWarning = removeStoredDailyGoal(raw)
+      ? ''
+      : ' 期限切れまたは不正な目標データを端末から削除できませんでした。';
+    return;
+  }
 
   dailyGoal = state.goal;
   dailyGoalDate = state.date;
@@ -186,19 +209,6 @@ function persistDailyGoal(goal) {
   return false;
 }
 
-function removeStoredDailyGoal() {
-  try {
-    localStorage.removeItem(DAILY_GOAL_STORAGE_KEY);
-    if (localStorage.getItem(DAILY_GOAL_STORAGE_KEY) === null) return true;
-  } catch {
-    reportStorageFailure();
-    return false;
-  }
-
-  reportStorageFailure();
-  return false;
-}
-
 function clearExpiredDailyGoal() {
   if (dailyGoalDate === null || dailyGoalDate === dateKey()) return;
 
@@ -207,6 +217,7 @@ function clearExpiredDailyGoal() {
   dailyGoalPersistenceWarning = '';
   dailyGoalInput.value = '';
   dailyGoalInput.removeAttribute('aria-invalid');
+  loadDailyGoal();
 }
 
 function todayFocusCount() {
