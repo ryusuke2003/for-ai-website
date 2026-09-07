@@ -11,6 +11,7 @@ const PRIVACY_RESET_KEYS = new Set([
   'one.doneCount',
   'one.timer.v1',
   'one.history.v1',
+  'one.dailyGoal.v1',
   'one.focusMode.v1',
   'one.activeSession.v1',
   'one.tabStorageProbe.v1',
