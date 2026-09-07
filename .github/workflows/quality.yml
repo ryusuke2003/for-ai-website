@@ -39,6 +39,9 @@ jobs:
       - name: Check browser security policy
         run: python3 scripts/browser_policy_checks.py
 
+      - name: Check focus visibility
+        run: python3 scripts/focus_visibility_checks.py
+
       - name: Check timer state integration
         run: python3 scripts/timer_state_checks.py
 
