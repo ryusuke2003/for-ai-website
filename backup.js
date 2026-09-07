@@ -152,8 +152,7 @@ function setBackupStatus(message) {
   backupStatus.textContent = message;
 }
 
-function readRecoveryPoint() {
-  const raw = safeRead(RECOVERY_STORAGE_KEY);
+function parseRecoveryPoint(raw) {
   if (!raw || raw.length > MAX_RECOVERY_BYTES) return null;
 
   try {
@@ -177,8 +176,17 @@ function readRecoveryPoint() {
   }
 }
 
+function readRecoveryPoint() {
+  return parseRecoveryPoint(safeRead(RECOVERY_STORAGE_KEY));
+}
+
+function readValidRecoveryRaw() {
+  const raw = safeRead(RECOVERY_STORAGE_KEY);
+  return parseRecoveryPoint(raw) ? raw : null;
+}
+
 function saveRecoveryPoint(data, expectedData) {
-  if (!tabCoordinationEnabled) return false;
+  if (!tabCoordinationEnabled) return null;
 
   const payload = JSON.stringify({
     format: RECOVERY_FORMAT,
@@ -187,11 +195,29 @@ function saveRecoveryPoint(data, expectedData) {
     expectedData: normalizedBackupData(expectedData),
     data: normalizedBackupData(data),
   });
-  if (payload.length > MAX_RECOVERY_BYTES) return false;
+  if (payload.length > MAX_RECOVERY_BYTES) return null;
 
   try {
     localStorage.setItem(RECOVERY_STORAGE_KEY, payload);
-    return localStorage.getItem(RECOVERY_STORAGE_KEY) === payload;
+    return localStorage.getItem(RECOVERY_STORAGE_KEY) === payload ? payload : null;
+  } catch {
+    return null;
+  }
+}
+
+function restorePreviousRecoveryPoint(expectedCurrentRaw, previousRaw) {
+  if (typeof expectedCurrentRaw !== 'string') return false;
+
+  try {
+    if (localStorage.getItem(RECOVERY_STORAGE_KEY) !== expectedCurrentRaw) return false;
+
+    if (previousRaw === null) {
+      localStorage.removeItem(RECOVERY_STORAGE_KEY);
+    } else {
+      localStorage.setItem(RECOVERY_STORAGE_KEY, previousRaw);
+    }
+
+    return localStorage.getItem(RECOVERY_STORAGE_KEY) === previousRaw;
   } catch {
     return false;
   }
@@ -321,8 +347,10 @@ async function importBackup(file) {
     return;
   }
 
+  const previousRecoveryRaw = readValidRecoveryRaw();
   const expectedGuard = backupDataGuard(restored);
-  if (!saveRecoveryPoint(recoveryData, restored)) {
+  const savedRecoveryRaw = saveRecoveryPoint(recoveryData, restored);
+  if (!savedRecoveryRaw) {
     setBackupStatus('復元前の状態を端末内に退避できなかったため復元を中止しました。データは変更していません。');
     return;
   }
@@ -330,9 +358,18 @@ async function importBackup(file) {
   applyBackup(restored);
   if (currentRestoreGuard() !== expectedGuard) {
     applyBackup(recoveryData);
-    removeRecoveryPoint();
+    const rollbackSucceeded = currentRestoreGuard() === restoreGuard;
+    const recoveryRestored = rollbackSucceeded
+      && restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);
     refreshRecoveryAvailability();
-    setBackupStatus('復元後の保存確認に失敗したため、可能な範囲で復元前の状態へ戻しました。');
+
+    if (!rollbackSucceeded) {
+      setBackupStatus('復元後の保存確認に失敗し、復元前の状態へ完全には戻せませんでした。現在の記録を確認してください。');
+    } else if (!recoveryRestored) {
+      setBackupStatus('復元後の保存確認に失敗したため記録は復元前へ戻しましたが、以前の取り消し情報は安全に戻せませんでした。');
+    } else {
+      setBackupStatus('復元後の保存確認に失敗したため復元前の状態へ戻し、以前の取り消し情報も維持しました。');
+    }
     return;
   }
 
