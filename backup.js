@@ -33,8 +33,7 @@ function readPreferredMinutes() {
 }
 
 function readStoredDoneCount() {
-  const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
-  return Number.isSafeInteger(count) && count >= 0 ? count : 0;
+  return readDoneCount();
 }
 
 function historyTotal(history) {
