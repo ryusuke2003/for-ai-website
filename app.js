@@ -36,11 +36,18 @@ let focusHistory = {};
 let completionReady = false;
 let completionDateKey = null;
 let renderedDateKey = null;
+let storageAccessFailed = false;
+
+function reportStorageFailure() {
+  storageAccessFailed = true;
+  window.dispatchEvent(new Event('one:storage-error'));
+}
 
 function safeRead(key, fallback = '') {
   try {
     return localStorage.getItem(key) ?? fallback;
   } catch {
+    reportStorageFailure();
     return fallback;
   }
 }
@@ -48,8 +55,10 @@ function safeRead(key, fallback = '') {
 function safeWrite(key, value) {
   try {
     localStorage.setItem(key, value);
+    return true;
   } catch {
-    // The app remains usable when storage is disabled.
+    reportStorageFailure();
+    return false;
   }
 }
 
