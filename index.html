@@ -10,6 +10,7 @@
   <title>ONE — 今日やる一つだけ</title>
   <script src="theme-bootstrap.js"></script>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="timer-progress.css">
   <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
   <script src="storage-status.js" defer></script>
@@ -54,6 +55,7 @@
         <h2 id="timer-title">時間を決めて集中する</h2>
       </div>
       <div class="timer" id="timer" role="timer" aria-label="残り時間">25:00</div>
+      <progress class="timer-progress" id="timer-progress" max="1500" value="0" aria-label="集中時間の進捗"></progress>
       <p class="timer-status" id="timer-status" role="status" aria-live="polite">準備できたらスタート。</p>
       <div class="controls">
         <button class="primary" id="start-button" type="button" aria-keyshortcuts="Space Control+Enter Meta+Enter">スタート</button>
