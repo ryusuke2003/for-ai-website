@@ -409,6 +409,13 @@ body.focus-mode .timer-card .hint {
   display: none;
 }
 
+body.focus-mode .task-card #task-storage-status:not(:empty) {
+  display: block;
+  margin-top: 12px;
+  font-weight: 800;
+  line-height: 1.5;
+}
+
 body.focus-mode .task-card input {
   padding-top: 8px;
   text-align: center;
