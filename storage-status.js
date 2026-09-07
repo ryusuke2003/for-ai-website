@@ -1,5 +1,14 @@
 const storageHealthStatus = document.querySelector('#storage-health-status');
 const STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1';
+const TASK_STORAGE_FAILURE_MESSAGE = 'このタブでは入力を保持していますが、端末へ保存できませんでした。再読み込みすると内容が失われる可能性があります。';
+
+const taskStorageStatus = document.createElement('p');
+taskStorageStatus.className = 'hint';
+taskStorageStatus.id = 'task-storage-status';
+taskStorageStatus.setAttribute('role', 'status');
+taskStorageStatus.setAttribute('aria-live', 'polite');
+taskInput.after(taskStorageStatus);
+taskInput.setAttribute('aria-describedby', taskStorageStatus.id);
 
 function setStorageHealth(available) {
   const usable = available === true;
@@ -28,8 +37,16 @@ function probeLocalStorage() {
   }
 }
 
+function revealTaskStorageFailureIfNeeded() {
+  if (!storageAccessFailed) return;
+  if (taskStorageStatus.textContent === TASK_STORAGE_FAILURE_MESSAGE) return;
+  taskStorageStatus.textContent = TASK_STORAGE_FAILURE_MESSAGE;
+}
+
 window.addEventListener('one:storage-error', () => {
   setStorageHealth(false);
 });
+
+taskInput.addEventListener('input', revealTaskStorageFailureIfNeeded);
 
 setStorageHealth(probeLocalStorage());
