@@ -146,7 +146,7 @@ function syncIdleTimerFromStorage(raw) {
   return true;
 }
 
-function refreshProgressFromStorage() {
+function refreshGuardProgressFromStorage() {
   if (storageCoordinationUnavailable()) return false;
 
   const storedDoneCount = readDoneCount();
@@ -166,7 +166,7 @@ function stopCrossTabAction(event, message, state = 'idle') {
 }
 
 function blockStaleTabAction(event, message) {
-  if (!refreshProgressFromStorage()) return false;
+  if (!refreshGuardProgressFromStorage()) return false;
   stopCrossTabAction(event, message, 'complete');
   setRecordAvailability(false);
   return true;
@@ -203,7 +203,7 @@ function claimPendingCompletion(event) {
   clearStoredSessionId();
   localSessionId = null;
   if (storageCoordinationUnavailable()) return true;
-  refreshProgressFromStorage();
+  refreshGuardProgressFromStorage();
   return true;
 }
 
@@ -412,15 +412,10 @@ window.addEventListener('storage', (event) => {
     return;
   }
 
-  if (event.key === STORAGE_KEYS.count || event.key === STORAGE_KEYS.history) {
-    refreshProgressFromStorage();
-    return;
-  }
-
   if (!tabCoordinationEnabled || storageCoordinationUnavailable() || event.key !== TAB_SESSION_KEY || !completionReady || !localSessionId) return;
   const storedSessionId = readStoredSessionId();
   if (storageCoordinationUnavailable() || storedSessionId === localSessionId) return;
-  if (!refreshProgressFromStorage()) return;
+  if (!refreshGuardProgressFromStorage()) return;
 
   setRecordAvailability(false);
   setTimerFeedback('この集中は別のタブで処理されました。最新の記録を反映しました。', 'complete');
