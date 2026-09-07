@@ -57,6 +57,9 @@ jobs:
       - name: Check task storage failure behavior
         run: python3 scripts/task_storage_checks.py
 
+      - name: Check runtime storage fallback
+        run: python3 scripts/runtime_storage_fallback_checks.py
+
       - name: Reject common secret material
         shell: bash
         run: |

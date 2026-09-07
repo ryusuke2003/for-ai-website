@@ -45,11 +45,15 @@ def main():
     require("const current = parseDoneCount(doneCount.textContent);" in record_handler, "保存不可時もメモリ上の累計を基準に加算してください")
 
     progress_refresh = section(tab_guard, "function refreshProgressFromStorage()", "function stopCrossTabAction")
-    require("doneCount.textContent = String(readDoneCount());" in progress_refresh, "複数タブ同期も共通の累計値リーダーを使ってください")
+    require("const storedDoneCount = readDoneCount();" in progress_refresh, "複数タブ同期も共通の累計値リーダーを使ってください")
+    require("doneCount.textContent = String(storedDoneCount);" in progress_refresh, "検証済みの累計値だけを画面へ反映してください")
 
     claim = section(tab_guard, "function claimPendingCompletion(event)", "function blockIfAnotherTabOwnsTimer")
     disabled_branch = claim.split("if (!completionReady)", 1)[0]
-    require("if (!tabCoordinationEnabled) return true;" in disabled_branch, "端末保存不可時は保存値を再読込せず、そのまま記録処理へ進めてください")
+    require(
+        "if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return true;" in disabled_branch,
+        "端末保存不可または保存障害時は保存値を再読込せず、そのまま記録処理へ進めてください",
+    )
     require("refreshProgressFromStorage()" not in disabled_branch, "端末保存不可時にメモリ上の進捗を保存値で上書きしないでください")
 
     backup_reader = section(backup, "function readStoredDoneCount()", "function historyTotal")
