@@ -1,3 +1,4 @@
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 
@@ -8,6 +9,7 @@ APP_PATH = ROOT / "app.js"
 SOUND_PATH = ROOT / "completion-sound.js"
 THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_PATH = ROOT / "theme.js"
+PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
 REQUIRED_SCRIPT_ORDER = [
     "theme-bootstrap.js",
     "timer-bootstrap.js",
@@ -19,6 +21,7 @@ REQUIRED_SCRIPT_ORDER = [
     "backup.js",
     "custom-timer.js",
     "shortcuts.js",
+    "privacy-reset.js",
 ]
 
 
@@ -172,6 +175,21 @@ def main():
         fail_if("hidden" not in backup_file, "#backup-file-input は初期状態で hidden にしてください", errors)
         fail_if(".json" not in backup_file.get("accept", ""), "#backup-file-input はJSONファイルだけを選べるようにしてください", errors)
 
+    data_reset_button = parser.by_id.get("data-reset-button")
+    data_reset_confirm = parser.by_id.get("data-reset-confirm")
+    data_reset_confirm_button = parser.by_id.get("data-reset-confirm-button")
+    data_reset_cancel_button = parser.by_id.get("data-reset-cancel-button")
+    data_reset_status = parser.by_id.get("data-reset-status")
+    fail_if(data_reset_button is None, "#data-reset-button が見つかりません", errors)
+    fail_if(data_reset_confirm is None, "#data-reset-confirm が見つかりません", errors)
+    fail_if(data_reset_confirm_button is None, "#data-reset-confirm-button が見つかりません", errors)
+    fail_if(data_reset_cancel_button is None, "#data-reset-cancel-button が見つかりません", errors)
+    fail_if(data_reset_status is None, "#data-reset-status が見つかりません", errors)
+    if data_reset_confirm is not None:
+        fail_if("hidden" not in data_reset_confirm, "端末データ削除の最終確認は初期状態で hidden にしてください", errors)
+    if data_reset_status is not None:
+        fail_if(data_reset_status.get("role") != "status", "#data-reset-status は role=status を維持してください", errors)
+
     fail_if(not parser.csp, "Content-Security-Policy が見つかりません", errors)
     if parser.csp:
         policy = parser.csp[0]
@@ -232,9 +250,10 @@ def main():
         "WebSocket(",
         "EventSource(",
         "navigator.sendBeacon",
+        "localStorage.clear(",
     )
     for token in forbidden_js:
-        fail_if(token in javascript_source, f"禁止しているDOM/コード実行/通信APIを検出しました: {token}", errors)
+        fail_if(token in javascript_source, f"禁止しているDOM/コード実行/通信/保存領域APIを検出しました: {token}", errors)
 
     app_source = APP_PATH.read_text(encoding="utf-8")
     required_timer_boundary_flow = """if (remainingSeconds <= 0) {
@@ -258,6 +277,13 @@ def main():
     fail_if("THEME_STORAGE_KEY = 'one.theme.v1'" not in theme_bootstrap_source, "表示テーマ設定キーを変更する場合は互換性を確認してください", errors)
     fail_if("['system', 'light', 'dark']" not in theme_bootstrap_source, "表示テーマの許可値は system / light / dark に限定してください", errors)
     fail_if("document.documentElement.dataset.theme" not in theme_source, "手動テーマは documentElement の data-theme へ反映してください", errors)
+
+    privacy_reset_source = PRIVACY_RESET_PATH.read_text(encoding="utf-8") if PRIVACY_RESET_PATH.is_file() else ""
+    fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source, "ONEの削除対象キーは明示的なSetで管理してください", errors)
+    storage_keys = set(re.findall(r"['\"](one\.[A-Za-z0-9.]+)['\"]", javascript_source))
+    for storage_key in sorted(storage_keys):
+        represented = f"'{storage_key}'" in privacy_reset_source or f'"{storage_key}"' in privacy_reset_source
+        fail_if(not represented, f"保存キー {storage_key} が端末データ削除対象に含まれていません", errors)
 
     if errors:
         for error in errors:
