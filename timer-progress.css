@@ -1,0 +1,22 @@
+.timer-progress {
+  display: block;
+  width: min(420px, 90%);
+  height: .55rem;
+  margin: -8px auto 22px;
+  accent-color: currentColor;
+}
+
+body.focus-mode .timer-progress {
+  width: min(480px, 72%);
+  margin: -18px auto 26px;
+}
+
+@media (max-width: 560px) {
+  .timer-progress {
+    width: 92%;
+  }
+
+  body.focus-mode .timer-progress {
+    width: 84%;
+  }
+}
