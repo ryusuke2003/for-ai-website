@@ -51,8 +51,8 @@ function ensureStoredSessionId() {
 }
 
 function isTimerStateActive(state) {
-  const minutes = Number.parseInt(state?.selectedMinutes, 10);
-  const remaining = Number.parseInt(state?.remainingSeconds, 10);
+  const minutes = state?.selectedMinutes;
+  const remaining = state?.remainingSeconds;
   if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_MINUTES) return false;
 
   const fullDuration = minutes * 60;
@@ -69,8 +69,7 @@ function hasLocalTimerContext() {
 }
 
 function refreshProgressFromStorage() {
-  const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
-  doneCount.textContent = String(Number.isSafeInteger(count) && count >= 0 ? count : 0);
+  doneCount.textContent = String(readDoneCount());
   focusHistory = readHistory();
   renderHistory();
 }
@@ -88,10 +87,7 @@ function blockStaleTabAction(event, message) {
 }
 
 function claimPendingCompletion(event) {
-  if (!tabCoordinationEnabled) {
-    refreshProgressFromStorage();
-    return true;
-  }
+  if (!tabCoordinationEnabled) return true;
   if (!completionReady) return false;
   if (!localSessionId) {
     blockStaleTabAction(event, 'このタブでは集中セッションを確認できません。再読み込みして最新状態に合わせてください。');
@@ -100,7 +96,7 @@ function claimPendingCompletion(event) {
 
   const storedState = readTimerState();
   const storedSessionId = readStoredSessionId();
-  const storedRemaining = Number.parseInt(storedState?.remainingSeconds, 10);
+  const storedRemaining = storedState?.remainingSeconds;
   const stillPending = storedState?.completionReady === true
     && storedRemaining === 0
     && storedSessionId === localSessionId;
