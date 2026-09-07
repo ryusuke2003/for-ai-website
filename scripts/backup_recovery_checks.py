@@ -5,8 +5,8 @@ ROOT = Path(__file__).resolve().parent.parent
 BACKUP_PATH = ROOT / "backup.js"
 
 
-def require(source, token, message):
-    if token not in source:
+def require(condition, message):
+    if not condition:
         raise SystemExit(f"ERROR: {message}")
 
 
@@ -23,21 +23,18 @@ def section(source, start_marker, end_marker):
 def main():
     source = BACKUP_PATH.read_text(encoding="utf-8")
 
-    require(source, "function parseRecoveryPoint(raw)", "復元ポイントの検証処理を共通化してください")
-    require(source, "function readValidRecoveryRaw()", "既存の有効なUndo情報を退避してください")
+    require("function parseRecoveryPoint(raw)" in source, "復元ポイントの検証処理を共通化してください")
+    require("function readValidRecoveryRaw()" in source, "既存の有効なUndo情報を退避してください")
     require(
-        source,
-        "function restorePreviousRecoveryPoint(expectedCurrentRaw, previousRaw)",
+        "function restorePreviousRecoveryPoint(expectedCurrentRaw, previousRaw)" in source,
         "失敗時に以前のUndo情報を戻す処理を維持してください",
     )
     require(
-        source,
-        "if (localStorage.getItem(RECOVERY_STORAGE_KEY) !== expectedCurrentRaw) return false;",
+        "if (localStorage.getItem(RECOVERY_STORAGE_KEY) !== expectedCurrentRaw) return false;" in source,
         "別タブが更新したUndo情報を上書きしないよう現在値を照合してください",
     )
     require(
-        source,
-        "return localStorage.getItem(RECOVERY_STORAGE_KEY) === payload ? payload : null;",
+        "return localStorage.getItem(RECOVERY_STORAGE_KEY) === payload ? payload : null;" in source,
         "新しく保存した復元ポイントの生JSONを検証後に返してください",
     )
 
@@ -100,12 +97,16 @@ def main():
         raise SystemExit("ERROR: 復元失敗時に以前のUndo情報まで無条件削除しないでください")
 
     require(
-        import_source,
-        "const recoveryRestored = rollbackSucceeded\n      && restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);",
+        "const recoveryRestored = rollbackSucceeded\n      && restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);" in import_source,
         "記録本体の巻き戻し確認後だけ以前のUndo情報を復元してください",
     )
 
-    undo_source = source[source.find("function undoLastRestore()") : source.find("backupExportButton.addEventListener", source.find("function undoLastRestore()"))]
+    undo_start = source.find("function undoLastRestore()")
+    undo_end = source.find("backupExportButton.addEventListener", undo_start)
+    if undo_start < 0 or undo_end < 0:
+        raise SystemExit("ERROR: undoLastRestore() の範囲を確認できません")
+    undo_source = source[undo_start:undo_end]
+
     remove_call = undo_source.find("const recoveryRemoved = removeRecoveryPoint();")
     refresh_call = undo_source.find("refreshRecoveryAvailability();", remove_call)
     failure_check = undo_source.find("if (!recoveryRemoved)", refresh_call)
