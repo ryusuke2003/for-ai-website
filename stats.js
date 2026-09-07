@@ -318,6 +318,63 @@ function syncDailyGoalFromStorage(event) {
   renderDailyGoal();
 }
 
+function parseHistoryStorageEvent(raw) {
+  if (raw === null) return {};
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_HISTORY_BYTES) return null;
+
+  try {
+    const value = JSON.parse(raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    return normalizeHistory(value);
+  } catch {
+    return null;
+  }
+}
+
+function parseDoneCountStorageEvent(raw) {
+  if (raw === null) return 0;
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_DONE_COUNT_BYTES) return null;
+  if (!DONE_COUNT_PATTERN.test(raw)) return null;
+
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function syncProgressFromStorage(event) {
+  if (event.key === STORAGE_KEYS.history) {
+    const nextHistory = parseHistoryStorageEvent(event.newValue);
+    if (nextHistory === null) return;
+
+    focusHistory = nextHistory;
+    renderHistory();
+    return;
+  }
+
+  if (event.key === STORAGE_KEYS.count) {
+    const nextCount = parseDoneCountStorageEvent(event.newValue);
+    if (nextCount === null) return;
+    doneCount.textContent = String(nextCount);
+  }
+}
+
+function refreshProgressFromStorage() {
+  if (storageAccessFailed) return;
+
+  const nextCount = readDoneCount();
+  if (storageAccessFailed) return;
+
+  const nextHistory = readHistory();
+  if (storageAccessFailed) return;
+
+  doneCount.textContent = String(nextCount);
+  focusHistory = nextHistory;
+  renderHistory();
+}
+
+function refreshProgressWhenVisible() {
+  if (document.visibilityState === 'visible') refreshProgressFromStorage();
+}
+
 function renderProgressInsights() {
   const history = normalizeHistory(focusHistory);
   const weekly = calculateCurrentWeekCount(history);
@@ -347,6 +404,9 @@ loadDailyGoal();
 dailyGoalApplyButton.addEventListener('click', applyDailyGoal);
 dailyGoalClearButton.addEventListener('click', clearDailyGoal);
 window.addEventListener('storage', syncDailyGoalFromStorage);
+window.addEventListener('storage', syncProgressFromStorage);
+document.addEventListener('visibilitychange', refreshProgressWhenVisible);
+window.addEventListener('pageshow', refreshProgressFromStorage);
 
 const renderHistoryWithoutInsights = renderHistory;
 renderHistory = function renderHistoryWithInsights() {
