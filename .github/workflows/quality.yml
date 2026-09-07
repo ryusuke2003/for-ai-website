@@ -31,12 +31,16 @@ jobs:
           node --check custom-timer.js
           node --check shortcuts.js
           node --check privacy-reset.js
+          node --check scripts/timer_state_behavior_checks.js
 
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
 
-      - name: Check timer state size guards
+      - name: Check timer state integration
         run: python3 scripts/timer_state_checks.py
+
+      - name: Check timer state behavior
+        run: node scripts/timer_state_behavior_checks.js
 
       - name: Reject common secret material
         shell: bash

@@ -8,48 +8,48 @@ BOOTSTRAP_PATH = ROOT / "timer-bootstrap.js"
 EXPECTED_LIMIT = 10_000
 
 
-def read_limit(source, name):
-    match = re.search(rf"const {name} = ([0-9_]+);", source)
+def read_limit(source):
+    match = re.search(r"const MAX_BYTES = ([0-9_]+);", source)
     if not match:
-        raise SystemExit(f"ERROR: {name} が見つかりません")
+        raise SystemExit("ERROR: timer-bootstrap.js の MAX_BYTES が見つかりません")
     return int(match.group(1).replace("_", ""))
 
 
-def require_guard_before_parse(source, guard, function_name):
-    function_start = source.find(f"function {function_name}()")
-    if function_start < 0:
-        raise SystemExit(f"ERROR: {function_name} が見つかりません")
-
-    parse_position = source.find("JSON.parse(raw)", function_start)
-    guard_position = source.find(guard, function_start)
-    if parse_position < 0 or guard_position < 0 or guard_position > parse_position:
-        raise SystemExit(f"ERROR: {function_name} はJSON.parseより前にサイズ上限を確認してください")
+def source_range(source, start_token, end_token):
+    start = source.find(start_token)
+    end = source.find(end_token, start)
+    if start < 0 or end < 0:
+        raise SystemExit(f"ERROR: 検査範囲を取得できません: {start_token}")
+    return source[start:end]
 
 
 def main():
     app_source = APP_PATH.read_text(encoding="utf-8")
     bootstrap_source = BOOTSTRAP_PATH.read_text(encoding="utf-8")
 
-    app_limit = read_limit(app_source, "MAX_TIMER_STATE_BYTES")
-    bootstrap_limit = read_limit(bootstrap_source, "MAX_BOOTSTRAP_TIMER_STATE_BYTES")
-    if app_limit != EXPECTED_LIMIT or bootstrap_limit != EXPECTED_LIMIT:
-        raise SystemExit(
-            f"ERROR: タイマー保存状態の上限は両方 {EXPECTED_LIMIT} に揃えてください "
-            f"(app={app_limit}, bootstrap={bootstrap_limit})"
-        )
+    if read_limit(bootstrap_source) != EXPECTED_LIMIT:
+        raise SystemExit(f"ERROR: タイマー保存状態の上限は {EXPECTED_LIMIT} にしてください")
 
-    require_guard_before_parse(
-        app_source,
-        "if (!raw || raw.length > MAX_TIMER_STATE_BYTES) return null;",
-        "readTimerState",
-    )
-    require_guard_before_parse(
+    parse_position = bootstrap_source.find("JSON.parse(raw)")
+    size_guard_position = bootstrap_source.find("raw.length > MAX_BYTES")
+    if parse_position < 0 or size_guard_position < 0 or size_guard_position > parse_position:
+        raise SystemExit("ERROR: timer-bootstrap.js は JSON.parse より前にサイズ上限を確認してください")
+
+    bootstrap_body = source_range(
         bootstrap_source,
-        "if (!raw || raw.length > MAX_BOOTSTRAP_TIMER_STATE_BYTES) return null;",
-        "readBootstrappedTimerMinutes",
+        "function readBootstrappedTimerMinutes()",
+        "if (typeof document !== 'undefined')",
     )
+    if "guard.parse(raw)" not in bootstrap_body:
+        raise SystemExit("ERROR: 起動前タイマー復元は共通検証器を使用してください")
 
-    print("Timer state size guards are aligned and checked before JSON parsing.")
+    app_body = source_range(app_source, "function readTimerState()", "function dateKey")
+    if "ONE_TIMER_STATE_GUARD?.parse(raw)" not in app_body:
+        raise SystemExit("ERROR: app.js の readTimerState() は共通検証器を使用してください")
+    if "JSON.parse(raw)" in app_body:
+        raise SystemExit("ERROR: app.js の readTimerState() でタイマー状態を独自にJSON.parseしないでください")
+
+    print("Timer state parsing is centralized behind the shared validator.")
 
 
 if __name__ == "__main__":

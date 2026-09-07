@@ -18,7 +18,6 @@ const MAX_MINUTES = 180;
 const HISTORY_LIMIT = 90;
 const MAX_DAILY_COUNT = 1000;
 const MAX_HISTORY_BYTES = 50_000;
-const MAX_TIMER_STATE_BYTES = 10_000;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STORAGE_KEYS = {
   task: 'one.task',
@@ -65,14 +64,7 @@ function safeWrite(key, value) {
 
 function readTimerState() {
   const raw = safeRead(STORAGE_KEYS.timer);
-  if (!raw || raw.length > MAX_TIMER_STATE_BYTES) return null;
-
-  try {
-    const state = JSON.parse(raw);
-    return state && typeof state === 'object' && !Array.isArray(state) ? state : null;
-  } catch {
-    return null;
-  }
+  return globalThis.ONE_TIMER_STATE_GUARD?.parse(raw) ?? null;
 }
 
 function dateKey(date = new Date()) {
@@ -316,7 +308,7 @@ function restoreTimerState() {
     .map((button) => Number.parseInt(button.dataset.minutes, 10))
     .filter((minutes) => Number.isInteger(minutes) && minutes > 0 && minutes <= MAX_MINUTES);
 
-  const storedMinutes = Number.parseInt(state?.selectedMinutes, 10);
+  const storedMinutes = state?.selectedMinutes;
   selectedMinutes = availableMinutes.includes(storedMinutes) ? storedMinutes : DEFAULT_MINUTES;
 
   presetButtons.forEach((button) => {
@@ -326,12 +318,12 @@ function restoreTimerState() {
   });
 
   const fullDuration = selectedMinutes * 60;
-  const storedRemaining = Number.parseInt(state?.remainingSeconds, 10);
+  const storedRemaining = state?.remainingSeconds;
   remainingSeconds = Number.isInteger(storedRemaining) && storedRemaining >= 0 && storedRemaining <= fullDuration
     ? storedRemaining
     : fullDuration;
 
-  const storedEndAt = Number(state?.endAt);
+  const storedEndAt = state?.endAt;
   if (state?.running === true && Number.isFinite(storedEndAt)) {
     const restoredRemaining = Math.ceil((storedEndAt - Date.now()) / 1000);
     if (restoredRemaining > 0 && restoredRemaining <= fullDuration) {
