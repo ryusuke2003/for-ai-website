@@ -18,6 +18,8 @@ const MAX_MINUTES = 180;
 const HISTORY_LIMIT = 90;
 const MAX_DAILY_COUNT = 1000;
 const MAX_HISTORY_BYTES = 50_000;
+const MAX_DONE_COUNT_BYTES = 32;
+const DONE_COUNT_PATTERN = /^(0|[1-9]\d{0,15})$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STORAGE_KEYS = {
   task: 'one.task',
@@ -60,6 +62,18 @@ function safeWrite(key, value) {
     reportStorageFailure();
     return false;
   }
+}
+
+function parseDoneCount(raw) {
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_DONE_COUNT_BYTES) return 0;
+  if (!DONE_COUNT_PATTERN.test(raw)) return 0;
+
+  const count = Number(raw);
+  return Number.isSafeInteger(count) && count >= 0 ? count : 0;
+}
+
+function readDoneCount() {
+  return parseDoneCount(safeRead(STORAGE_KEYS.count, '0'));
 }
 
 function readTimerState() {
@@ -427,8 +441,7 @@ function incrementFocusHistory(key = dateKey()) {
 }
 
 function loadState() {
-  const count = Number.parseInt(safeRead(STORAGE_KEYS.count, '0'), 10);
-  doneCount.textContent = String(Number.isSafeInteger(count) && count >= 0 ? count : 0);
+  doneCount.textContent = String(readDoneCount());
   focusHistory = readHistory();
   renderHistory();
   setFocusMode(safeRead(STORAGE_KEYS.focusMode) === '1', { persist: false, announce: false });
@@ -480,7 +493,7 @@ doneButton.addEventListener('click', () => {
 
   const completedOn = completionDateKey;
   setRecordAvailability(false);
-  const current = Number.parseInt(doneCount.textContent, 10) || 0;
+  const current = parseDoneCount(doneCount.textContent);
   const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
   doneCount.textContent = String(next);
   safeWrite(STORAGE_KEYS.count, String(next));
