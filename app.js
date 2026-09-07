@@ -308,7 +308,7 @@ function restoreTimerState() {
     .map((button) => Number.parseInt(button.dataset.minutes, 10))
     .filter((minutes) => Number.isInteger(minutes) && minutes > 0 && minutes <= MAX_MINUTES);
 
-  const storedMinutes = Number.parseInt(state?.selectedMinutes, 10);
+  const storedMinutes = state?.selectedMinutes;
   selectedMinutes = availableMinutes.includes(storedMinutes) ? storedMinutes : DEFAULT_MINUTES;
 
   presetButtons.forEach((button) => {
@@ -318,12 +318,12 @@ function restoreTimerState() {
   });
 
   const fullDuration = selectedMinutes * 60;
-  const storedRemaining = Number.parseInt(state?.remainingSeconds, 10);
+  const storedRemaining = state?.remainingSeconds;
   remainingSeconds = Number.isInteger(storedRemaining) && storedRemaining >= 0 && storedRemaining <= fullDuration
     ? storedRemaining
     : fullDuration;
 
-  const storedEndAt = Number(state?.endAt);
+  const storedEndAt = state?.endAt;
   if (state?.running === true && Number.isFinite(storedEndAt)) {
     const restoredRemaining = Math.ceil((storedEndAt - Date.now()) / 1000);
     if (restoredRemaining > 0 && restoredRemaining <= fullDuration) {
