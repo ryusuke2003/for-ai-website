@@ -215,7 +215,7 @@ function clearTimerInterval() {
   }
 }
 
-function setStartButton(label = 'スタート', running = false) {
+function setStartButton(label, running = false) {
   startButton.textContent = label;
   startButton.setAttribute('aria-pressed', String(running));
 }
