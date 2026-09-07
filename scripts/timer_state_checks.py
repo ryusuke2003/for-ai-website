@@ -16,11 +16,11 @@ def read_limit(source):
     return int(match.group(1).replace("_", ""))
 
 
-def function_body(source, function_name, next_function_name):
-    start = source.find(f"function {function_name}")
-    end = source.find(f"function {next_function_name}", start)
+def source_range(source, start_token, end_token):
+    start = source.find(start_token)
+    end = source.find(end_token, start)
     if start < 0 or end < 0:
-        raise SystemExit(f"ERROR: {function_name} の検査範囲を取得できません")
+        raise SystemExit(f"ERROR: 検査範囲を取得できません: {start_token}")
     return source[start:end]
 
 
@@ -37,9 +37,9 @@ def main():
     if parse_position < 0 or size_guard_position < 0 or size_guard_position > parse_position:
         raise SystemExit("ERROR: timer-state.js は JSON.parse より前にサイズ上限を確認してください")
 
-    bootstrap_body = function_body(
+    bootstrap_body = source_range(
         bootstrap_source,
-        "readBootstrappedTimerMinutes",
+        "function readBootstrappedTimerMinutes()",
         "const bootstrappedCustomMinutes",
     )
     if "ONE_TIMER_STATE_GUARD?.parse(raw)" not in bootstrap_body:
@@ -47,7 +47,7 @@ def main():
     if "JSON.parse(raw)" in bootstrap_source:
         raise SystemExit("ERROR: timer-bootstrap.js でタイマー状態を独自にJSON.parseしないでください")
 
-    app_body = function_body(app_source, "readTimerState", "dateKey")
+    app_body = source_range(app_source, "function readTimerState()", "function dateKey")
     if "ONE_TIMER_STATE_GUARD?.parse(raw)" not in app_body:
         raise SystemExit("ERROR: app.js の readTimerState() は共通検証器を使用してください")
     if "JSON.parse(raw)" in app_body:
