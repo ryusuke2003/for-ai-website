@@ -36,6 +36,9 @@ jobs:
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
 
+      - name: Check browser security policy
+        run: python3 scripts/browser_policy_checks.py
+
       - name: Check timer state integration
         run: python3 scripts/timer_state_checks.py
 
