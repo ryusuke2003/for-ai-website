@@ -72,6 +72,7 @@ def main():
     require("wakeLockTimerObserver.observe(timerCard" in source, "タイマー状態変化へ画面維持を追従させてください")
     require("document.addEventListener('visibilitychange'" in source, "表示状態の変化でWake Lockを再評価してください")
     require("window.addEventListener('pagehide'" in source, "ページ離脱時はWake Lockを解放してください")
+    require("window.addEventListener('pageshow'" in source, "BFCacheなどからページ復元したときはWake Lockを再評価してください")
 
     storage_handler = source.split("window.addEventListener('storage'", 1)[-1]
     require("event.key !== WAKE_LOCK_STORAGE_KEY" in storage_handler, "別タブ同期は画面維持キーだけを対象にしてください")
