@@ -253,7 +253,24 @@ function removeRecoveryPoint() {
   }
 }
 
+function refreshBackupControlAvailability({ announce = false } = {}) {
+  const restoreAvailable = tabCoordinationEnabled && !storageAccessFailed;
+  backupImportButton.disabled = !restoreAvailable;
+  backupFileInput.disabled = !restoreAvailable;
+
+  if (!restoreAvailable) {
+    backupUndoButton.disabled = true;
+    if (announce) {
+      setBackupStatus('安全な復元に必要な端末保存・タブ間調停を利用できないため、JSON書き出しだけ利用できます。');
+    }
+  }
+
+  return restoreAvailable;
+}
+
 function refreshRecoveryAvailability() {
+  if (!refreshBackupControlAvailability({ announce: true })) return;
+
   const recovery = readRecoveryPoint();
   const matchesRestoredState = recovery !== null
     && currentRestoreGuard() === backupDataGuard(recovery.expectedData);
@@ -313,10 +330,7 @@ function applyBackup(restored) {
 }
 
 async function importBackup(file) {
-  if (!tabCoordinationEnabled) {
-    setBackupStatus('ブラウザの保存領域を利用できないためバックアップを復元できません。');
-    return;
-  }
+  if (!refreshBackupControlAvailability({ announce: true })) return;
   if (!canRestoreBackup()) {
     setBackupStatus('集中タイマーの進行中・一時停止中・未記録完了中は復元できません。先にその1回を終えてください。');
     return;
@@ -405,10 +419,7 @@ async function importBackup(file) {
 }
 
 function undoLastRestore() {
-  if (!tabCoordinationEnabled) {
-    setBackupStatus('ブラウザの保存領域を利用できないため復元を取り消せません。');
-    return;
-  }
+  if (!refreshBackupControlAvailability({ announce: true })) return;
   if (!canRestoreBackup()) {
     setBackupStatus('集中タイマーの進行中・一時停止中・未記録完了中は復元を取り消せません。');
     return;
@@ -465,10 +476,7 @@ function undoLastRestore() {
 
 backupExportButton.addEventListener('click', exportBackup);
 backupImportButton.addEventListener('click', () => {
-  if (!tabCoordinationEnabled) {
-    setBackupStatus('ブラウザの保存領域を利用できないためバックアップを復元できません。');
-    return;
-  }
+  if (!refreshBackupControlAvailability({ announce: true })) return;
   if (!canRestoreBackup()) {
     setBackupStatus('集中タイマーの進行中・一時停止中・未記録完了中は復元できません。');
     return;
@@ -492,6 +500,10 @@ window.addEventListener('storage', (event) => {
   ].includes(event.key)) {
     refreshRecoveryAvailability();
   }
+});
+
+window.addEventListener('one:storage-error', () => {
+  refreshBackupControlAvailability({ announce: true });
 });
 
 startButton.addEventListener('click', refreshRecoveryAvailability);

@@ -61,6 +61,9 @@ jobs:
       - name: Check backup export fallback
         run: python3 scripts/backup_export_fallback_checks.py
 
+      - name: Check backup restore control availability
+        run: python3 scripts/backup_control_availability_checks.py
+
       - name: Check progress storage behavior
         run: python3 scripts/progress_storage_checks.py
 
