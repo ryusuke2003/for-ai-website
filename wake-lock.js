@@ -91,7 +91,7 @@ async function requestWakeLock() {
       if (wakeLockSentinel === sentinel) wakeLockSentinel = null;
       syncWakeLockUi(
         wakeLockEnabled && timerIsRunningForWakeLock()
-          ? '画面維持が解除されました。画面へ戻ったときに再試行します。'
+          ? '画面維持が解除されました。次に画面へ戻ったときに再試行します。'
           : null,
       );
     }, { once: true });
@@ -160,14 +160,18 @@ window.addEventListener('pagehide', () => {
   void releaseWakeLock();
 });
 
-window.addEventListener('storage', (event) => {
+window.addEventListener('pageshow', () => {
+  void syncWakeLockWithTimer();
+});
+
+window.addEventListener('storage', async (event) => {
   if (event.key !== WAKE_LOCK_STORAGE_KEY) return;
 
   const nextEnabled = parseWakeLockPreference(event.newValue);
   if (nextEnabled === null) return;
 
   wakeLockEnabled = nextEnabled;
-  void syncWakeLockWithTimer();
+  await syncWakeLockWithTimer();
   syncWakeLockUi(
     nextEnabled
       ? '別のタブで画面維持がオンになりました。このタブにも反映しました。'
