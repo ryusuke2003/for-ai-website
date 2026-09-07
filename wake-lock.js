@@ -68,11 +68,11 @@ async function requestWakeLock() {
     || !wakeLockEnabled
     || !timerIsRunningForWakeLock()
     || document.visibilityState !== 'visible'
-    || wakeLockSentinel
-    || wakeLockRequestPending
   ) {
-    return;
+    return false;
   }
+  if (wakeLockSentinel) return true;
+  if (wakeLockRequestPending) return false;
 
   wakeLockRequestPending = true;
   try {
@@ -83,7 +83,7 @@ async function requestWakeLock() {
       } catch {
         // The browser may already have released the newly-created lock.
       }
-      return;
+      return false;
     }
 
     wakeLockSentinel = sentinel;
@@ -96,8 +96,10 @@ async function requestWakeLock() {
       );
     }, { once: true });
     syncWakeLockUi();
+    return true;
   } catch {
     syncWakeLockUi('画面維持を有効にできませんでした。タイマー機能はそのまま利用できます。');
+    return false;
   } finally {
     wakeLockRequestPending = false;
   }
@@ -107,10 +109,10 @@ async function syncWakeLockWithTimer() {
   if (!wakeLockEnabled || !timerIsRunningForWakeLock() || document.visibilityState !== 'visible') {
     await releaseWakeLock();
     syncWakeLockUi();
-    return;
+    return false;
   }
 
-  await requestWakeLock();
+  return requestWakeLock();
 }
 
 async function toggleWakeLock() {
@@ -129,11 +131,13 @@ async function toggleWakeLock() {
     return;
   }
 
-  await syncWakeLockWithTimer();
+  const active = await syncWakeLockWithTimer();
   syncWakeLockUi(
     persisted
       ? timerIsRunningForWakeLock()
-        ? '画面維持をオンにしました。集中中は画面のスリープを抑えます。'
+        ? active
+          ? '画面維持をオンにしました。集中中は画面のスリープを抑えます。'
+          : '画面維持をオンにしましたが、現在は画面維持を取得できませんでした。タイマー機能はそのまま利用できます。'
         : '画面維持をオンにしました。タイマー開始中だけ有効になります。'
       : '画面維持をオンにしましたが、このブラウザには設定を保存できませんでした。今のタブでは利用できます。',
   );
