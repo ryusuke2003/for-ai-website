@@ -39,21 +39,51 @@ def main():
     require(write_pos < read_pos < match_pos < report_pos, "テーマ保存は 書込→読戻し→一致確認→障害通知 の順を維持してください")
     require("if (storageAccessFailed) return false;" in writer, "safeRead() が失敗した場合は保存成功扱いにしないでください")
 
+    refresh = section(theme, "function refreshThemePreferenceFromStorage()", "function refreshThemeWhenVisible()")
+    first_guard = refresh.find("if (storageAccessFailed) return false;")
+    read_position = refresh.find("safeRead(THEME_STORAGE_KEY)")
+    second_guard = refresh.find("if (storageAccessFailed) return false;", first_guard + 1)
+    validate_position = refresh.find("VALID_THEMES.has(storedTheme)")
+    apply_position = refresh.find("applyThemePreference(nextTheme, { persist: false, announce: false })")
+    require(
+        min(first_guard, read_position, second_guard, validate_position, apply_position) >= 0,
+        "復帰時のテーマ再同期に必要な処理が見つかりません",
+    )
+    require(
+        first_guard < read_position < second_guard < validate_position < apply_position,
+        "復帰時は保存障害確認→読込→障害再確認→検証→反映の順にしてください",
+    )
+    require("safeWrite(" not in refresh, "復帰時のテーマ再同期から保存値を書き戻さないでください")
+    require("persist: false" in refresh, "復帰時のテーマ反映は永続化を再実行しないでください")
+    require("announce: false" in refresh, "復帰するだけでテーマ状態を読み上げ直さないでください")
+
+    visible_refresh = section(theme, "function refreshThemeWhenVisible()", "themeButtons.forEach")
+    require("document.visibilityState === 'visible'" in visible_refresh, "背景へ移るだけではテーマ保存値を再読込しないでください")
+    require("refreshThemePreferenceFromStorage()" in visible_refresh, "前面復帰時にテーマ保存値を再確認してください")
+
     storage_handler = section(
         theme,
         "window.addEventListener('storage', (event) => {",
-        "applyThemePreference(initialTheme",
+        "document.addEventListener('visibilitychange'",
     )
     require("event.newValue" in storage_handler, "別タブのテーマ変更は storage event の newValue を使ってください")
-    require("readStoredTheme()" not in storage_handler, "storage event 内で不要な localStorage 再読込をしないでください")
+    require("refreshThemePreferenceFromStorage()" not in storage_handler, "storage event 内で不要な localStorage 再読込をしないでください")
     require("VALID_THEMES.has(event.newValue)" in storage_handler, "別タブ由来のテーマ値も許可値を検証してください")
 
+    require(
+        "document.addEventListener('visibilitychange', refreshThemeWhenVisible);" in theme,
+        "タブが前面へ戻ったときテーマ設定を再同期してください",
+    )
+    require(
+        "window.addEventListener('pageshow', refreshThemePreferenceFromStorage);" in theme,
+        "BFCacheなどから復元された場合もテーマ設定を再同期してください",
+    )
     require(
         "このブラウザには設定を保存できませんでした。" in theme,
         "テーマ保存失敗は利用者向けステータスでも説明してください",
     )
 
-    print("Theme persistence uses shared storage health reporting and verified read-back.")
+    print("Theme preference is revalidated on resume while preserving verified storage and cross-tab behavior.")
 
 
 if __name__ == "__main__":
