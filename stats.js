@@ -318,6 +318,47 @@ function syncDailyGoalFromStorage(event) {
   renderDailyGoal();
 }
 
+function refreshDailyGoalFromStorage() {
+  if (storageAccessFailed) return;
+
+  const raw = safeRead(DAILY_GOAL_STORAGE_KEY);
+  if (storageAccessFailed) return;
+
+  if (raw === '') {
+    dailyGoal = null;
+    dailyGoalDate = null;
+    dailyGoalInput.value = '';
+    dailyGoalInput.removeAttribute('aria-invalid');
+    dailyGoalPersistenceWarning = '';
+    renderDailyGoal();
+    return;
+  }
+
+  const state = parseDailyGoalState(raw);
+  if (!state || state.date !== dateKey()) {
+    dailyGoal = null;
+    dailyGoalDate = null;
+    dailyGoalInput.value = '';
+    dailyGoalInput.removeAttribute('aria-invalid');
+    dailyGoalPersistenceWarning = removeStoredDailyGoal(raw)
+      ? ''
+      : ' 期限切れまたは不正な目標データを端末から削除できませんでした。';
+    renderDailyGoal();
+    return;
+  }
+
+  dailyGoal = state.goal;
+  dailyGoalDate = state.date;
+  dailyGoalInput.value = String(state.goal);
+  dailyGoalInput.removeAttribute('aria-invalid');
+  dailyGoalPersistenceWarning = '';
+  renderDailyGoal();
+}
+
+function refreshDailyGoalWhenVisible() {
+  if (document.visibilityState === 'visible') refreshDailyGoalFromStorage();
+}
+
 function parseHistoryStorageEvent(raw) {
   if (raw === null) return {};
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_HISTORY_BYTES) return null;
@@ -405,7 +446,9 @@ dailyGoalApplyButton.addEventListener('click', applyDailyGoal);
 dailyGoalClearButton.addEventListener('click', clearDailyGoal);
 window.addEventListener('storage', syncDailyGoalFromStorage);
 window.addEventListener('storage', syncProgressFromStorage);
+document.addEventListener('visibilitychange', refreshDailyGoalWhenVisible);
 document.addEventListener('visibilitychange', refreshProgressWhenVisible);
+window.addEventListener('pageshow', refreshDailyGoalFromStorage);
 window.addEventListener('pageshow', refreshProgressFromStorage);
 
 const renderHistoryWithoutInsights = renderHistory;
