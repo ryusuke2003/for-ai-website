@@ -35,12 +35,12 @@ def main():
     )
     require("reportStorageFailure();" in detect, "タブ間保存の失敗はアプリ全体へ通知してください")
 
-    refresh = function_body("refreshProgressFromStorage", "stopCrossTabAction")
+    refresh = function_body("refreshGuardProgressFromStorage", "stopCrossTabAction")
     count_read = refresh.find("const storedDoneCount = readDoneCount();")
     history_read = refresh.find("const storedHistory = readHistory();")
     failure_check = refresh.find("if (storageCoordinationUnavailable()) return false;", count_read)
     dom_write = refresh.find("doneCount.textContent = String(storedDoneCount);")
-    require(min(count_read, history_read, failure_check, dom_write) >= 0, "進捗再読込の安全な処理順を確認できません")
+    require(min(count_read, history_read, failure_check, dom_write) >= 0, "claim固有の進捗再読込で安全な処理順を確認できません")
     require(count_read < history_read < failure_check < dom_write, "保存値は全部読み切ってから障害確認後にDOMへ反映してください")
 
     claim = function_body("claimPendingCompletion", "blockIfAnotherTabOwnsTimer")
@@ -60,7 +60,7 @@ def main():
     stale_check = stale.find("if (storageCoordinationUnavailable()) return false;", stale_read)
     require(stale_read >= 0 and stale_check > stale_read, "再開時の古いタブ判定は保存読込後の障害を確認してください")
 
-    print("Runtime storage fallback checks passed.")
+    print("Runtime storage fallback checks passed with claim-specific tab-guard refreshes.")
 
 
 if __name__ == "__main__":
