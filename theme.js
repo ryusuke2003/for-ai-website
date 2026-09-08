@@ -37,6 +37,21 @@ function applyThemePreference(theme, { persist = true, announce = true } = {}) {
   if (announce) themeStatus.textContent = message;
 }
 
+function refreshThemePreferenceFromStorage() {
+  if (storageAccessFailed) return false;
+
+  const storedTheme = safeRead(THEME_STORAGE_KEY);
+  if (storageAccessFailed) return false;
+
+  const nextTheme = VALID_THEMES.has(storedTheme) ? storedTheme : 'system';
+  applyThemePreference(nextTheme, { persist: false, announce: false });
+  return true;
+}
+
+function refreshThemeWhenVisible() {
+  if (document.visibilityState === 'visible') refreshThemePreferenceFromStorage();
+}
+
 themeButtons.forEach((button) => {
   button.addEventListener('click', () => {
     applyThemePreference(button.dataset.themeChoice);
@@ -48,5 +63,8 @@ window.addEventListener('storage', (event) => {
   const nextTheme = VALID_THEMES.has(event.newValue) ? event.newValue : 'system';
   applyThemePreference(nextTheme, { persist: false });
 });
+
+document.addEventListener('visibilitychange', refreshThemeWhenVisible);
+window.addEventListener('pageshow', refreshThemePreferenceFromStorage);
 
 applyThemePreference(initialTheme, { persist: false, announce: false });
