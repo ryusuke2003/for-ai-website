@@ -360,8 +360,15 @@ async function claimCompletionEffect(completionKey, effect) {
 }
 
 async function runCompletionEffectsOnce(completionKey) {
-  if (completionSoundEnabled && await claimCompletionEffect(completionKey, 'sound')) {
-    void playCompletionSound();
+  if (completionSoundEnabled) {
+    const context = await unlockCompletionAudio();
+    if (!context) {
+      syncCompletionSoundUi('ブラウザの音声再生制限により完了音を鳴らせませんでした。タイマー機能はそのまま利用できます。');
+    } else if (await claimCompletionEffect(completionKey, 'sound')) {
+      if (!scheduleCompletionChime(context)) {
+        syncCompletionSoundUi('ブラウザの音声再生制限により完了音を鳴らせませんでした。タイマー機能はそのまま利用できます。');
+      }
+    }
   }
 
   if (canShowCompletionNotification() && await claimCompletionEffect(completionKey, 'notification')) {
