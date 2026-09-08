@@ -60,7 +60,7 @@ def main():
     require(base_pos < progress_pos < end_time_pos < title_pos, "基本表示→進捗→終了予定→タイトルの順で同期してください")
 
     require(
-        SOURCE.rstrip().find("renderTimerEndTime();") > SOURCE.rstrip().find("syncCustomTimerLock();"),
+        SOURCE.rstrip().rfind("renderTimerEndTime();") > SOURCE.rstrip().rfind("syncCustomTimerLock();"),
         "初期表示でも終了予定の表示状態を同期してください",
     )
 
