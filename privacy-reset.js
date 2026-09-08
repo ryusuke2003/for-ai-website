@@ -18,6 +18,7 @@ const PRIVACY_RESET_KEYS = new Set([
   'one.restoreRecovery.v1',
   'one.completionSound.v1',
   'one.completionNotification.v1',
+  'one.completionEffectClaim.v1',
   'one.wakeLock.v1',
   'one.theme.v1',
   RESET_SIGNAL_KEY,
