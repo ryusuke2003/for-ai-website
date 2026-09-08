@@ -64,6 +64,9 @@ jobs:
       - name: Check document title behavior
         run: python3 scripts/document_title_checks.py
 
+      - name: Check timer end time
+        run: python3 scripts/timer_end_time_checks.py
+
       - name: Check wake lock behavior
         run: python3 scripts/wake_lock_checks.py
 

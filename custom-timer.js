@@ -3,9 +3,16 @@ const customMinutesApplyButton = document.querySelector('#custom-minutes-apply')
 const customMinutesStatus = document.querySelector('#custom-minutes-status');
 const customPresetButton = document.querySelector('#custom-preset');
 const timerProgress = document.querySelector('#timer-progress');
+const timerEndTime = document.querySelector('#timer-end-time');
+const timerEndAt = document.querySelector('#timer-end-at');
 const standardPresetButtons = presetButtons.filter((button) => button !== customPresetButton);
 
 const DEFAULT_DOCUMENT_TITLE = 'ONE — 今日やる一つだけ';
+const timerEndTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
 
 function isAllowedCustomTimerMinutes(value) {
   return Number.isInteger(value)
@@ -53,6 +60,32 @@ function renderTimerProgress() {
   timerProgress.setAttribute('aria-valuetext', `${percentage}%`);
 }
 
+function hideTimerEndTime() {
+  timerEndTime.hidden = true;
+  timerEndAt.textContent = '';
+  timerEndAt.removeAttribute('datetime');
+}
+
+function renderTimerEndTime() {
+  if (timerId === null || !Number.isFinite(endAt)) {
+    hideTimerEndTime();
+    return;
+  }
+
+  const endDate = new Date(endAt);
+  if (Number.isNaN(endDate.getTime())) {
+    hideTimerEndTime();
+    return;
+  }
+
+  const formattedTime = timerEndTimeFormatter.format(endDate);
+  timerEndAt.textContent = dateKey(endDate) === dateKey()
+    ? formattedTime
+    : `${endDate.getMonth() + 1}/${endDate.getDate()} ${formattedTime}`;
+  timerEndAt.setAttribute('datetime', endDate.toISOString());
+  timerEndTime.hidden = false;
+}
+
 function renderTimerDocumentTitle() {
   const formatted = formatTime(remainingSeconds);
   const fullDuration = selectedMinutes * 60;
@@ -77,6 +110,7 @@ const renderTimerWithoutProgress = renderTimer;
 renderTimer = function renderTimerWithProgress() {
   renderTimerWithoutProgress();
   renderTimerProgress();
+  renderTimerEndTime();
   renderTimerDocumentTitle();
 };
 
@@ -154,5 +188,6 @@ customTimerLockObserver.observe(customPresetButton, { attributes: true, attribut
 syncCustomTimerPresentation();
 syncCustomTimerLock();
 renderTimerProgress();
+renderTimerEndTime();
 renderTimerDocumentTitle();
 refreshRecoveryAvailability();
