@@ -131,7 +131,7 @@ def main():
     )
 
     feedback_start = STORAGE_STATUS_SOURCE.find("function revealTaskStorageFailureIfNeeded()")
-    feedback_end = STORAGE_STATUS_SOURCE.find("function handleTaskInput()", feedback_start)
+    feedback_end = STORAGE_STATUS_SOURCE.find("function taskSyncBlocked()", feedback_start)
     if feedback_start < 0 or feedback_end < 0:
         fail("タスク保存失敗の表示処理を確認できません")
     feedback = STORAGE_STATUS_SOURCE[feedback_start:feedback_end]
@@ -152,6 +152,56 @@ def main():
         "保存失敗時は再読み込みによる内容消失の可能性を明示してください",
     )
 
+    sync_block = section(
+        STORAGE_STATUS_SOURCE,
+        "function taskSyncBlocked()",
+        "function syncTaskFromStorage",
+    )
+    require(
+        "document.activeElement === taskInput" in sync_block,
+        "入力中のタスクを別タブ更新で上書きしないでください",
+    )
+    require(
+        "hasActiveDailyTaskContext()" in sync_block,
+        "進行中・一時停止中・未記録完了中のタスクを別タブ更新で差し替えないでください",
+    )
+
+    task_sync = section(
+        STORAGE_STATUS_SOURCE,
+        "function syncTaskFromStorage",
+        "function handleTaskInput()",
+    )
+    date_sync_read = task_sync.find("safeRead(STORAGE_KEYS.taskDate)")
+    date_sync_guard = task_sync.find("if (storageAccessFailed) return false;", date_sync_read)
+    today_guard = task_sync.find("if (storedTaskDate !== dateKey()) return false;")
+    task_sync_read = task_sync.find("safeRead(STORAGE_KEYS.task)")
+    task_sync_guard = task_sync.find("if (storageAccessFailed) return false;", task_sync_read)
+    task_write = task_sync.find("taskInput.value = nextTask;")
+    counter_write = task_sync.find("updateTaskCharacterCount();", task_write)
+    require(
+        min(date_sync_read, date_sync_guard, today_guard, task_sync_read, task_sync_guard, task_write, counter_write) >= 0,
+        "別タブのタスク同期に必要な検証処理が見つかりません",
+    )
+    require(
+        date_sync_read < date_sync_guard < today_guard < task_sync_read < task_sync_guard < task_write < counter_write,
+        "別タブ同期は保存日確認→本文読込→保存障害確認→入力反映→文字数更新の順にしてください",
+    )
+    require(
+        "storedTask.slice(0, maxLength)" in task_sync,
+        "別タブから受けたタスクも入力欄の文字数上限へ収めてください",
+    )
+    require(
+        "TASK_REMOTE_UPDATE_PENDING_MESSAGE" in task_sync
+        and "TASK_REMOTE_UPDATE_APPLIED_MESSAGE" in task_sync,
+        "別タブ更新を保留した場合と反映した場合を利用者へ区別して案内してください",
+    )
+    require(
+        "safeWrite(" not in task_sync
+        and "localStorage.setItem" not in task_sync
+        and "localStorage.removeItem" not in task_sync,
+        "別タブ同期処理から保存値を書き戻さないでください",
+    )
+
     input_feedback = section(
         STORAGE_STATUS_SOURCE,
         "function handleTaskInput()",
@@ -162,17 +212,54 @@ def main():
         "入力時は文字数を更新してから保存失敗表示を確認してください",
     )
     require(
+        "TASK_REMOTE_UPDATE_PENDING_MESSAGE" in input_feedback
+        and "TASK_REMOTE_UPDATE_APPLIED_MESSAGE" in input_feedback,
+        "現在タブで再入力した場合は古い別タブ同期メッセージを残さないでください",
+    )
+
+    storage_sync = section(
+        STORAGE_STATUS_SOURCE,
+        "window.addEventListener('storage', (event) => {",
+        "taskInput.addEventListener('input', handleTaskInput);",
+    )
+    require(
+        "event.key !== STORAGE_KEYS.task && event.key !== STORAGE_KEYS.taskDate" in storage_sync,
+        "タスク本文または保存日の変更だけを別タブ同期してください",
+    )
+    require(
+        "syncTaskFromStorage();" in storage_sync,
+        "タスク関連のstorageイベントで安全な同期処理を呼んでください",
+    )
+    require(
+        "safeWrite(" not in storage_sync and "localStorage.setItem" not in storage_sync,
+        "storageイベントから保存値を書き戻さないでください",
+    )
+
+    require(
         "taskInput.addEventListener('input', handleTaskInput);" in STORAGE_STATUS_SOURCE,
         "app.js の保存処理後に文字数と保存結果を更新してください",
     )
     require(
-        "taskInput.addEventListener('focus', updateTaskCharacterCount);" in STORAGE_STATUS_SOURCE
-        and "window.addEventListener('focus', updateTaskCharacterCount);" in STORAGE_STATUS_SOURCE,
-        "日付切替などでタスク値が変わった場合も文字数を再同期してください",
+        "taskInput.addEventListener('focus', updateTaskCharacterCount);" in STORAGE_STATUS_SOURCE,
+        "入力欄へ戻った場合も文字数を再同期してください",
     )
     require(
-        "document.visibilityState === 'visible'" in STORAGE_STATUS_SOURCE,
-        "タブへ戻った場合も文字数を再同期してください",
+        "taskInput.addEventListener('blur', () => {" in STORAGE_STATUS_SOURCE
+        and "syncTaskFromStorage();" in STORAGE_STATUS_SOURCE,
+        "入力を終えたら保留していた別タブ更新を再確認してください",
+    )
+    require(
+        "window.addEventListener('focus', () => {" in STORAGE_STATUS_SOURCE
+        and "syncTaskFromStorage({ announce: false });" in STORAGE_STATUS_SOURCE,
+        "ウィンドウへ戻った場合は静かに端末保存の最新タスクを再確認してください",
+    )
+    require(
+        "document.visibilityState !== 'visible'" in STORAGE_STATUS_SOURCE,
+        "タブが前面へ戻った場合だけタスクを再確認してください",
+    )
+    require(
+        "[resetButton, doneButton, discardButton].forEach" in STORAGE_STATUS_SOURCE,
+        "集中セッションを終えられる操作後に保留タスクを再確認してください",
     )
     require(
         STORAGE_STATUS_SOURCE.rfind("updateTaskCharacterCount();") < STORAGE_STATUS_SOURCE.rfind("setStorageHealth(probeLocalStorage());"),
@@ -183,7 +270,7 @@ def main():
         "タスク保存案内や文字数表示の生成にinnerHTMLを使わないでください",
     )
 
-    print("Task storage checks preserve input, show remaining length, and surface persistence failures accessibly.")
+    print("Task storage checks preserve active input while safely synchronizing idle task updates across tabs.")
 
 
 if __name__ == "__main__":
