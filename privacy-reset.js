@@ -24,6 +24,8 @@ const PRIVACY_RESET_KEYS = new Set([
   RESET_SIGNAL_KEY,
 ]);
 
+let resetSignalFallbackCounter = 0;
+
 function setDataResetStatus(message) {
   dataResetStatus.textContent = message;
 }
@@ -39,20 +41,46 @@ function reportDataResetStorageFailure() {
   return false;
 }
 
-function clearStoredOneData() {
+function clearStoredOneData({ preserveResetSignal = false } = {}) {
+  const keys = [...PRIVACY_RESET_KEYS].filter((key) => (
+    !preserveResetSignal || key !== RESET_SIGNAL_KEY
+  ));
+
   try {
-    PRIVACY_RESET_KEYS.forEach((key) => localStorage.removeItem(key));
-    return [...PRIVACY_RESET_KEYS].every((key) => localStorage.getItem(key) === null);
+    keys.forEach((key) => localStorage.removeItem(key));
+    return keys.every((key) => localStorage.getItem(key) === null);
   } catch {
     return reportDataResetStorageFailure();
   }
 }
 
+function createResetSignalValue() {
+  const timestamp = Date.now().toString(36);
+  if (globalThis.crypto && typeof globalThis.crypto.getRandomValues === 'function') {
+    try {
+      const bytes = new Uint8Array(8);
+      globalThis.crypto.getRandomValues(bytes);
+      const randomPart = [...bytes]
+        .map((byte) => byte.toString(16).padStart(2, '0'))
+        .join('');
+      return `${timestamp}-${randomPart}`;
+    } catch {
+      // The reset signal is not a secret. Fall back to local uniqueness below.
+    }
+  }
+
+  resetSignalFallbackCounter = (resetSignalFallbackCounter + 1) % 1_000_000;
+  return `${timestamp}-fallback-${resetSignalFallbackCounter.toString(36)}`;
+}
+
 function broadcastDataReset() {
+  const signal = createResetSignalValue();
   try {
-    localStorage.setItem(RESET_SIGNAL_KEY, `${Date.now()}-${Math.random()}`);
+    localStorage.setItem(RESET_SIGNAL_KEY, signal);
+    if (localStorage.getItem(RESET_SIGNAL_KEY) !== signal) return false;
+
     localStorage.removeItem(RESET_SIGNAL_KEY);
-    return true;
+    return localStorage.getItem(RESET_SIGNAL_KEY) === null;
   } catch {
     return reportDataResetStorageFailure();
   }
@@ -106,7 +134,7 @@ dataResetConfirmButton.addEventListener('click', () => {
 window.addEventListener('storage', (event) => {
   if (event.key !== RESET_SIGNAL_KEY || event.newValue === null) return;
 
-  const cleared = clearStoredOneData();
+  const cleared = clearStoredOneData({ preserveResetSignal: true });
   if (!cleared) {
     setDataResetStatus('別タブからのデータ削除を反映できませんでした。このタブを閉じてください。');
     return;
