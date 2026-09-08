@@ -254,14 +254,31 @@ function removeRecoveryPoint() {
 }
 
 function refreshBackupControlAvailability({ announce = false } = {}) {
-  const restoreAvailable = tabCoordinationEnabled && !storageAccessFailed;
+  const storageAvailable = tabCoordinationEnabled && !storageAccessFailed;
+  let restoreAvailable = false;
+  let blockedByActiveTimer = false;
+
+  if (storageAvailable) {
+    restoreAvailable = canRestoreBackup();
+    blockedByActiveTimer = !restoreAvailable && !storageAccessFailed;
+  }
+
+  if (storageAccessFailed) {
+    restoreAvailable = false;
+    blockedByActiveTimer = false;
+  }
+
   backupImportButton.disabled = !restoreAvailable;
   backupFileInput.disabled = !restoreAvailable;
 
   if (!restoreAvailable) {
     backupUndoButton.disabled = true;
     if (announce) {
-      setBackupStatus('安全な復元に必要な端末保存・タブ間調停を利用できないため、JSON書き出しだけ利用できます。');
+      setBackupStatus(
+        blockedByActiveTimer
+          ? '集中タイマーの進行中・一時停止中・未記録完了中は復元できません。JSON書き出しは利用できます。'
+          : '安全な復元に必要な端末保存・タブ間調停を利用できないため、JSON書き出しだけ利用できます。',
+      );
     }
   }
 
