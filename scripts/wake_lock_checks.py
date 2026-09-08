@@ -37,10 +37,27 @@ def main():
     require("parseWakeLockPreference(safeRead(WAKE_LOCK_STORAGE_KEY)) === true" in source, "保存値は厳格に検証してからONへ復元してください")
     require("localStorage." not in source, "画面維持設定の保存はsafeRead/safeWrite経由にしてください")
 
-    persist = section(source, "function persistWakeLockPreference", "async function releaseWakeLock")
+    persist = section(source, "function persistWakeLockPreference", "function refreshWakeLockPreferenceFromStorage")
     require("safeWrite(WAKE_LOCK_STORAGE_KEY, value)" in persist, "画面維持設定はsafeWriteで保存してください")
     require("safeRead(WAKE_LOCK_STORAGE_KEY) === value" in persist, "画面維持設定は保存後に読み戻してください")
     require("reportStorageFailure();" in persist, "読み戻し不一致は保存障害として通知してください")
+
+    refresh = section(source, "function refreshWakeLockPreferenceFromStorage", "async function releaseWakeLock")
+    first_failure_guard = refresh.find("if (storageAccessFailed) return false;")
+    safe_read = refresh.find("safeRead(WAKE_LOCK_STORAGE_KEY)")
+    second_failure_guard = refresh.find("if (storageAccessFailed) return false;", first_failure_guard + 1)
+    parse_position = refresh.find("parseWakeLockPreference(storedPreference)")
+    invalid_guard = refresh.find("if (nextEnabled === null) return false;")
+    apply_position = refresh.find("wakeLockEnabled = nextEnabled;")
+    require(
+        min(first_failure_guard, safe_read, second_failure_guard, parse_position, invalid_guard, apply_position) >= 0,
+        "復帰時の画面維持設定再読込に必要な処理が見つかりません",
+    )
+    require(
+        first_failure_guard < safe_read < second_failure_guard < parse_position < invalid_guard < apply_position,
+        "復帰同期は保存障害確認→読込→障害再確認→検証→設定反映の順にしてください",
+    )
+    require("safeWrite(" not in refresh, "復帰時の設定再同期から保存値を書き戻さないでください")
 
     running = section(source, "function timerIsRunningForWakeLock", "function syncWakeLockUi")
     require("timerId !== null" in running, "タイマー停止中は画面維持しないでください")
@@ -74,14 +91,36 @@ def main():
     require("window.addEventListener('pagehide'" in source, "ページ離脱時はWake Lockを解放してください")
     require("window.addEventListener('pageshow'" in source, "BFCacheなどからページ復元したときはWake Lockを再評価してください")
 
+    visibility = section(
+        source,
+        "document.addEventListener('visibilitychange', () => {",
+        "window.addEventListener('pagehide'",
+    )
+    visible_guard = visibility.find("document.visibilityState === 'visible'")
+    refresh_call = visibility.find("refreshWakeLockPreferenceFromStorage();")
+    sync_call = visibility.find("syncWakeLockWithTimer();")
+    require(min(visible_guard, refresh_call, sync_call) >= 0, "前面復帰時の画面維持同期を確認できません")
+    require(visible_guard < refresh_call < sync_call, "前面復帰時は保存設定を再読込してからWake Lockを再評価してください")
+
+    pageshow = section(
+        source,
+        "window.addEventListener('pageshow', () => {",
+        "window.addEventListener('storage'",
+    )
+    pageshow_refresh = pageshow.find("refreshWakeLockPreferenceFromStorage();")
+    pageshow_sync = pageshow.find("syncWakeLockWithTimer();")
+    require(min(pageshow_refresh, pageshow_sync) >= 0, "BFCache復帰時の画面維持同期を確認できません")
+    require(pageshow_refresh < pageshow_sync, "BFCache復帰時も保存設定を再読込してからWake Lockを再評価してください")
+
     storage_handler = source.split("window.addEventListener('storage'", 1)[-1]
     require("event.key !== WAKE_LOCK_STORAGE_KEY" in storage_handler, "別タブ同期は画面維持キーだけを対象にしてください")
     require("parseWakeLockPreference(event.newValue)" in storage_handler, "別タブのnewValueを検証して同期してください")
+    require("safeRead(WAKE_LOCK_STORAGE_KEY)" not in storage_handler, "storageイベントではevent.newValueを直接使ってください")
     require("safeWrite(" not in storage_handler, "別タブ同期時に設定を書き戻してイベントループを作らないでください")
 
     require("'one.wakeLock.v1'" in privacy_reset, "画面維持設定を端末データ削除対象へ含めてください")
 
-    print("Wake Lock is opt-in, timer-scoped, visibility-aware, and privacy-reset compatible.")
+    print("Wake Lock preference is revalidated on resume while remaining opt-in, timer-scoped, and cross-tab safe.")
 
 
 if __name__ == "__main__":
