@@ -50,6 +50,19 @@ function persistWakeLockPreference(enabled) {
   return persisted && !storageAccessFailed;
 }
 
+function refreshWakeLockPreferenceFromStorage() {
+  if (storageAccessFailed) return false;
+
+  const storedPreference = safeRead(WAKE_LOCK_STORAGE_KEY);
+  if (storageAccessFailed) return false;
+
+  const nextEnabled = parseWakeLockPreference(storedPreference);
+  if (nextEnabled === null) return false;
+
+  wakeLockEnabled = nextEnabled;
+  return true;
+}
+
 async function releaseWakeLock() {
   const sentinel = wakeLockSentinel;
   wakeLockSentinel = null;
@@ -153,6 +166,9 @@ wakeLockToggle.addEventListener('click', () => {
 });
 
 document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') {
+    refreshWakeLockPreferenceFromStorage();
+  }
   void syncWakeLockWithTimer();
 });
 
@@ -161,6 +177,7 @@ window.addEventListener('pagehide', () => {
 });
 
 window.addEventListener('pageshow', () => {
+  refreshWakeLockPreferenceFromStorage();
   void syncWakeLockWithTimer();
 });
 
