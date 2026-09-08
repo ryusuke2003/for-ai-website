@@ -122,10 +122,13 @@ def main():
     require("settle: true" in claim, "Web Locks非対応時は保存ベースのbest-effort fallbackを使ってください")
 
     effects = section(source, "async function runCompletionEffectsOnce", "async function toggleCompletionSound")
-    require("claimCompletionEffect(completionKey, 'sound')" in effects, "完了音は完了単位で一度だけclaimしてください")
+    sound_unlock = effects.find("const context = await unlockCompletionAudio();")
+    sound_claim = effects.find("claimCompletionEffect(completionKey, 'sound')")
+    sound_play = effects.find("scheduleCompletionChime(context)")
+    require(min(sound_unlock, sound_claim, sound_play) >= 0, "完了音の準備・claim・再生を維持してください")
+    require(sound_unlock < sound_claim < sound_play, "完了音は準備後にclaimし、claim取得後だけ鳴らしてください")
     require("claimCompletionEffect(completionKey, 'notification')" in effects, "デスクトップ通知も完了単位で一度だけclaimしてください")
     require("canShowCompletionNotification()" in effects, "背景通知の対象タブだけ通知claimへ参加してください")
-    require("void playCompletionSound();" in effects, "完了音claim取得後だけ完了音を鳴らしてください")
     require("showCompletionNotification();" in effects, "通知claim取得後だけOS通知を表示してください")
 
     finish = section(source, "const finishTimerWithoutCompletionSound", "completionSoundToggle.addEventListener")
