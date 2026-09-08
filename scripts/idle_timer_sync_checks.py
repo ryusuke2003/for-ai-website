@@ -35,7 +35,7 @@ def main():
         "全時間が残っているアイドル状態だけ同期してください",
     )
 
-    sync_idle = section(tab_guard, "function syncIdleTimerFromStorage", "function refreshProgressFromStorage")
+    sync_idle = section(tab_guard, "function syncIdleTimerFromStorage", "function refreshGuardProgressFromStorage")
     require("hasLocalTimerContext()" in sync_idle, "ローカルに進行中・一時停止・完了待ちがあるときは同期しないでください")
     require("storageCoordinationUnavailable()" in sync_idle, "保存障害中はタイマー同期を行わないでください")
     require("selectedMinutes = state.selectedMinutes;" in sync_idle, "検証済みの選択時間を反映してください")
@@ -52,9 +52,9 @@ def main():
     )
     timer_branch = storage_handler.find("event.key === STORAGE_KEYS.timer")
     sync_call = storage_handler.find("syncIdleTimerFromStorage(event.newValue)", timer_branch)
-    progress_branch = storage_handler.find("event.key === STORAGE_KEYS.count", timer_branch)
-    require(min(timer_branch, sync_call, progress_branch) >= 0, "タイマー保存イベントの同期分岐を確認できません")
-    require(timer_branch < sync_call < progress_branch, "タイマー保存イベントを他の進捗同期より先に処理してください")
+    return_after_sync = storage_handler.find("return;", sync_call)
+    require(min(timer_branch, sync_call, return_after_sync) >= 0, "タイマー保存イベントの同期分岐を確認できません")
+    require(timer_branch < sync_call < return_after_sync, "タイマー保存イベントは同期後に他の分岐へ流さないでください")
     require("safeRead(STORAGE_KEYS.timer" not in storage_handler, "storageイベントではevent.newValueを直接検証してください")
 
     custom_sync = section(
