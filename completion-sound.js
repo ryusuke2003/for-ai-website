@@ -161,6 +161,21 @@ function persistCompletionNotificationPreference(enabled) {
   return persisted && !storageAccessFailed;
 }
 
+function refreshCompletionSoundPreferenceFromStorage() {
+  if (storageAccessFailed) return false;
+
+  const storedPreference = safeRead(COMPLETION_SOUND_STORAGE_KEY);
+  if (storageAccessFailed) return false;
+
+  const nextEnabled = parseCompletionSoundPreference(storedPreference);
+  if (nextEnabled === null) return false;
+  if (completionSoundEnabled === nextEnabled) return true;
+
+  completionSoundEnabled = nextEnabled;
+  syncCompletionSoundUi();
+  return true;
+}
+
 function getCompletionAudioContext() {
   if (typeof CompletionAudioContext !== 'function') return null;
   if (!completionAudioContext || completionAudioContext.state === 'closed') {
@@ -509,10 +524,12 @@ window.addEventListener('storage', (event) => {
 
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
+  refreshCompletionSoundPreferenceFromStorage();
   refreshCompletionNotificationFromBrowser({ closeVisibleNotification: true });
 });
 
 window.addEventListener('pageshow', () => {
+  refreshCompletionSoundPreferenceFromStorage();
   refreshCompletionNotificationFromBrowser({ closeVisibleNotification: true });
 });
 
