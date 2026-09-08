@@ -106,19 +106,39 @@ def main():
     clear = section(STATS_SOURCE, "function clearDailyGoal()", "function syncDailyGoalFromStorage(event)")
     require("removeStoredDailyGoal()" in clear, "利用者が目標解除を選んだ場合は現在の保存値を削除してください")
 
-    sync = section(STATS_SOURCE, "function syncDailyGoalFromStorage(event)", "function renderProgressInsights()")
+    sync = section(STATS_SOURCE, "function syncDailyGoalFromStorage(event)", "function refreshDailyGoalFromStorage()")
     require("event.key !== DAILY_GOAL_STORAGE_KEY" in sync, "目標キー以外のstorageイベントを無視してください")
     require("event.newValue === null" in sync, "別タブからの目標解除を同期してください")
     require("parseDailyGoalState(event.newValue)" in sync, "別タブの目標も厳格検証してください")
     require("state.date !== dateKey()" in sync, "別日の目標を別タブ同期で持ち越さないでください")
     require("safeWrite(" not in sync and "localStorage.setItem(" not in sync and "removeStoredDailyGoal(" not in sync, "storage同期から保存を書き換えてイベントループを作らないでください")
 
+    resume = section(STATS_SOURCE, "function refreshDailyGoalFromStorage()", "function parseHistoryStorageEvent(raw)")
+    read_position = resume.find("const raw = safeRead(DAILY_GOAL_STORAGE_KEY);")
+    post_read_guard = resume.find("if (storageAccessFailed) return;", read_position)
+    first_state_write = resume.find("dailyGoal = null;", post_read_guard)
+    require(min(read_position, post_read_guard, first_state_write) >= 0, "復帰時の目標再読込で保存障害確認と状態反映を確認できません")
+    require(read_position < post_read_guard < first_state_write, "復帰時は保存値を読み切って障害確認してから現在タブの目標を上書きしてください")
+    require("if (raw === '')" in resume, "復帰時に別タブで解除済みの目標を未設定へ戻してください")
+    require("const state = parseDailyGoalState(raw);" in resume, "復帰時の保存目標も共通パーサで厳格検証してください")
+    require("if (!state || state.date !== dateKey())" in resume, "復帰時も壊れた値や別日の目標を持ち越さないでください")
+    require("removeStoredDailyGoal(raw)" in resume, "復帰時に期限切れまたは壊れた保存値を安全に掃除してください")
+    require("dailyGoal = state.goal;" in resume and "dailyGoalDate = state.date;" in resume, "復帰時に今日の保存目標を現在タブへ反映してください")
+    require("renderDailyGoal();" in resume, "復帰時の目標再読込後は進捗表示を更新してください")
+    require("safeWrite(" not in resume and "localStorage.setItem(" not in resume, "復帰時の再同期から新しい保存値を書き込まないでください")
+
+    visible_refresh = section(STATS_SOURCE, "function refreshDailyGoalWhenVisible()", "function parseHistoryStorageEvent(raw)")
+    require("document.visibilityState === 'visible'" in visible_refresh, "背景へ移るだけでは日次目標を再読込しないでください")
+    require("refreshDailyGoalFromStorage();" in visible_refresh, "前面復帰時に日次目標を再確認してください")
+
     require("window.addEventListener('storage', syncDailyGoalFromStorage);" in STATS_SOURCE, "今日の目標を別タブへ同期してください")
+    require("document.addEventListener('visibilitychange', refreshDailyGoalWhenVisible);" in STATS_SOURCE, "前面復帰時に今日の目標を保存値から再同期してください")
+    require("window.addEventListener('pageshow', refreshDailyGoalFromStorage);" in STATS_SOURCE, "BFCacheなどから復元された場合も今日の目標を再同期してください")
     require("renderDailyGoal();" in section(STATS_SOURCE, "function renderProgressInsights()", "loadDailyGoal();"), "集中記録更新時に目標進捗も再描画してください")
     require("'one.dailyGoal.v1'," in RESET_SOURCE, "プライバシーリセットで今日の目標も削除してください")
     require("今日の目標" in INDEX_SOURCE.split('id="data-reset-hint"', 1)[-1], "端末データ削除の説明に今日の目標を含めてください")
 
-    print("Daily focus goal checks passed, including safe expiry cleanup and cross-tab race protection.")
+    print("Daily focus goal checks passed, including safe expiry cleanup, resume refresh, and cross-tab race protection.")
 
 
 if __name__ == "__main__":
