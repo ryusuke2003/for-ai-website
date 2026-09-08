@@ -50,15 +50,29 @@ def main():
     require(write_pos < read_pos < failure_pos, "完了音設定は書き込み→読み戻し→障害通知の順で処理してください")
     require("localStorage." not in persistence, "完了音設定の保存処理でlocalStorageを直接操作しないでください")
 
+    player = section(source, "async function playCompletionSound", "function closeActiveCompletionNotification")
+    require("previewMessage" in player, "試聴成功時に保存結果を反映したメッセージを表示できるようにしてください")
+    require("ブラウザの音声再生制限" in player, "音声再生失敗の案内を保存失敗メッセージより優先してください")
+
+    completion_effects = section(
+        source,
+        "async function runCompletionEffectsOnce(completionKey)",
+        "async function toggleCompletionSound()",
+    )
+    unlock_pos = completion_effects.find("const context = await unlockCompletionAudio();")
+    claim_pos = completion_effects.find("claimCompletionEffect(completionKey, 'sound')")
+    schedule_pos = completion_effects.find("scheduleCompletionChime(context)")
+    require(min(unlock_pos, claim_pos, schedule_pos) >= 0, "完了音は準備・claim・再生の3段階を維持してください")
+    require(unlock_pos < claim_pos < schedule_pos, "完了音はAudioContext準備後にclaimし、claim成功後だけ鳴らしてください")
+    require("if (!context)" in completion_effects, "AudioContextを利用できないタブはsound claimへ進ませないでください")
+    require("playCompletionSound()" not in completion_effects, "タイマー完了時はclaim後に再度AudioContext準備をやり直さないでください")
+    require("ブラウザの音声再生制限" in completion_effects, "完了音を準備できない場合も利用者へ理由を示してください")
+
     toggle = section(source, "async function toggleCompletionSound()", "function primeCompletionAudioFromGesture()")
     require("persistCompletionSoundPreference(false)" in toggle, "完了音OFF時も保存結果を確認してください")
     require("persistCompletionSoundPreference(true)" in toggle, "完了音ON時も保存結果を確認してください")
     require("再読み込みすると以前の設定へ戻る可能性があります" in toggle, "保存失敗時は再読み込み後に戻る可能性を明示してください")
     require("今のタブでは鳴ります" in toggle, "ONの保存失敗時は現在タブでは有効なことを明示してください")
-
-    player = section(source, "async function playCompletionSound", "async function toggleCompletionSound()")
-    require("previewMessage" in player, "試聴成功時に保存結果を反映したメッセージを表示できるようにしてください")
-    require("ブラウザの音声再生制限" in player, "音声再生失敗の案内を保存失敗メッセージより優先してください")
 
     storage_sync = section(
         source,
@@ -75,7 +89,7 @@ def main():
     require("別のタブで完了音がオン" in storage_sync, "別タブからONへ変わったことを利用者へ通知してください")
     require("別のタブで完了音がオフ" in storage_sync, "別タブからOFFへ変わったことを利用者へ通知してください")
 
-    print("Completion sound persistence and cross-tab synchronization are guarded safely.")
+    print("Completion sound persistence, readiness-before-claim, and cross-tab synchronization are guarded safely.")
 
 
 if __name__ == "__main__":
