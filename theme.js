@@ -60,7 +60,9 @@ themeButtons.forEach((button) => {
 
 window.addEventListener('storage', (event) => {
   if (event.key !== THEME_STORAGE_KEY) return;
-  const nextTheme = VALID_THEMES.has(event.newValue) ? event.newValue : 'system';
+  if (event.newValue !== null && !VALID_THEMES.has(event.newValue)) return;
+
+  const nextTheme = event.newValue ?? 'system';
   applyThemePreference(nextTheme, { persist: false });
 });
 

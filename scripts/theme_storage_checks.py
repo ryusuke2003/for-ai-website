@@ -68,7 +68,9 @@ def main():
     )
     require("event.newValue" in storage_handler, "別タブのテーマ変更は storage event の newValue を使ってください")
     require("refreshThemePreferenceFromStorage()" not in storage_handler, "storage event 内で不要な localStorage 再読込をしないでください")
-    require("VALID_THEMES.has(event.newValue)" in storage_handler, "別タブ由来のテーマ値も許可値を検証してください")
+    require("event.newValue !== null && !VALID_THEMES.has(event.newValue)" in storage_handler, "別タブ由来の不正なテーマ値は現在表示へ反映しないでください")
+    require("const nextTheme = event.newValue ?? 'system';" in storage_handler, "テーマ保存値の削除は自動テーマへのリセットとして扱ってください")
+    require("applyThemePreference(nextTheme, { persist: false })" in storage_handler, "有効な別タブ変更は保存し直さず反映してください")
 
     require(
         "document.addEventListener('visibilitychange', refreshThemeWhenVisible);" in theme,
@@ -83,7 +85,7 @@ def main():
         "テーマ保存失敗は利用者向けステータスでも説明してください",
     )
 
-    print("Theme preference is revalidated on resume while preserving verified storage and cross-tab behavior.")
+    print("Theme preference ignores invalid cross-tab values while preserving verified storage and resume behavior.")
 
 
 if __name__ == "__main__":
