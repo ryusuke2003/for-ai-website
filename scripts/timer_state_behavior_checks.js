@@ -27,6 +27,16 @@ const legacyCompletedState = {
 };
 assert.deepEqual(guard.parse(JSON.stringify(legacyCompletedState)), legacyCompletedState);
 
+const legacyPendingCompletion = {
+  ...legacyCompletedState,
+  completionReady: true,
+};
+assert.deepEqual(
+  guard.parse(JSON.stringify(legacyPendingCompletion)),
+  legacyPendingCompletion,
+  'legacy pending completion without completionDate remains readable',
+);
+
 const withUnknownKey = guard.parse(JSON.stringify({ ...legacyCompletedState, futureField: 'ignored' }));
 assert.deepEqual(withUnknownKey, legacyCompletedState);
 
@@ -53,6 +63,13 @@ const invalidStates = [
     running: false,
     endAt: null,
     completionReady: false,
+    completionDate: '2026-09-07',
+  },
+  {
+    selectedMinutes: 25,
+    remainingSeconds: 0,
+    running: false,
+    endAt: null,
     completionDate: '2026-09-07',
   },
   {
