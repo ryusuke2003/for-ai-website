@@ -5,6 +5,8 @@ const dataResetCancelButton = document.querySelector('#data-reset-cancel-button'
 const dataResetStatus = document.querySelector('#data-reset-status');
 
 const RESET_SIGNAL_KEY = 'one.resetSignal.v1';
+const RESET_SIGNAL_VALUE_PATTERN = /^(?:[a-z0-9]+-[0-9a-f]{16}|[a-z0-9]+-fallback-[a-z0-9]+)$/;
+const MAX_RESET_SIGNAL_VALUE_LENGTH = 80;
 const PRIVACY_RESET_KEYS = new Set([
   'one.task',
   'one.taskDate.v1',
@@ -52,6 +54,13 @@ function clearStoredOneData({ preserveResetSignal = false } = {}) {
   } catch {
     return reportDataResetStorageFailure();
   }
+}
+
+function isValidResetSignalValue(value) {
+  return typeof value === 'string'
+    && value.length > 0
+    && value.length <= MAX_RESET_SIGNAL_VALUE_LENGTH
+    && RESET_SIGNAL_VALUE_PATTERN.test(value);
 }
 
 function createResetSignalValue() {
@@ -132,7 +141,7 @@ dataResetConfirmButton.addEventListener('click', () => {
 });
 
 window.addEventListener('storage', (event) => {
-  if (event.key !== RESET_SIGNAL_KEY || event.newValue === null) return;
+  if (event.key !== RESET_SIGNAL_KEY || !isValidResetSignalValue(event.newValue)) return;
 
   const cleared = clearStoredOneData({ preserveResetSignal: true });
   if (!cleared) {
