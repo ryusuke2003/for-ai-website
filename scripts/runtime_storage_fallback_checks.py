@@ -38,11 +38,24 @@ def main():
     require("disableTabCoordination();" in unavailable, "保存障害後は複数タブ調停を停止してください")
 
     detect = function_body("detectTabStorage", "readStoredSessionId")
+    write_pos = detect.find("localStorage.setItem(TAB_STORAGE_PROBE_KEY, '1')")
+    verify_write_pos = detect.find("const persisted = localStorage.getItem(TAB_STORAGE_PROBE_KEY) === '1'")
+    reject_write_pos = detect.find("if (!persisted)", verify_write_pos)
+    remove_pos = detect.find("localStorage.removeItem(TAB_STORAGE_PROBE_KEY)", reject_write_pos)
+    verify_remove_pos = detect.find("localStorage.getItem(TAB_STORAGE_PROBE_KEY) !== null", remove_pos)
+    success_pos = detect.find("return true;", verify_remove_pos)
     require(
-        "localStorage.getItem(TAB_STORAGE_PROBE_KEY) === '1'" in detect,
-        "タブ間保存のプローブは書き込み後の読み戻しまで確認してください",
+        min(write_pos, verify_write_pos, reject_write_pos, remove_pos, verify_remove_pos, success_pos) >= 0,
+        "タブ間保存プローブは書込・読戻し・不一致拒否・削除・削除確認まで行ってください",
     )
-    require("reportStorageFailure();" in detect, "タブ間保存の失敗はアプリ全体へ通知してください")
+    require(
+        write_pos < verify_write_pos < reject_write_pos < remove_pos < verify_remove_pos < success_pos,
+        "タブ間保存プローブは書込→読戻し→不一致拒否→削除→削除確認→成功の順にしてください",
+    )
+    require(
+        detect.count("reportStorageFailure();") >= 3,
+        "タブ間保存プローブの書込不一致・削除不一致・API例外は全体の保存障害へ通知してください",
+    )
 
     health_probe = section(STORAGE_STATUS_SOURCE, "function probeLocalStorage()", "function updateTaskCharacterCount()")
     write_pos = health_probe.find("localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token)")
