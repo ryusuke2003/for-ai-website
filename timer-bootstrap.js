@@ -55,7 +55,7 @@
     }
 
     if (completionReady === true && remainingSeconds !== 0) return null;
-    if (completionReady === false && completionDate !== null && completionDate !== undefined) return null;
+    if (completionDate !== null && completionDate !== undefined && completionReady !== true) return null;
 
     return {
       selectedMinutes,
