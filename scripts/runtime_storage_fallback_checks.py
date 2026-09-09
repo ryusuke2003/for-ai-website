@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
+STORAGE_STATUS_SOURCE = (ROOT / "storage-status.js").read_text(encoding="utf-8")
 
 
 def function_body(name, next_name):
@@ -11,6 +12,14 @@ def function_body(name, next_name):
     if start < 0 or end < 0:
         raise SystemExit(f"ERROR: {name} または {next_name} を確認できません")
     return SOURCE[start:end]
+
+
+def section(source, start_marker, end_marker):
+    start = source.find(start_marker)
+    end = source.find(end_marker, start + 1)
+    if start < 0 or end < 0:
+        raise SystemExit(f"ERROR: {start_marker} または {end_marker} を確認できません")
+    return source[start:end]
 
 
 def require(condition, message):
@@ -34,6 +43,25 @@ def main():
         "タブ間保存のプローブは書き込み後の読み戻しまで確認してください",
     )
     require("reportStorageFailure();" in detect, "タブ間保存の失敗はアプリ全体へ通知してください")
+
+    health_probe = section(STORAGE_STATUS_SOURCE, "function probeLocalStorage()", "function updateTaskCharacterCount()")
+    write_pos = health_probe.find("localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token)")
+    verify_write_pos = health_probe.find("const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token")
+    reject_write_pos = health_probe.find("if (!persisted)", verify_write_pos)
+    remove_pos = health_probe.find("localStorage.removeItem(STORAGE_HEALTH_PROBE_KEY)", reject_write_pos)
+    verify_remove_pos = health_probe.find("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== null", remove_pos)
+    require(
+        min(write_pos, verify_write_pos, reject_write_pos, remove_pos, verify_remove_pos) >= 0,
+        "端末保存プローブは書込・読戻し・不一致拒否・削除・削除確認まで行ってください",
+    )
+    require(
+        write_pos < verify_write_pos < reject_write_pos < remove_pos < verify_remove_pos,
+        "端末保存プローブは書込→読戻し→不一致拒否→削除→削除確認の順にしてください",
+    )
+    require(
+        health_probe.count("reportStorageFailure();") >= 3,
+        "端末保存プローブの書込不一致・削除不一致・API例外は全体の保存障害へ通知してください",
+    )
 
     refresh = function_body("refreshGuardProgressFromStorage", "stopCrossTabAction")
     count_read = refresh.find("const storedDoneCount = readDoneCount();")
@@ -60,7 +88,7 @@ def main():
     stale_check = stale.find("if (storageCoordinationUnavailable()) return false;", stale_read)
     require(stale_read >= 0 and stale_check > stale_read, "再開時の古いタブ判定は保存読込後の障害を確認してください")
 
-    print("Runtime storage fallback checks passed with claim-specific tab-guard refreshes.")
+    print("Runtime storage fallback checks passed with verified storage probe cleanup and tab coordination fallbacks.")
 
 
 if __name__ == "__main__":
