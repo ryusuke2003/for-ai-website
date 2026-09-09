@@ -40,10 +40,11 @@ function applyThemePreference(theme, { persist = true, announce = true } = {}) {
 function refreshThemePreferenceFromStorage() {
   if (storageAccessFailed) return false;
 
-  const storedTheme = safeRead(THEME_STORAGE_KEY);
+  const storedTheme = safeRead(THEME_STORAGE_KEY, null);
   if (storageAccessFailed) return false;
+  if (storedTheme !== null && !VALID_THEMES.has(storedTheme)) return false;
 
-  const nextTheme = VALID_THEMES.has(storedTheme) ? storedTheme : 'system';
+  const nextTheme = storedTheme ?? 'system';
   applyThemePreference(nextTheme, { persist: false, announce: false });
   return true;
 }
