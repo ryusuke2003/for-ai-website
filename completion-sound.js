@@ -513,13 +513,18 @@ window.addEventListener('storage', (event) => {
   const nextEnabled = parseCompletionNotificationPreference(event.newValue);
   if (nextEnabled === null) return;
 
-  completionNotificationEnabled = nextEnabled && Notification.permission === 'granted';
+  const permissionGranted = completionNotificationSupported && Notification.permission === 'granted';
+  completionNotificationEnabled = nextEnabled && permissionGranted;
   if (!completionNotificationEnabled) closeActiveCompletionNotification();
-  syncCompletionNotificationUi(
-    completionNotificationEnabled
-      ? '別のタブで完了通知がオンになりました。このタブにも反映しました。'
-      : '別のタブで完了通知がオフになりました。このタブにも反映しました。',
-  );
+
+  const message = !nextEnabled
+    ? '別のタブで完了通知がオフになりました。このタブにも反映しました。'
+    : !completionNotificationSupported
+      ? '別のタブで完了通知がオンになりましたが、このブラウザでは完了通知を利用できません。'
+      : !permissionGranted
+        ? '別のタブで完了通知がオンになりましたが、このタブでは通知が許可されていません。'
+        : '別のタブで完了通知がオンになりました。このタブにも反映しました。';
+  syncCompletionNotificationUi(message);
 });
 
 document.addEventListener('visibilitychange', () => {
