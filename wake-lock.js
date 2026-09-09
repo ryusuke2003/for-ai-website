@@ -53,7 +53,7 @@ function persistWakeLockPreference(enabled) {
 function refreshWakeLockPreferenceFromStorage() {
   if (storageAccessFailed) return false;
 
-  const storedPreference = safeRead(WAKE_LOCK_STORAGE_KEY);
+  const storedPreference = safeRead(WAKE_LOCK_STORAGE_KEY, null);
   if (storageAccessFailed) return false;
 
   const nextEnabled = parseWakeLockPreference(storedPreference);
