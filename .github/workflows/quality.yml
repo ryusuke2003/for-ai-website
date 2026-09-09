@@ -27,6 +27,7 @@ jobs:
           node --check wake-lock.js
           node --check theme.js
           node --check stats.js
+          node --check daily-goal-progress.js
           node --check tab-guard.js
           node --check backup.js
           node --check custom-timer.js
@@ -48,6 +49,9 @@ jobs:
 
       - name: Check daily focus goal
         run: python3 scripts/daily_goal_checks.py
+
+      - name: Check daily goal progress
+        run: python3 scripts/daily_goal_progress_checks.py
 
       - name: Check cross-tab progress sync
         run: python3 scripts/progress_cross_tab_sync_checks.py

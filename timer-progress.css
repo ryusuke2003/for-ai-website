@@ -6,6 +6,18 @@
   accent-color: currentColor;
 }
 
+.daily-goal-progress {
+  display: block;
+  width: min(360px, 100%);
+  height: .45rem;
+  margin: 12px auto 0;
+  accent-color: currentColor;
+}
+
+.daily-goal-progress[hidden] {
+  display: none;
+}
+
 body.focus-mode .timer-progress {
   width: min(480px, 72%);
   margin: -18px auto 26px;
