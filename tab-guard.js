@@ -20,8 +20,17 @@ function detectTabStorage() {
   try {
     localStorage.setItem(TAB_STORAGE_PROBE_KEY, '1');
     const persisted = localStorage.getItem(TAB_STORAGE_PROBE_KEY) === '1';
+    if (!persisted) {
+      reportStorageFailure();
+      return false;
+    }
+
     localStorage.removeItem(TAB_STORAGE_PROBE_KEY);
-    if (persisted) return true;
+    if (localStorage.getItem(TAB_STORAGE_PROBE_KEY) !== null) {
+      reportStorageFailure();
+      return false;
+    }
+    return true;
   } catch {
     // Report below so the app-wide storage status changes too.
   }
