@@ -34,15 +34,24 @@ function probeLocalStorage() {
   const token = `${Date.now()}-${Math.random()}`;
   try {
     localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token);
-    const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token;
+    if (localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== token) {
+      reportStorageFailure();
+      return false;
+    }
+
     localStorage.removeItem(STORAGE_HEALTH_PROBE_KEY);
-    return persisted;
+    if (localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== null) {
+      reportStorageFailure();
+      return false;
+    }
+    return true;
   } catch {
     try {
       localStorage.removeItem(STORAGE_HEALTH_PROBE_KEY);
     } catch {
-      // Ignore cleanup failure. The status below reports that storage is unavailable.
+      // Best-effort cleanup only. The storage failure is reported below.
     }
+    reportStorageFailure();
     return false;
   }
 }
