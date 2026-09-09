@@ -34,7 +34,8 @@ function probeLocalStorage() {
   const token = `${Date.now()}-${Math.random()}`;
   try {
     localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token);
-    if (localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== token) {
+    const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token;
+    if (!persisted) {
       reportStorageFailure();
       return false;
     }
