@@ -41,17 +41,18 @@ def main():
 
     refresh = section(theme, "function refreshThemePreferenceFromStorage()", "function refreshThemeWhenVisible()")
     first_guard = refresh.find("if (storageAccessFailed) return false;")
-    read_position = refresh.find("safeRead(THEME_STORAGE_KEY)")
+    read_position = refresh.find("safeRead(THEME_STORAGE_KEY, null)")
     second_guard = refresh.find("if (storageAccessFailed) return false;", first_guard + 1)
-    validate_position = refresh.find("VALID_THEMES.has(storedTheme)")
+    invalid_guard = refresh.find("storedTheme !== null && !VALID_THEMES.has(storedTheme)")
+    fallback_position = refresh.find("const nextTheme = storedTheme ?? 'system';")
     apply_position = refresh.find("applyThemePreference(nextTheme, { persist: false, announce: false })")
     require(
-        min(first_guard, read_position, second_guard, validate_position, apply_position) >= 0,
+        min(first_guard, read_position, second_guard, invalid_guard, fallback_position, apply_position) >= 0,
         "復帰時のテーマ再同期に必要な処理が見つかりません",
     )
     require(
-        first_guard < read_position < second_guard < validate_position < apply_position,
-        "復帰時は保存障害確認→読込→障害再確認→検証→反映の順にしてください",
+        first_guard < read_position < second_guard < invalid_guard < fallback_position < apply_position,
+        "復帰時は保存障害確認→読込→障害再確認→不正値拒否→削除時だけ自動テーマ→反映の順にしてください",
     )
     require("safeWrite(" not in refresh, "復帰時のテーマ再同期から保存値を書き戻さないでください")
     require("persist: false" in refresh, "復帰時のテーマ反映は永続化を再実行しないでください")
@@ -85,7 +86,7 @@ def main():
         "テーマ保存失敗は利用者向けステータスでも説明してください",
     )
 
-    print("Theme preference ignores invalid cross-tab values while preserving verified storage and resume behavior.")
+    print("Theme preference ignores invalid stored values on both cross-tab events and tab resume.")
 
 
 if __name__ == "__main__":
