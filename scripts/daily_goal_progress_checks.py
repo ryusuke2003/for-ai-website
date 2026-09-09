@@ -56,7 +56,11 @@ def main():
     require("目標${dailyGoal}回中${today}回" in render, "未達成時は現在回数と目標回数を支援技術へ伝えてください")
     require("safeWrite(" not in render and "localStorage" not in render, "進捗表示のために新しい保存処理を追加しないでください")
 
-    wrapper = section(PROGRESS_SOURCE, "const renderDailyGoalWithoutProgress", "renderDailyGoalProgress();")
+    wrapper = section(
+        PROGRESS_SOURCE,
+        "const renderDailyGoalWithoutProgress",
+        "\n\nrenderDailyGoalProgress();",
+    )
     base_pos = wrapper.find("renderDailyGoalWithoutProgress();")
     progress_render_pos = wrapper.find("renderDailyGoalProgress();")
     require(min(base_pos, progress_render_pos) >= 0 and base_pos < progress_render_pos, "既存の日次目標表示後に進捗バーを同期してください")
