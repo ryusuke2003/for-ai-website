@@ -44,7 +44,7 @@ def main():
 
     refresh = section(source, "function refreshWakeLockPreferenceFromStorage", "async function releaseWakeLock")
     first_failure_guard = refresh.find("if (storageAccessFailed) return false;")
-    safe_read = refresh.find("safeRead(WAKE_LOCK_STORAGE_KEY)")
+    safe_read = refresh.find("safeRead(WAKE_LOCK_STORAGE_KEY, null)")
     second_failure_guard = refresh.find("if (storageAccessFailed) return false;", first_failure_guard + 1)
     parse_position = refresh.find("parseWakeLockPreference(storedPreference)")
     invalid_guard = refresh.find("if (nextEnabled === null) return false;")
@@ -56,6 +56,10 @@ def main():
     require(
         first_failure_guard < safe_read < second_failure_guard < parse_position < invalid_guard < apply_position,
         "復帰同期は保存障害確認→読込→障害再確認→検証→設定反映の順にしてください",
+    )
+    require(
+        "safeRead(WAKE_LOCK_STORAGE_KEY, null)" in refresh,
+        "復帰時は保存キー削除を未設定ではなくOFFとして判別できるようにしてください",
     )
     require("safeWrite(" not in refresh, "復帰時の設定再同期から保存値を書き戻さないでください")
 
@@ -120,7 +124,7 @@ def main():
 
     require("'one.wakeLock.v1'" in privacy_reset, "画面維持設定を端末データ削除対象へ含めてください")
 
-    print("Wake Lock preference is revalidated on resume while remaining opt-in, timer-scoped, and cross-tab safe.")
+    print("Wake Lock preference treats deleted storage as OFF on resume while remaining opt-in and cross-tab safe.")
 
 
 if __name__ == "__main__":
