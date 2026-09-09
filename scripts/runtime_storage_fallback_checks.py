@@ -46,16 +46,17 @@ def main():
 
     health_probe = section(STORAGE_STATUS_SOURCE, "function probeLocalStorage()", "function updateTaskCharacterCount()")
     write_pos = health_probe.find("localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token)")
-    verify_write_pos = health_probe.find("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== token")
-    remove_pos = health_probe.find("localStorage.removeItem(STORAGE_HEALTH_PROBE_KEY)", verify_write_pos)
+    verify_write_pos = health_probe.find("const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token")
+    reject_write_pos = health_probe.find("if (!persisted)", verify_write_pos)
+    remove_pos = health_probe.find("localStorage.removeItem(STORAGE_HEALTH_PROBE_KEY)", reject_write_pos)
     verify_remove_pos = health_probe.find("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== null", remove_pos)
     require(
-        min(write_pos, verify_write_pos, remove_pos, verify_remove_pos) >= 0,
-        "端末保存プローブは書込・読戻し・削除・削除確認まで行ってください",
+        min(write_pos, verify_write_pos, reject_write_pos, remove_pos, verify_remove_pos) >= 0,
+        "端末保存プローブは書込・読戻し・不一致拒否・削除・削除確認まで行ってください",
     )
     require(
-        write_pos < verify_write_pos < remove_pos < verify_remove_pos,
-        "端末保存プローブは書込→読戻し→削除→削除確認の順にしてください",
+        write_pos < verify_write_pos < reject_write_pos < remove_pos < verify_remove_pos,
+        "端末保存プローブは書込→読戻し→不一致拒否→削除→削除確認の順にしてください",
     )
     require(
         health_probe.count("reportStorageFailure();") >= 3,
