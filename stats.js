@@ -443,6 +443,14 @@ function renderProgressInsights() {
 
 loadDailyGoal();
 dailyGoalApplyButton.addEventListener('click', applyDailyGoal);
+dailyGoalInput.addEventListener('input', () => {
+  dailyGoalInput.removeAttribute('aria-invalid');
+});
+dailyGoalInput.addEventListener('keydown', (event) => {
+  if (event.isComposing || event.key !== 'Enter') return;
+  event.preventDefault();
+  applyDailyGoal();
+});
 dailyGoalClearButton.addEventListener('click', clearDailyGoal);
 window.addEventListener('storage', syncDailyGoalFromStorage);
 window.addEventListener('storage', syncProgressFromStorage);

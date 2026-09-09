@@ -103,6 +103,21 @@ def main():
     require("persistDailyGoal(nextGoal)" in apply, "目標設定を端末へ保存してください")
     require("端末へ保存できませんでした" in apply, "保存失敗時は現在タブだけの設定だと説明してください")
 
+    input_events = section(
+        STATS_SOURCE,
+        "dailyGoalApplyButton.addEventListener('click', applyDailyGoal);",
+        "dailyGoalClearButton.addEventListener('click', clearDailyGoal);",
+    )
+    require("dailyGoalInput.addEventListener('input', () => {" in input_events, "目標入力を直し始めたら前回の入力エラー状態を解除してください")
+    require("dailyGoalInput.removeAttribute('aria-invalid');" in input_events, "編集時は古いaria-invalidを残さないでください")
+    require("dailyGoalInput.addEventListener('keydown', (event) => {" in input_events, "目標入力欄でEnter操作を処理してください")
+    guard_position = input_events.find("event.isComposing || event.key !== 'Enter'")
+    prevent_position = input_events.find("event.preventDefault();")
+    apply_position = input_events.find("applyDailyGoal();")
+    require(min(guard_position, prevent_position, apply_position) >= 0, "Enter設定のIME保護・既定動作抑止・設定処理を維持してください")
+    require(guard_position < prevent_position < apply_position, "IME変換中を除外してからEnterを抑止し、既存の設定処理へ渡してください")
+    require("safeWrite(" not in input_events and "localStorage" not in input_events, "Enter操作から保存処理を重複実装せずapplyDailyGoal()へ集約してください")
+
     clear = section(STATS_SOURCE, "function clearDailyGoal()", "function syncDailyGoalFromStorage(event)")
     require("removeStoredDailyGoal()" in clear, "利用者が目標解除を選んだ場合は現在の保存値を削除してください")
 
@@ -138,7 +153,7 @@ def main():
     require("'one.dailyGoal.v1'," in RESET_SOURCE, "プライバシーリセットで今日の目標も削除してください")
     require("今日の目標" in INDEX_SOURCE.split('id="data-reset-hint"', 1)[-1], "端末データ削除の説明に今日の目標を含めてください")
 
-    print("Daily focus goal checks passed, including safe expiry cleanup, resume refresh, and cross-tab race protection.")
+    print("Daily focus goal checks passed, including Enter submit, safe expiry cleanup, resume refresh, and cross-tab race protection.")
 
 
 if __name__ == "__main__":
