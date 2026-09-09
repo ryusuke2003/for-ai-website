@@ -34,6 +34,7 @@ jobs:
           node --check shortcuts.js
           node --check privacy-reset.js
           node --check scripts/timer_state_behavior_checks.js
+          node --check scripts/task_input_behavior_checks.js
 
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
@@ -91,6 +92,9 @@ jobs:
 
       - name: Check task storage failure behavior
         run: python3 scripts/task_storage_checks.py
+
+      - name: Check task input and session preservation
+        run: node scripts/task_input_behavior_checks.js
 
       - name: Check runtime storage fallback
         run: python3 scripts/runtime_storage_fallback_checks.py

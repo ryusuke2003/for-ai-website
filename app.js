@@ -102,7 +102,7 @@ function hasActiveDailyTaskContext() {
     || (remainingSeconds > 0 && remainingSeconds < fullDuration);
 }
 
-function loadDailyTask({ preserveActiveSession = false } = {}) {
+function loadDailyTask({ preserveActiveSession = false, preserveLocalTask = false } = {}) {
   if (storageAccessFailed) return;
 
   const today = dateKey();
@@ -111,6 +111,16 @@ function loadDailyTask({ preserveActiveSession = false } = {}) {
 
   const storedTaskDate = safeRead(STORAGE_KEYS.taskDate);
   if (storageAccessFailed) return;
+
+  if (
+    preserveLocalTask
+    && (
+      (storedTaskDate === today && document.activeElement === taskInput)
+      || (preserveActiveSession && hasActiveDailyTaskContext())
+    )
+  ) {
+    return;
+  }
 
   if (!storedTaskDate) {
     taskInput.value = storedTask;
@@ -453,7 +463,7 @@ function renderHistory() {
 
 function refreshDateSensitiveUi() {
   if (renderedDateKey !== dateKey()) renderHistory();
-  loadDailyTask({ preserveActiveSession: true });
+  loadDailyTask({ preserveActiveSession: true, preserveLocalTask: true });
 }
 
 function incrementFocusHistory(key = dateKey()) {
