@@ -21,6 +21,7 @@ REQUIRED_SCRIPT_ORDER = [
     "wake-lock.js",
     "theme.js",
     "stats.js",
+    "daily-goal-progress.js",
     "tab-guard.js",
     "backup.js",
     "custom-timer.js",
