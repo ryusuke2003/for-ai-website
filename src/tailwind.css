@@ -184,6 +184,11 @@
     padding-right: 4px;
   }
 
+  [aria-label="保存したテンプレート"]:has(> :nth-child(9)) {
+    max-height: 40rem;
+    flex: none;
+  }
+
   [aria-label="保存したテンプレート"] > * {
     margin-block: 0 !important;
   }
