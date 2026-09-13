@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { timerActions } from './timerStore.js';
 
-const DEFAULT_STATUS = '1〜180分の整数でも設定できます。';
+const DEFAULT_STATUS = '';
 
 function timerLimits() {
   const guard = globalThis.ONE_TIMER_STATE_GUARD;
