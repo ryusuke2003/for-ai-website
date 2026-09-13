@@ -70,10 +70,37 @@ def main():
     require("aria-live" not in source_range(timer_display, '<progress', '/>'),
             "#timer-progress に aria-live を付けないでください")
     require(PROGRESS_STYLE_PATH.is_file(), "timer-progress.css が見つかりません")
+
+    end_time = source_range(timer_display, "function endTimePresentation(state)", "function documentTitleFor")
+    for token in (
+        "!state.running || !Number.isFinite(state.endAt)",
+        "const endDate = new Date(state.endAt);",
+        "Number.isNaN(endDate.getTime())",
+        "dateKey(endDate) === dateKey(new Date())",
+        "dateTime: endDate.toISOString()",
+    ):
+        require(token in end_time, f"React終了予定表示に必要な処理がありません: {token}")
+    require("hourCycle: 'h23'" in timer_display, "終了時刻は00〜23時表記にしてください")
+    require('id="timer-end-at"' in timer_display, "終了予定はtime要素で表示してください")
+    require("dateTime={endTime.dateTime || undefined}" in timer_display,
+            "time要素へ機械可読な終了日時を渡してください")
+
+    title = source_range(timer_display, "function documentTitleFor(state, timeText)", "export function TimerDisplay()")
+    require("if (state.completionReady) return '完了！ — ONE';" in title,
+            "未記録の完了をタイトルへ反映してください")
+    require("if (state.running) return `${timeText} — ONE`;" in title,
+            "実行中は残り時間をタイトルへ表示してください")
+    require("state.remainingSeconds > 0 && state.remainingSeconds < fullDuration" in title,
+            "途中経過だけを一時停止状態として扱ってください")
+    require("`${timeText} 一時停止 — ONE`" in title,
+            "一時停止中も残り時間をタイトルへ残してください")
+    require("document.title = documentTitleFor(state, timeText);" in timer_display,
+            "React state変更時にページタイトルを同期してください")
+
     require(not (ROOT / "custom-timer.js").exists(),
             "React移行後はclassic custom-timer.jsを残さないでください")
 
-    print("Timer state parsing and React progress stay synchronized behind the shared timer state.")
+    print("Timer state parsing, React progress, end time, and document title stay synchronized.")
 
 
 if __name__ == "__main__":
