@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useTimerSettingsState } from './useTimerSettingsState.js';
+import { useTimerState } from './useTimerState.js';
+import { useWakeLockControl } from './useWakeLockControl.js';
 
 function invokeBridge(action, ...args) {
   globalThis.ONE_REACT_TIMER_SETTINGS?.[action]?.(...args);
@@ -7,6 +9,8 @@ function invokeBridge(action, ...args) {
 
 export function TimerSettings() {
   const state = useTimerSettingsState();
+  const timerState = useTimerState();
+  const wakeLock = useWakeLockControl(timerState.running);
   const customMinutesRef = useRef(null);
 
   useEffect(() => {
@@ -98,13 +102,13 @@ export function TimerSettings() {
         <button
           id="wake-lock-toggle"
           type="button"
-          className={state.wakeLockPressed ? 'active' : undefined}
-          aria-pressed={state.wakeLockPressed}
+          className={wakeLock.pressed ? 'active' : undefined}
+          aria-pressed={wakeLock.pressed}
           aria-describedby="wake-lock-status"
-          disabled={state.wakeLockDisabled}
-          onClick={() => invokeBridge('toggleWakeLock')}
+          disabled={wakeLock.disabled}
+          onClick={() => void wakeLock.toggle()}
         >
-          {state.wakeLockLabel}
+          {wakeLock.label}
         </button>
       </div>
 
@@ -118,7 +122,7 @@ export function TimerSettings() {
         {state.notificationStatus}
       </p>
       <p className="hint" id="wake-lock-status" role="status" aria-live="polite">
-        {state.wakeLockStatus}
+        {wakeLock.status}
       </p>
     </>
   );
