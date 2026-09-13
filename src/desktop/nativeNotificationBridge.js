@@ -42,7 +42,7 @@ class TauriNotification {
     void invoke('show_native_notification', {
       title,
       body: typeof options.body === 'string' ? options.body : '',
-    });
+    }).catch(() => {});
   }
 }
 
