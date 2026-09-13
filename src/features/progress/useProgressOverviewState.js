@@ -5,7 +5,6 @@ const FALLBACK_STATE = Object.freeze({
   doneDisabled: true,
   discardHidden: true,
   todayCount: '0',
-  todayAriaLabel: '',
   weekCount: '0',
   streakCount: '0',
   streakAriaLabel: '0日',
