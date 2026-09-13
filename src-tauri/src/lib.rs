@@ -5,6 +5,8 @@ use tauri::{
     Manager, WindowEvent,
 };
 
+const TRAY_ID: &str = "one-main-tray";
+
 #[cfg(target_os = "macos")]
 fn toggle_main_window(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
@@ -23,9 +25,25 @@ fn toggle_main_window(app: &tauri::AppHandle) {
     }
 }
 
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn set_tray_title(app: tauri::AppHandle, title: String) -> Result<(), String> {
+    let tray = app
+        .tray_by_id(TRAY_ID)
+        .ok_or_else(|| "ONE tray icon is not available".to_string())?;
+
+    tray.set_title(Some(title)).map_err(|error| error.to_string())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn set_tray_title(_app: tauri::AppHandle, _title: String) -> Result<(), String> {
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let builder = tauri::Builder::default();
+    let builder = tauri::Builder::default().invoke_handler(tauri::generate_handler![set_tray_title]);
 
     #[cfg(target_os = "macos")]
     let builder = builder.setup(|app| {
@@ -39,10 +57,11 @@ pub fn run() {
         let quit_item = MenuItem::with_id(app, "quit", "ONEを終了", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&toggle_item, &quit_item])?;
 
-        let mut tray_builder = TrayIconBuilder::new()
+        let mut tray_builder = TrayIconBuilder::with_id(TRAY_ID)
             .menu(&menu)
             .show_menu_on_left_click(false)
             .icon_as_template(true)
+            .title("ONE")
             .tooltip("ONE")
             .on_menu_event(|app, event| match event.id().as_ref() {
                 "toggle-window" => toggle_main_window(app),
