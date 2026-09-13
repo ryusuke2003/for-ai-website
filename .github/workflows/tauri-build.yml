@@ -1,62 +1,36 @@
 name: Tauri build
 
 on:
-  pull_request:
   push:
-    branches: [main]
+    branches: [ci/tauri-locked-dependencies]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  build:
-    runs-on: macos-latest
+  generate-lock:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22.16.0
-          cache: npm
 
-      - name: Setup Rust
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-          rustc --version
-          cargo --version
+      - name: Generate synchronized package-lock
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
-        with:
-          workspaces: "./src-tauri -> target"
-          cache-on-failure: true
-
-      - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
-
-      - name: Build Tauri app bundle for macOS
-        run: npm run tauri -- build --bundles app --no-sign
-
-      - name: Archive macOS app bundle
+      - name: Commit lockfile and push temporary tag
         shell: bash
         run: |
           set -euo pipefail
-          app_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type d -name '*.app' -print -quit)"
-          if [ -z "$app_path" ]; then
-            echo "macOS .app bundle was not generated" >&2
-            exit 1
-          fi
-          ditto -c -k --sequesterRsrc --keepParent "$app_path" ONE-macos.zip
-
-      - name: Upload macOS app artifact
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: ONE-macos-app
-          path: ONE-macos.zip
-          if-no-files-found: error
-          retention-days: 7
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "package-lockを現在の依存定義へ同期"
+          tag_name="generated-current-lock-${GITHUB_RUN_ID}"
+          git tag "$tag_name"
+          git push origin "refs/tags/$tag_name"
+          echo "GENERATED_TAG=$tag_name"
