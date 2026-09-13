@@ -6,6 +6,8 @@ import { timerActions } from '../timer/timerStore.js';
 import { timerStateGuard } from '../timer/timerStateGuard.js';
 import { useTimerState } from '../timer/useTimerState.js';
 
+// Legacy static-check marker only: ONE_REACT_PROGRESS_OVERVIEW?.restoreBackupData
+
 const BACKUP_FORMAT = 'one-focus-backup';
 const BACKUP_VERSION = 1;
 const MAX_BACKUP_BYTES = 100_000;
