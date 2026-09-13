@@ -9,7 +9,7 @@ const standardPresetButtons = presetButtons.filter((button) => button !== custom
 
 const CUSTOM_TIMER_MINUTES_MIN = globalThis.ONE_TIMER_STATE_GUARD.minMinutes;
 const CUSTOM_TIMER_MINUTES_MAX = globalThis.ONE_TIMER_STATE_GUARD.maxMinutes;
-const DEFAULT_DOCUMENT_TITLE = 'ONE — 今日やる一つだけ';
+const DEFAULT_DOCUMENT_TITLE = 'ONE — 集中タイマー';
 const timerEndTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
   hour: '2-digit',
   minute: '2-digit',
