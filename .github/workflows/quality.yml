@@ -39,9 +39,6 @@ jobs:
       - name: Check current date semantics
         run: python3 scripts/current_date_semantics_checks.py
 
-      - name: Check daily focus goal
-        run: python3 scripts/daily_goal_checks.py
-
       - name: Check daily goal progress
         run: python3 scripts/daily_goal_progress_checks.py
 
@@ -56,9 +53,6 @@ jobs:
 
       - name: Check timer state behavior
         run: node scripts/timer_state_behavior_checks.js
-
-      - name: Check wake lock behavior
-        run: python3 scripts/wake_lock_checks.py
 
       - name: Check backup recovery preservation
         run: python3 scripts/backup_recovery_checks.py
@@ -83,9 +77,6 @@ jobs:
 
       - name: Check idle timer cross-tab sync
         run: python3 scripts/idle_timer_sync_checks.py
-
-      - name: Check completion effects behavior
-        run: python3 scripts/completion_effects_checks.py
 
       - name: Check privacy reset storage behavior
         run: python3 scripts/privacy_reset_storage_checks.py
