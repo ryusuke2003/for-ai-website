@@ -114,6 +114,9 @@ jobs:
       - name: Check completion notification behavior
         run: python3 scripts/completion_notification_checks.py
 
+      - name: Check completion notification cross-tab sync
+        run: python3 scripts/completion_notification_storage_sync_checks.py
+
       - name: Check privacy reset storage behavior
         run: python3 scripts/privacy_reset_storage_checks.py
 
