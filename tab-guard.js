@@ -1,11 +1,44 @@
 const TAB_SESSION_KEY = 'one.activeSession.v1';
 const TAB_STORAGE_PROBE_KEY = 'one.tabStorageProbe.v1';
+const TIMER_STORAGE_KEY = 'one.timer.v1';
 const SESSION_ID_PATTERN = /^[a-z0-9-]{8,80}$/;
 
 let localSessionId = null;
 let tabCoordinationEnabled = false;
+let storageAccessFailed = false;
 let timerRuntime = null;
 let timerRuntimeRegistered = false;
+let progressRuntime = null;
+let progressRuntimeRegistered = false;
+
+function reportStorageFailure() {
+  storageAccessFailed = true;
+  window.dispatchEvent(new Event('one:storage-error'));
+}
+
+function safeRead(key, fallback = '') {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    reportStorageFailure();
+    return fallback;
+  }
+}
+
+function safeWrite(key, value) {
+  try {
+    localStorage.setItem(key, value);
+    return true;
+  } catch {
+    reportStorageFailure();
+    return false;
+  }
+}
+
+function readStoredTimerState() {
+  const raw = safeRead(TIMER_STORAGE_KEY);
+  return globalThis.ONE_TIMER_STATE_GUARD?.parse?.(raw) ?? null;
+}
 
 function disableTabCoordination() {
   tabCoordinationEnabled = false;
@@ -36,7 +69,6 @@ function detectTabStorage() {
     }
     return true;
   } catch {
-    // Report below so the app-wide storage status changes too.
   }
 
   reportStorageFailure();
@@ -62,7 +94,6 @@ function clearStoredSessionId() {
     localStorage.removeItem(TAB_SESSION_KEY);
     if (localStorage.getItem(TAB_SESSION_KEY) === null) return;
   } catch {
-    // Report below and keep the app usable without cross-tab coordination.
   }
 
   reportStorageFailure();
@@ -103,9 +134,12 @@ function timerSnapshot() {
 }
 
 function isTimerStateActive(state) {
+  const guard = globalThis.ONE_TIMER_STATE_GUARD;
+  const minMinutes = Number.isInteger(guard?.minMinutes) ? guard.minMinutes : 1;
+  const maxMinutes = Number.isInteger(guard?.maxMinutes) ? guard.maxMinutes : 180;
   const minutes = state?.selectedMinutes;
   const remaining = state?.remainingSeconds;
-  if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_MINUTES) return false;
+  if (!Number.isInteger(minutes) || minutes < minMinutes || minutes > maxMinutes) return false;
 
   const fullDuration = minutes * 60;
   return state?.running === true
@@ -144,15 +178,9 @@ function syncIdleTimerFromStorage(raw) {
 }
 
 function refreshGuardProgressFromStorage() {
-  if (storageCoordinationUnavailable()) return false;
-
-  const storedDoneCount = readDoneCount();
-  const storedHistory = readHistory();
-  if (storageCoordinationUnavailable()) return false;
-
-  doneCount.textContent = String(storedDoneCount);
-  focusHistory = storedHistory;
-  renderHistory();
+  if (storageCoordinationUnavailable() || !progressRuntime) return false;
+  const refreshed = progressRuntime.refreshFromStorage?.() === true;
+  if (!refreshed || storageCoordinationUnavailable()) return false;
   return true;
 }
 
@@ -177,7 +205,7 @@ function claimPendingCompletion() {
     );
   }
 
-  const storedState = readTimerState();
+  const storedState = readStoredTimerState();
   const storedSessionId = readStoredSessionId();
   if (storageCoordinationUnavailable()) return true;
 
@@ -205,7 +233,7 @@ function verifyCompletionConsumedState() {
   if (storageAccessFailed) return false;
 
   const current = timerSnapshot();
-  const storedState = readTimerState();
+  const storedState = readStoredTimerState();
   if (storageAccessFailed || !current) return false;
 
   const fullDuration = current.selectedMinutes * 60;
@@ -221,28 +249,6 @@ function verifyCompletionConsumedState() {
   return false;
 }
 
-function persistDoneCountAtLeast(expectedCount) {
-  if (!safeWrite(STORAGE_KEYS.count, String(expectedCount))) return false;
-
-  const storedCount = readDoneCount();
-  if (storageAccessFailed) return false;
-  if (storedCount >= expectedCount) return true;
-
-  reportStorageFailure();
-  return false;
-}
-
-function persistHistoryEntryAtLeast(historyKey, expectedCount) {
-  if (!safeWrite(STORAGE_KEYS.history, JSON.stringify(focusHistory))) return false;
-
-  const storedHistory = readHistory();
-  if (storageAccessFailed) return false;
-  if ((storedHistory[historyKey] ?? 0) >= expectedCount) return true;
-
-  reportStorageFailure();
-  return false;
-}
-
 function focusStartControl() {
   window.dispatchEvent(new CustomEvent('one:timer-controls-focus', {
     detail: { control: 'start' },
@@ -251,36 +257,28 @@ function focusStartControl() {
 
 function recordPendingCompletion() {
   const before = timerSnapshot();
-  if (!before?.completionReady || !claimPendingCompletion()) return false;
+  if (!before?.completionReady || !progressRuntime || !claimPendingCompletion()) return false;
 
   const completedOn = before.completionDate;
-  const current = parseDoneCount(doneCount.textContent);
-  const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
-
   const consumedLocally = timerRuntime?.consumeCompletion?.() === true;
   const completionConsumed = consumedLocally && verifyCompletionConsumedState();
-
-  doneCount.textContent = String(next);
-  const historyUpdate = incrementFocusHistoryInMemory(completedOn);
+  const progressUpdate = progressRuntime.incrementInMemory?.(completedOn) ?? null;
+  if (!progressUpdate) return false;
 
   let countPersisted = false;
   let historyPersisted = false;
   if (completionConsumed && !storageAccessFailed) {
-    countPersisted = persistDoneCountAtLeast(next);
+    countPersisted = progressRuntime.persistDoneCountAtLeast?.(progressUpdate.nextCount) === true;
     if (countPersisted && !storageAccessFailed) {
-      historyPersisted = persistHistoryEntryAtLeast(
-        historyUpdate.historyKey,
-        historyUpdate.expectedCount,
-      );
+      historyPersisted = progressRuntime.persistHistoryEntryAtLeast?.(
+        progressUpdate.historyKey,
+        progressUpdate.expectedHistoryCount,
+      ) === true;
     }
   }
 
   if (completionConsumed && countPersisted && historyPersisted) {
-    setCrossTabFeedback(
-      completedOn && completedOn !== dateKey()
-        ? `${completedOn}に完了した集中を1回記録しました。`
-        : '完了した集中を1回記録しました。次のスプリントを始められます。',
-    );
+    setCrossTabFeedback('集中を1回記録しました。次のスプリントを始められます。');
   } else {
     setCrossTabFeedback(
       'このタブでは集中を1回記録しましたが、端末保存を最後まで確認できませんでした。再読み込みせず「JSONを書き出す」で現在の記録を救出してください。',
@@ -296,15 +294,12 @@ function discardPendingCompletion() {
   const before = timerSnapshot();
   if (!before?.completionReady || !claimPendingCompletion()) return false;
 
-  const discardedOn = before.completionDate;
   const consumedLocally = timerRuntime?.consumeCompletion?.() === true;
   const completionConsumed = consumedLocally && verifyCompletionConsumedState();
 
   setCrossTabFeedback(
     completionConsumed
-      ? discardedOn && discardedOn !== dateKey()
-        ? `${discardedOn}に完了した集中を記録せず破棄しました。`
-        : '完了した集中を記録せず破棄しました。次のスプリントを始められます。'
+      ? '完了した集中を記録せず破棄しました。次のスプリントを始められます。'
       : 'このタブでは完了した集中を破棄しましたが、端末保存を確認できませんでした。再読み込みすると未処理の完了として戻る可能性があります。',
     completionConsumed ? 'idle' : 'complete',
   );
@@ -316,7 +311,7 @@ function discardPendingCompletion() {
 function blockIfAnotherTabOwnsTimer() {
   if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
 
-  const storedState = readTimerState();
+  const storedState = readStoredTimerState();
   const storedSessionId = readStoredSessionId();
   if (storageCoordinationUnavailable()) return false;
   if (!isTimerStateActive(storedState) || !storedSessionId) return false;
@@ -389,8 +384,19 @@ function registerTimerRuntime(runtime) {
   return true;
 }
 
+function registerProgressRuntime(runtime) {
+  if (progressRuntimeRegistered) return false;
+  if (!runtime || typeof runtime.snapshot !== 'function' || typeof runtime.refreshFromStorage !== 'function') {
+    return false;
+  }
+
+  progressRuntime = runtime;
+  progressRuntimeRegistered = true;
+  return true;
+}
+
 window.addEventListener('storage', (event) => {
-  if (event.key === STORAGE_KEYS.timer) {
+  if (event.key === TIMER_STORAGE_KEY) {
     syncIdleTimerFromStorage(event.newValue);
     return;
   }
@@ -417,10 +423,14 @@ window.addEventListener('storage', (event) => {
   localSessionId = null;
 });
 
-window.addEventListener('one:storage-error', disableTabCoordination);
+window.addEventListener('one:storage-error', () => {
+  storageAccessFailed = true;
+  disableTabCoordination();
+});
 
 globalThis.ONE_TAB_GUARD = Object.freeze({
   registerTimerRuntime,
+  registerProgressRuntime,
   beforeStart,
   beforeReset,
   beforeSelectMinutes,
@@ -434,7 +444,7 @@ globalThis.ONE_TAB_COORDINATION = Object.freeze({
   },
   hasActiveStoredTimer() {
     if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
-    const storedState = readTimerState();
+    const storedState = readStoredTimerState();
     const storedSessionId = readStoredSessionId();
     if (storageCoordinationUnavailable()) return false;
     return Boolean(storedSessionId && isTimerStateActive(storedState));
