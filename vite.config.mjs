@@ -4,6 +4,8 @@ import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const SCRIPT_TAG_PATTERN = /<script\b([^>]*)\bsrc=["']([^"']+)["']([^>]*)><\/script>/gi;
+const PROD_STYLE_CSP = "style-src 'self';";
+const DEV_STYLE_CSP = "style-src 'self' 'unsafe-inline';";
 
 function classicScriptPaths(html) {
   const paths = [];
@@ -29,6 +31,20 @@ function classicScriptPaths(html) {
   }
 
   return paths;
+}
+
+function allowViteDevStyles() {
+  return {
+    name: 'allow-vite-dev-styles',
+    apply: 'serve',
+    transformIndexHtml(html) {
+      if (!html.includes(PROD_STYLE_CSP)) {
+        throw new Error('Expected production style-src directive was not found in index.html');
+      }
+
+      return html.replace(PROD_STYLE_CSP, DEV_STYLE_CSP);
+    },
+  };
 }
 
 function emitClassicScriptsFromIndex() {
@@ -60,7 +76,7 @@ function emitClassicScriptsFromIndex() {
 
 export default defineConfig({
   base: './',
-  plugins: [tailwindcss(), emitClassicScriptsFromIndex()],
+  plugins: [tailwindcss(), allowViteDevStyles(), emitClassicScriptsFromIndex()],
   server: {
     host: '127.0.0.1',
   },
