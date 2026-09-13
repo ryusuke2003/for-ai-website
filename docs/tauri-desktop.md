@@ -68,7 +68,7 @@ Trayアイコンを左クリックすると、ネイティブの項目一覧で�
 - `タイマーへ`: コンパクトタイマーへ戻る
 - `Todoを開く`: 通常サイズのTodo画面を開く
 
-通常サイズのTodo画面では、予定作成、テンプレート、ドラッグ&ドロップ、完了、個別削除に加えて、今日の予定のリセットと直前リセットの復元を扱います。
+通常サイズのTodo画面では、予定作成、テンプレート、ドラッグ&ドロップ、完了、個別削除を扱います。
 
 ### 右クリック: 終了
 
@@ -92,6 +92,14 @@ Trayは通常時はアイコンだけを表示し、タイマー実行中だけ�
 Tray左クリック時のウィンドウサイズ変更・位置調整・フォーカスアウト時の非表示は `src-tauri/src/lib.rs` が担当します。画面切り替えは `one:tray-navigation` eventを利用し、React側は `#tray-timer` / `#tray-todo` をコンパクト表示として扱います。
 
 コンパクト表示から通常ウィンドウを開く場合は `src/desktop/trayWindow.js` が `open_full_window` commandを呼び、Rust側で装飾・サイズ・位置を通常状態へ戻します。
+
+## ネイティブ完了通知
+
+macOSデスクトップ版の完了通知はWebViewのブラウザ通知ではなく、Tauriの `tauri-plugin-notification` からmacOSネイティブ通知として送ります。
+
+`src/desktop/nativeNotificationBridge.js` はTauri実行時だけ既存の `Notification` 利用箇所をRust commandへ橋渡しします。そのためReact側の完了通知ロジックをWeb版と二重管理せず、通常のWeb版ではこれまでどおりブラウザの `Notification` APIを使います。
+
+デスクトップ版で `完了通知 OFF` を初めてオンにするとネイティブ通知の利用を確認し、許可された場合は確認用の通知を1件送ります。以後、タイマー完了時にウィンドウが前面にない場合はmacOS通知を送ります。設定値は従来どおり `one.completionNotification.v1` に保存します。
 
 ## lockfile準拠のビルド
 
@@ -149,7 +157,7 @@ Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環
 - main windowのTauri capabilityは `core:default` のみ
 - filesystem / shell / HTTP / opener等のTauri plugin権限は追加しない
 - frontendのCSPは `index.html` 側で維持
-- frontendからRustへのcommandはTray title更新と通常ウィンドウ復帰だけ
+- frontendからRustへのcommandはTray title更新、通常ウィンドウ復帰、ネイティブ通知の権限確認・表示に限定する
 - Rustからfrontendへの画面切り替えは固定されたnavigation eventだけを送る
 - ログイン時自動起動はユーザー領域の `~/Library/LaunchAgents` だけを利用し、管理者権限を要求しない
 - npmは `package-lock.json`、Rustは `Cargo.lock` をCIで強制
