@@ -24,6 +24,7 @@
   <script src="custom-timer.js" defer></script>
   <script src="shortcuts.js" defer></script>
   <script src="privacy-reset.js" defer></script>
+  <script type="module" src="/src/main.jsx"></script>
 </head>
 <body>
   <main class="shell">
@@ -186,6 +187,8 @@
     </section>
 
     <p id="focus-mode-status" class="sr-only" aria-live="polite"></p>
+
+    <div id="react-root" hidden></div>
 
     <footer>
       <p>データ収集なし · アカウントなし · 外部通信なし</p>
