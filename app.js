@@ -461,13 +461,6 @@ focusModeButton.addEventListener('click', () => {
 });
 presetButtons.forEach((button) => button.addEventListener('click', () => selectPreset(button)));
 
-document.addEventListener('keydown', (event) => {
-  if (event.key === 'Escape' && document.body.classList.contains('focus-mode')) {
-    setFocusMode(false);
-    focusModeButton.focus();
-  }
-});
-
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDateSensitiveUi();
 });

@@ -47,6 +47,7 @@ jobs:
             stats.js \
             privacy-reset.js \
             backup.js \
+            shortcuts.js \
             legacy/interop/progress-backup.js; do
             if test -e "dist/$old"; then exit 1; fi
             if grep -q "$old" dist/index.html; then exit 1; fi

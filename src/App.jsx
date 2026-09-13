@@ -11,10 +11,13 @@ import { useProgressOverviewState } from './features/progress/useProgressOvervie
 import { TimerControls } from './features/timer/TimerControls.jsx';
 import { TimerDisplay } from './features/timer/TimerDisplay.jsx';
 import { TimerSettings } from './features/timer/TimerSettings.jsx';
+import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 
 function TimerSection() {
   const state = useTimerState();
+  useTimerShortcuts(state.focusMode);
+
   const cardState = state.feedbackState === 'complete'
     ? ' is-complete'
     : state.feedbackState === 'running'

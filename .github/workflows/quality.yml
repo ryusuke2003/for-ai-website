@@ -25,7 +25,6 @@ jobs:
           node --check legacy/interop/timer.js
           node --check legacy/interop/settings-progress.js
           node --check tab-guard.js
-          node --check shortcuts.js
           node --check scripts/timer_state_behavior_checks.js
 
       - name: Check static security and accessibility invariants
@@ -60,6 +59,9 @@ jobs:
 
       - name: Check timer state behavior
         run: node scripts/timer_state_behavior_checks.js
+
+      - name: Check timer keyboard shortcuts
+        run: python3 scripts/timer_shortcuts_checks.py
 
       - name: Check wake lock behavior
         run: python3 scripts/wake_lock_checks.py

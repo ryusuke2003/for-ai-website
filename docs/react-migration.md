@@ -13,11 +13,12 @@ ONE は vanilla JavaScript から React へ段階移行してきたため、移�
 - production向けclassic scriptは `index.html` から自動検出してVite/Rollupのassetとして出力する
 - Theme / 端末保存状態 / Wake Lock / 完了音・完了通知はReact側へ移行済み
 - 自由設定タイマー、タイマー進捗、終了予定時刻、ページタイトルもReact側へ移行済み
+- Space / F / Escape のキーボードショートカットもReact側へ移行済み
 - 日次目標の入力・保存・別タブ同期・進捗表示もReact側へ移行済み
 - 今週回数・連続日・直近7日・直近30日の集計と表示もReact側へ移行済み
 - 端末データ削除の状態・確認UI・別タブ通知もReact側へ移行済み
 - JSONバックアップの書き出し・復元・1世代UndoもReact側へ移行済み
-- `stats.js` / `privacy-reset.js` / `backup.js` は削除済み
+- `stats.js` / `privacy-reset.js` / `backup.js` / `shortcuts.js` は削除済み
 - `legacy/interop/progress-backup.js` も削除済み
 - Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
 - タイマー保存形式、複数タブ排他、バックアップの復元前退避・ロールバックなどの安全性ロジックは維持する
@@ -53,6 +54,7 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
    - Wake LockをReactへ移行済み
    - 完了音・完了通知をReactへ移行済み
    - 自由設定タイマーとタイマー表示の補助処理をReactへ移行済み
+   - キーボードショートカットをReactへ移行し、`shortcuts.js` と `app.js` 内のEscape listenerを削除済み
    - 日次目標の状態・保存・進捗をReactへ移行済み
    - 今週回数・連続日・7日/30日集計をReactへ移行し、`stats.js` を削除済み
    - 端末データ削除をReactへ移行し、`privacy-reset.js` を削除済み
@@ -80,6 +82,7 @@ src/
 │   │   ├── TimerDisplay.jsx
 │   │   ├── TimerSettings.jsx
 │   │   ├── useTimerState.js
+│   │   ├── useTimerShortcuts.js
 │   │   ├── useCustomTimerControl.js
 │   │   ├── useCompletionEffectsControl.js
 │   │   └── useWakeLockControl.js
@@ -111,6 +114,10 @@ legacy/interop/
 これらはclassic JavaScriptが保持するタイマー本体・記録処理をReactへ公開するための一時的なアダプターです。複数タブ排他や完了記録の安全な処理を迂回しないために残しています。
 
 `timer.js` はタイマー本体への操作委譲と状態snapshotに加え、端末データ削除直前に保存し直さずtimer intervalだけを停止する準備eventを受け取ります。`settings-progress.js` は記録/破棄アクション、累計・履歴snapshot、バックアップ復元時の進捗適用、tab guardの復元可否判定に必要な最小状態だけを公開します。
+
+## キーボードショートカットの責務
+
+`useTimerShortcuts.js` が Space / F / Escape を管理します。SpaceとFは入力欄・ボタン・リンクなどの操作中、IME変換中、キーリピート中、修飾キー付きでは発火しません。Escapeは従来どおり集中表示を解除し、解除後は集中表示ボタンへフォーカスを戻します。実際のタイマー操作は既存 `timer.js` adapterを通すため、複数タブ排他の経路を迂回しません。
 
 ## legacy runtime scaffold
 
@@ -154,6 +161,7 @@ Vite側はTailwind pluginと、`index.html` に書かれたclassic scriptをprod
 移行手順そのものを固定するテストは削除します。一方で、次の振る舞いは今後もCIで守ります。
 
 - タイマー状態と復元
+- Space / F / Escapeショートカットの入力・IME・修飾キー・フォーカス安全性
 - 複数タブの所有権・二重記録防止
 - 日付境界、今週・連続日・7日/30日履歴
 - 日次目標の厳格検証・保存確認・期限切れ掃除・別タブ同期
