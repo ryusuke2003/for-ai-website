@@ -59,7 +59,7 @@ describe('TodoPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'テンプレートを保存' }));
 
-    const templateButton = screen.getByRole('button', { name: /セキスペ復習/ });
+    const templateButton = screen.getByText('セキスペ復習').closest('button');
     fireEvent.click(templateButton);
 
     expect(screen.getByRole('textbox', { name: 'やること' }).value).toBe('セキスペ復習');
@@ -73,7 +73,7 @@ describe('TodoPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'テンプレートを保存' }));
 
-    const templateButton = screen.getByRole('button', { name: /暗記問題/ });
+    const templateButton = screen.getByText('暗記問題').closest('button');
     const draggableTemplate = templateButton.closest('[draggable="true"]');
     const timeline = screen.getByTestId('todo-timeline');
     const transfer = dataTransfer();
