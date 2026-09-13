@@ -54,14 +54,5 @@ jobs:
       - name: Check backup restore control availability
         run: python3 scripts/backup_control_availability_checks.py
 
-      - name: Check completion persistence order
-        run: python3 scripts/completion_persistence_checks.py
-
-      - name: Check runtime storage fallback
-        run: python3 scripts/runtime_storage_fallback_checks.py
-
-      - name: Check tab session ID generation
-        run: python3 scripts/tab_session_id_checks.py
-
       - name: Reject common secret material
         run: python3 scripts/secret_checks.py

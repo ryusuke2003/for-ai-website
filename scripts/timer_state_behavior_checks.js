@@ -1,4 +1,4 @@
-const assert = require('node:assert/strict');
+import assert from 'node:assert/strict';
 
 async function main() {
   const { timerStateGuard: guard } = await import('../src/features/timer/timerStateGuard.js');
