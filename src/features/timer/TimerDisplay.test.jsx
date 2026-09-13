@@ -37,15 +37,15 @@ describe('TimerDisplay', () => {
   it('実行中・一時停止・完了をdocument titleへ反映する', () => {
     vi.mocked(useTimerState).mockReturnValue(state({ running: true, remainingSeconds: 1472 }));
     const { rerender } = render(<TimerDisplay />);
-    expect(document.title).toBe('24:32 — ONE');
+    expect(document.title).toBe('24:32 — タイマー');
 
     vi.mocked(useTimerState).mockReturnValue(state({ remainingSeconds: 1472 }));
     rerender(<TimerDisplay />);
-    expect(document.title).toBe('24:32 一時停止 — ONE');
+    expect(document.title).toBe('24:32 一時停止 — タイマー');
 
     vi.mocked(useTimerState).mockReturnValue(state({ completionReady: true, remainingSeconds: 0 }));
     rerender(<TimerDisplay />);
-    expect(document.title).toBe('完了！ — ONE');
+    expect(document.title).toBe('完了！ — タイマー');
   });
 
   it('実行中は終了予定をtime要素で機械可読に表示する', () => {
