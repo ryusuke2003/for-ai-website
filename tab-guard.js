@@ -35,6 +35,13 @@ function safeWrite(key, value) {
   }
 }
 
+function dateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 function readStoredTimerState() {
   const raw = safeRead(TIMER_STORAGE_KEY);
   return globalThis.ONE_TIMER_STATE_GUARD?.parse?.(raw) ?? null;
@@ -278,7 +285,11 @@ function recordPendingCompletion() {
   }
 
   if (completionConsumed && countPersisted && historyPersisted) {
-    setCrossTabFeedback('集中を1回記録しました。次のスプリントを始められます。');
+    setCrossTabFeedback(
+      completedOn && completedOn !== dateKey()
+        ? `${completedOn}に完了した集中を1回記録しました。`
+        : '完了した集中を1回記録しました。次のスプリントを始められます。',
+    );
   } else {
     setCrossTabFeedback(
       'このタブでは集中を1回記録しましたが、端末保存を最後まで確認できませんでした。再読み込みせず「JSONを書き出す」で現在の記録を救出してください。',
@@ -294,12 +305,15 @@ function discardPendingCompletion() {
   const before = timerSnapshot();
   if (!before?.completionReady || !claimPendingCompletion()) return false;
 
+  const discardedOn = before.completionDate;
   const consumedLocally = timerRuntime?.consumeCompletion?.() === true;
   const completionConsumed = consumedLocally && verifyCompletionConsumedState();
 
   setCrossTabFeedback(
     completionConsumed
-      ? '完了した集中を記録せず破棄しました。次のスプリントを始められます。'
+      ? discardedOn && discardedOn !== dateKey()
+        ? `${discardedOn}に完了した集中を記録せず破棄しました。`
+        : '完了した集中を記録せず破棄しました。次のスプリントを始められます。'
       : 'このタブでは完了した集中を破棄しましたが、端末保存を確認できませんでした。再読み込みすると未処理の完了として戻る可能性があります。',
     completionConsumed ? 'idle' : 'complete',
   );
