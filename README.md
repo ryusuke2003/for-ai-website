@@ -24,19 +24,21 @@ ChatGPT が小さな Web アプリを作り、レビューと改善を繰り返�
 - 今日 / 今週 / 連続日 / 累計
 - 直近7日の棒グラフと30日のアクティビティ表示
 - 1〜12回の今日の目標
-- Todoリスト
+- 5分刻みのTodo時間割、テンプレート、ドラッグ&ドロップ
+- Todoの重複回避とドラッグ中の押し出しプレビュー
+- 今日の予定のリセット / 1世代復元
 - ライト / ダーク / 自動テーマ
 - 完了音、完了通知、Screen Wake Lock
 - JSONバックアップ / 復元 / 1世代Undo
 - このアプリが利用する端末データだけを対象にした削除
 - 同一オリジン内の複数タブ同期と二重記録防止
 - macOSメニューバー常駐
-- メニューバーからタイマー / Todoを開く、開始 / 再開、一時停止、リセット、終了
-- メニューバーにタイマー状態を表示
+- Trayのコンパクト画面からタイマー / Todoの確認・操作
+- メニューバーにタイマー実行中の残り時間を表示
 
 ### macOSメニューバー表示
 
-Trayは通常時はストップウォッチアイコンだけを表示し、タイマー実行中だけ残り時間を横に表示します。
+Trayは通常時はアイコンだけを表示し、タイマー実行中だけ残り時間を横に表示します。
 
 | 状態 | 表示 |
 | --- | --- |
@@ -45,7 +47,7 @@ Trayは通常時はストップウォッチアイコンだけを表示し、タ�
 | 一時停止 | アイコンのみ |
 | 完了 | アイコンのみ |
 
-メニューバーのタイマーをクリックすると、最小限のネイティブメニューを表示します。`タイマーを開く` と `Todoを開く` から目的の画面を直接開けます。ウィンドウの閉じるボタンではアプリ自体を終了せず、ウィンドウだけを隠して常駐を続けます。
+Trayアイコンを左クリックすると、メニューバー直下にコンパクトなタイマー / Todo画面を表示します。Trayを隠して再表示した場合は直前に開いていたコンパクト画面を維持し、直前のTray画面がない場合はTodoを開きます。右クリックメニューは `タイマーを終了` だけです。ウィンドウの閉じるボタンではアプリ自体を終了せず、ウィンドウだけを隠して常駐を続けます。
 
 ### キーボード
 
@@ -60,7 +62,7 @@ Trayは通常時はストップウォッチアイコンだけを表示し、タ�
 
 ## 保存について
 
-タイマー状態、累計・日次履歴、今日の目標、テーマ、完了通知、Wake Lockなどはブラウザ / WebView の `localStorage` に保存します。
+タイマー状態、累計・日次履歴、今日の目標、テーマ、完了通知、Wake Lock、Todo、Todoテンプレートなどはブラウザ / WebView の `localStorage` に保存します。
 
 `localStorage` はサーバー同期ではないため、Safari、Chrome、Tauri、Vercelなどの実行環境ごとにデータは分かれます。必要な記録はJSONバックアップで移行できます。
 
@@ -78,10 +80,9 @@ src/
 ├── desktop/
 │   ├── trayNavigation.js
 │   ├── trayNavigation.test.js
-│   ├── trayTimerActions.js
-│   ├── trayTimerActions.test.js
 │   ├── trayTimerSync.js
-│   └── trayTimerSync.test.js
+│   ├── trayTimerSync.test.js
+│   └── trayWindow.js
 ├── test/
 │   └── setup.js
 ├── components/
@@ -100,6 +101,7 @@ src-tauri/
 ├── tauri.conf.json
 ├── capabilities/default.json
 ├── icons/
+│   └── icon.png
 └── src/lib.rs
 ```
 
@@ -112,8 +114,8 @@ src-tauri/
 - `progressInsights.js`: 今週、連続日、7日 / 30日集計
 - `useBackupControl.js`: JSONバックアップ、復元、Undo、ロールバック
 - `src/desktop/trayTimerSync.js`: timerStoreとTauri Tray titleの同期
-- `src/desktop/trayTimerActions.js`: Trayメニューからのタイマー操作
-- `src/desktop/trayNavigation.js`: Trayメニューからの画面遷移
+- `src/desktop/trayNavigation.js`: Trayコンパクト画面の遷移と再表示時の画面維持
+- `src/desktop/trayWindow.js`: コンパクト表示から通常ウィンドウへの復帰
 - `src-tauri/src/lib.rs`: macOS Tray、ウィンドウ常駐、Tauri command / event
 - `public/theme-bootstrap.js`: React起動前のテーマ適用
 - `src/tailwind.css`: Tailwind utilitiesと共通CSS
@@ -184,12 +186,25 @@ npm run tauri -- build --bundles app --no-sign -- --locked
 
 詳細は [`docs/tauri-desktop.md`](docs/tauri-desktop.md) を参照してください。
 
+## GitHub Release
+
+`v` で始まるタグをpushすると、GitHub ActionsがmacOS `.app` をビルドして `timer-macos.zip` をGitHub Releaseへ添付します。タグのバージョンは `src-tauri/tauri.conf.json` の `version` と一致させます。
+
+現在が `0.1.0` の場合:
+
+```sh
+git switch main
+git pull --ff-only
+git tag -a v0.1.0 -m "v0.1.0"
+git push origin v0.1.0
+```
+
 ## CI
 
 GitHub Actionsでは3系統を確認します。
 
-1. **Quality checks**: Pythonによるセキュリティ・アーキテクチャ境界検査
+1. **Quality checks**: Pythonによるセキュリティ・アーキテクチャ境界検査 + JavaScript構文確認
 2. **Frontend build**: `npm ci` → Vitest / RTL → npm audit → Vite build
 3. **Tauri build**: `npm ci` + `Cargo.lock --locked` → macOS `.app` bundle → `timer-macos-app` ZIP artifact
 
-Tauri artifactは7日間保存します。新しいReact UIの振る舞いは、可能な限り「ソースに特定文字列があるか」ではなく「利用者が操作した結果どうなるか」でテストします。
+Tauri artifactは7日間保存します。`v*` タグでは同じビルド成果物をGitHub Releaseにも添付します。新しいReact UIの振る舞いは、可能な限り「ソースに特定文字列があるか」ではなく「利用者が操作した結果どうなるか」でテストします。
