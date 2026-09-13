@@ -5,6 +5,10 @@ ROOT = Path(__file__).resolve().parent.parent
 HOOK_SOURCE = (ROOT / "src" / "features" / "timer" / "useFocusModeControl.js").read_text(encoding="utf-8")
 APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 CONTROLS_SOURCE = (ROOT / "src" / "features" / "timer" / "TimerControls.jsx").read_text(encoding="utf-8")
+LEGACY_APP_SOURCE = (ROOT / "app.js").read_text(encoding="utf-8")
+TIMER_INTEROP_SOURCE = (ROOT / "legacy" / "interop" / "timer.js").read_text(encoding="utf-8")
+INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
+PRIVACY_RESET_SOURCE = (ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js").read_text(encoding="utf-8")
 
 
 def fail(message):
@@ -65,7 +69,35 @@ def main():
     require("onClick={onToggleFocusMode}" in CONTROLS_SOURCE,
             "集中表示ボタンはReactの切替処理を直接利用してください")
 
-    print("Focus mode controls and persistence are React-owned with verified writes and silent completion exit.")
+    for token in (
+        "focusModeButton",
+        "focusModeStatus",
+        "persistFocusModePreference",
+        "setFocusMode(",
+        "revealCompletionRecord",
+        "STORAGE_KEYS.focusMode",
+    ):
+        require(token not in LEGACY_APP_SOURCE,
+                f"集中表示の旧runtimeをapp.jsへ戻さないでください: {token}")
+
+    for token in (
+        "focusMode:",
+        "focusModeStatus:",
+        "'setFocusMode'",
+        "toggleFocus()",
+        "forwardDetachedFocus(focusModeButton",
+    ):
+        require(token not in TIMER_INTEROP_SOURCE,
+                f"集中表示をtimer interopへ戻さないでください: {token}")
+
+    require('id="focus-mode-button"' not in INDEX_SOURCE,
+            "集中表示ボタンのhidden runtime scaffoldは不要です")
+    require('id="focus-mode-status"' not in INDEX_SOURCE,
+            "集中表示statusのhidden runtime scaffoldは不要です")
+    require("'one.focusMode.v1'" in PRIVACY_RESET_SOURCE or '"one.focusMode.v1"' in PRIVACY_RESET_SOURCE,
+            "集中表示の保存キーは端末データ削除対象に維持してください")
+
+    print("Focus mode is React-owned; legacy runtime, interop, and hidden scaffold stay removed.")
 
 
 if __name__ == "__main__":
