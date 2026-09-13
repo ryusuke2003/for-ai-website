@@ -1,9 +1,17 @@
+import { useEffect } from 'react';
 import { openFullWindow } from '../../desktop/trayWindow.js';
+import { progressActions } from '../progress/progressStore.js';
 import { TimerDisplay } from './TimerDisplay.jsx';
 import { timerActions } from './timerStore.js';
+import { advanceTrayTimerAfterCompletion } from './trayTimerCycle.js';
 import { useTimerState } from './useTimerState.js';
 
 const BUTTON_CLASS = 'min-h-11 rounded-full border border-[var(--one-control-border)] px-5 text-[0.88rem] font-extrabold transition disabled:cursor-not-allowed disabled:opacity-45';
+const TRAY_CYCLE_ACTIONS = Object.freeze({
+  record: () => progressActions.record(),
+  discard: () => progressActions.discard(),
+  selectMinutes: (minutes) => timerActions.selectMinutes(minutes),
+});
 
 function startLabelFor(state) {
   if (state.running) return '一時停止';
@@ -16,6 +24,10 @@ function startLabelFor(state) {
 
 export function TrayTimerPanel({ onShowTodo }) {
   const state = useTimerState();
+
+  useEffect(() => {
+    advanceTrayTimerAfterCompletion(state, TRAY_CYCLE_ACTIONS);
+  }, [state.completionReady, state.selectedMinutes]);
 
   return (
     <section className="min-h-screen bg-[var(--one-page)] p-4 text-[var(--one-fg)]">
