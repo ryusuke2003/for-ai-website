@@ -34,8 +34,6 @@ export function BackupPanel() {
     };
   }, []);
 
-  void reset;
-
   return (
     <>
       <div className="controls">
@@ -106,14 +104,14 @@ export function BackupPanel() {
             id="data-reset-button"
             type="button"
             aria-describedby="data-reset-hint data-reset-status"
-            hidden={state.resetButtonHidden}
+            hidden={reset.resetButtonHidden}
             ref={resetButtonRef}
             onClick={() => bridge()?.openReset?.()}
           >
             この端末のデータを削除
           </button>
         </div>
-        <div id="data-reset-confirm" hidden={state.resetConfirmHidden}>
+        <div id="data-reset-confirm" hidden={reset.resetConfirmHidden}>
           <p className="hint">この操作は取り消せません。必要な記録がある場合は先にJSONを書き出してください。</p>
           <div className="controls">
             <button
@@ -121,7 +119,7 @@ export function BackupPanel() {
               id="data-reset-confirm-button"
               type="button"
               aria-describedby="data-reset-hint data-reset-status"
-              disabled={state.resetConfirmDisabled}
+              disabled={reset.resetConfirmDisabled}
               ref={resetConfirmButtonRef}
               onClick={() => bridge()?.confirmReset?.()}
             >
@@ -131,7 +129,7 @@ export function BackupPanel() {
               className="secondary"
               id="data-reset-cancel-button"
               type="button"
-              disabled={state.resetCancelDisabled}
+              disabled={reset.resetCancelDisabled}
               ref={resetCancelButtonRef}
               onClick={() => bridge()?.cancelReset?.()}
             >
@@ -140,7 +138,7 @@ export function BackupPanel() {
           </div>
         </div>
         <p className="hint" id="data-reset-status" role="status" aria-live="polite">
-          {state.resetStatus}
+          {reset.resetStatus}
         </p>
       </div>
     </>
