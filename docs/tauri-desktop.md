@@ -1,59 +1,118 @@
-# ONE desktop app with Tauri
+# ONE macOSデスクトップ版
 
-ONE can run as the existing React/Vite web app and as a native desktop application through Tauri v2. The React source remains the single frontend implementation; `src-tauri/` only provides the desktop shell and build configuration.
+ONE は React / Vite のフロントエンドをそのまま利用し、Tauri v2 でmacOSデスクトップアプリとして動作します。Web版とデスクトップ版でタイマーや進捗の実装を二重管理しません。
 
-## Prerequisites on macOS
+## 必要な環境
 
-Install the normal Node.js dependencies plus a Rust toolchain and Apple command-line build tools.
+- Node.js 22.12以上
+- Rust stable
+- Xcode Command Line Tools
 
 ```sh
 xcode-select --install
 rustup toolchain install stable
-npm install
+npm ci
 ```
 
-If `rustup` is not installed yet, install it from the official Rust installation instructions first.
+## 開発
 
-## Development
-
-Start ONE inside a Tauri desktop window:
+Tauriウィンドウで起動:
 
 ```sh
 npm run tauri dev
 ```
 
-Tauri starts the existing Vite development server at `http://127.0.0.1:5173` and loads it in the desktop WebView.
-
-The normal browser workflow remains available:
+通常のブラウザ開発も引き続き利用できます。
 
 ```sh
 npm run dev
 ```
 
-## Build the desktop application
+## macOSメニューバー常駐
+
+デスクトップ版はメニューバーにONEを常駐させます。
+
+- 左クリック: メインウィンドウを表示 / 非表示
+- 右クリック: 「ONEを表示 / 隠す」「ONEを終了」
+- ウィンドウの閉じるボタン: アプリを終了せず、ウィンドウを非表示
+
+メニューバーのtitleはタイマー状態と同期します。
+
+| 状態 | Tray title |
+| --- | --- |
+| 待機中 | `ONE` |
+| 実行中 | `24:32` のような残り時間 |
+| 一時停止 | `⏸ 24:32` |
+| 完了 | `00:00` |
+
+`src/desktop/trayTimerSync.js` が `timerStore` を購読し、Tauri実行時だけ `set_tray_title` commandを呼びます。ブラウザ版ではTauri APIを呼びません。
+
+Rust側のTray生成、ウィンドウ常駐、終了処理、title反映は `src-tauri/src/lib.rs` が担当します。
+
+## lockfile準拠のビルド
+
+CIと同じく、npm / Cargoの依存をlockfileに固定してビルドします。
 
 ```sh
-npm run tauri build
+npm ci
+cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
+npm run tauri -- build --bundles app --no-sign -- --locked
 ```
 
-On macOS, the generated application and installer artifacts are written below `src-tauri/target/release/bundle/`. A typical app bundle is under `macos/ONE.app` and a disk image is under `dmg/` when the target supports it.
+生成された `.app` は次に出力されます。
 
-## Storage behavior
+```text
+src-tauri/target/release/bundle/macos/ONE.app
+```
 
-ONE currently keeps timer state, progress, preferences, and recovery data in `localStorage`. Tauri's WebView has its own application origin/storage area, so desktop data is persistent across launches but is separate from data saved by Safari, Chrome, or a Vercel deployment.
+現在のCIはDMG生成・コード署名・notarizationまでは行わず、`.app` をZIP化してGitHub Actions artifactとして保存します。
 
-This Tauri integration does not add a server, account system, database, analytics, or network API. Device-to-device synchronization would still require a separate shared backend or another synchronization mechanism.
+## CI artifact
 
-## Security boundary
+`.github/workflows/tauri-build.yml` は `macos-latest` 上で以下を実行します。
 
-The desktop shell enables only Tauri's minimal `core:default` capability for the main window. No filesystem, shell, HTTP, opener, or other Tauri plugin permissions are added by this integration. The existing frontend CSP in `index.html` remains in place.
+1. `npm ci`
+2. `cargo metadata --locked` で `Cargo.lock` 整合性確認
+3. `tauri build --bundles app --no-sign -- --locked`
+4. `.app` を `ONE-macos.zip` に圧縮
+5. `ONE-macos-app` artifactとして7日間保存
 
-## App icon
+Rust build cacheも利用します。
 
-The initial integration relies on Tauri's default application icon. When ONE has a dedicated icon source image, generate platform-specific icons with:
+## 保存領域
+
+タイマー、進捗、設定、復旧用データはWebViewの `localStorage` に保存します。
+
+Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環境へ記録を移す場合はONEのJSONバックアップ / 復元を利用します。
+
+## セキュリティ境界
+
+- main windowのTauri capabilityは `core:default` のみ
+- filesystem / shell / HTTP / opener等のTauri plugin権限は追加しない
+- frontendのCSPは `index.html` 側で維持
+- frontendからRustへ渡す用途は現在Tray title更新に限定
+- npmは `package-lock.json`、Rustは `Cargo.lock` をCIで強制
+- GitHub Actionsの外部Actionはcommit SHAに固定
+
+## アイコン
+
+アプリ / Trayのアイコンは `src-tauri/icons/icon.png` を利用します。macOSではTrayをtemplate iconとして扱い、ライト / ダークのメニューバーに馴染むようにしています。
+
+将来アイコン一式を作り直す場合はTauriのicon生成を利用できます。
 
 ```sh
 npm run tauri icon path/to/app-icon.png
 ```
 
-Then review and commit the generated files under `src-tauri/icons/`.
+生成物を確認したうえで `src-tauri/icons/` を更新してください。
+
+## 現時点で未対応
+
+個人利用を前提として、次はまだ必須にしていません。
+
+- GitHub Releaseへの自動添付
+- DMG配布
+- Apple Developer証明書によるコード署名
+- notarization
+- ログイン時の自動起動
+- Dockアイコン非表示
