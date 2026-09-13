@@ -4,6 +4,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
+VITE_CONFIG_PATH = ROOT / "vite.config.mjs"
 
 EXPECTED_CSP = {
     "default-src": ["'none'"],
@@ -77,6 +78,18 @@ def main():
     if parser.denied_tags:
         tags = ", ".join(sorted(set(parser.denied_tags)))
         errors.append(f"CSP-denied resource/form tags are present: {tags}")
+
+    vite_config = VITE_CONFIG_PATH.read_text(encoding="utf-8")
+    required_dev_csp_tokens = (
+        "const PROD_STYLE_CSP = \"style-src 'self';\";",
+        "const DEV_STYLE_CSP = \"style-src 'self' 'unsafe-inline';\";",
+        "name: 'allow-vite-dev-styles'",
+        "apply: 'serve'",
+        "html.replace(PROD_STYLE_CSP, DEV_STYLE_CSP)",
+    )
+    for token in required_dev_csp_tokens:
+        if token not in vite_config:
+            errors.append(f"Vite dev CSP boundary is missing: {token}")
 
     if errors:
         for error in errors:
