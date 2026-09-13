@@ -85,5 +85,5 @@ export const timerStateGuard = Object.freeze({
   parse: parseTimerState,
 });
 
-// tabGuard / backupの直接import移行が完了するまでのmodule互換境界。
+// backup hookの直接import移行が完了するまでの最後の互換境界。
 globalThis.ONE_TIMER_STATE_GUARD = timerStateGuard;

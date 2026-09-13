@@ -1,3 +1,5 @@
+import { timerStateGuard } from './timerStateGuard.js';
+
 const TAB_SESSION_KEY = 'one.activeSession.v1';
 const TAB_STORAGE_PROBE_KEY = 'one.tabStorageProbe.v1';
 const TIMER_STORAGE_KEY = 'one.timer.v1';
@@ -44,7 +46,7 @@ function dateKey(date = new Date()) {
 
 function readStoredTimerState() {
   const raw = safeRead(TIMER_STORAGE_KEY);
-  return globalThis.ONE_TIMER_STATE_GUARD?.parse?.(raw) ?? null;
+  return timerStateGuard.parse(raw);
 }
 
 function disableTabCoordination() {
@@ -141,12 +143,15 @@ function timerSnapshot() {
 }
 
 function isTimerStateActive(state) {
-  const guard = globalThis.ONE_TIMER_STATE_GUARD;
-  const minMinutes = Number.isInteger(guard?.minMinutes) ? guard.minMinutes : 1;
-  const maxMinutes = Number.isInteger(guard?.maxMinutes) ? guard.maxMinutes : 180;
   const minutes = state?.selectedMinutes;
   const remaining = state?.remainingSeconds;
-  if (!Number.isInteger(minutes) || minutes < minMinutes || minutes > maxMinutes) return false;
+  if (
+    !Number.isInteger(minutes)
+    || minutes < timerStateGuard.minMinutes
+    || minutes > timerStateGuard.maxMinutes
+  ) {
+    return false;
+  }
 
   const fullDuration = minutes * 60;
   return state?.running === true
@@ -159,7 +164,7 @@ function hasLocalTimerContext() {
 }
 
 function parseIdleTimerState(raw) {
-  const state = globalThis.ONE_TIMER_STATE_GUARD?.parse(raw) ?? null;
+  const state = timerStateGuard.parse(raw);
   if (!state) return null;
 
   const fullDuration = state.selectedMinutes * 60;
