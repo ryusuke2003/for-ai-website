@@ -14,7 +14,6 @@ const legacyScripts = [
   'theme.js',
   'stats.js',
   'daily-goal-progress.js',
-  'react-progress-details-bridge.js',
   'tab-guard.js',
   'backup-timer-context-compat.js',
   'backup.js',
@@ -24,6 +23,8 @@ const legacyScripts = [
   'react-progress-overview-bridge.js',
   'shortcuts.js',
   'privacy-reset.js',
+  'react-remaining-state-source.js',
+  'react-progress-details-bridge.js',
   'react-backup-panel-bridge.js',
 ];
 
@@ -43,10 +44,6 @@ function injectReactEntry() {
             '<script src="app.js" defer></script>\n  <script src="react-timer-state-source.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
           )
           .replace(
-            '<script src="daily-goal-progress.js" defer></script>',
-            '<script src="daily-goal-progress.js" defer></script>\n  <script src="react-progress-details-bridge.js" defer></script>',
-          )
-          .replace(
             '<script src="backup.js" defer></script>',
             '<script src="backup-timer-context-compat.js" defer></script>\n  <script src="backup.js" defer></script>',
           )
@@ -56,7 +53,7 @@ function injectReactEntry() {
           )
           .replace(
             '<script src="privacy-reset.js" defer></script>',
-            '<script src="privacy-reset.js" defer></script>\n  <script src="react-backup-panel-bridge.js" defer></script>',
+            '<script src="privacy-reset.js" defer></script>\n  <script src="react-remaining-state-source.js" defer></script>\n  <script src="react-progress-details-bridge.js" defer></script>\n  <script src="react-backup-panel-bridge.js" defer></script>',
           )
           .replace(
             '<script type="module" data-vite-entry="/src/main.jsx"></script>',
