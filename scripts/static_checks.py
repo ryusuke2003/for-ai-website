@@ -28,7 +28,6 @@ REQUIRED_SCRIPT_ORDER = [
     "legacy/interop/timer.js",
     "tab-guard.js",
     "legacy/interop/settings-progress.js",
-    "shortcuts.js",
 ]
 
 
@@ -113,7 +112,7 @@ def main():
 
     fail_if(parser.script_urls != REQUIRED_SCRIPT_ORDER, f"classic scriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください", errors)
     fail_if(parser.module_script_urls != ["/src/main.jsx"], "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
-    for removed_file in ("stats.js", "privacy-reset.js", "backup.js", "legacy/interop/progress-backup.js"):
+    for removed_file in ("stats.js", "privacy-reset.js", "backup.js", "shortcuts.js", "legacy/interop/progress-backup.js"):
         fail_if((ROOT / removed_file).exists(), f"React移行後は{removed_file}を残さないでください", errors)
 
     theme_bootstrap_attrs = parser.script_attributes.get("theme-bootstrap.js", {})
