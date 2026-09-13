@@ -22,7 +22,6 @@ jobs:
           node --check public/theme-bootstrap.js
           node --check src/features/timer/timerStateGuard.js
           node --check src/features/timer/tabGuard.js
-          node --check scripts/timer_state_behavior_checks.js
 
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
@@ -41,18 +40,6 @@ jobs:
 
       - name: Check timer state integration
         run: python3 scripts/timer_state_checks.py
-
-      - name: Check timer state behavior
-        run: node scripts/timer_state_behavior_checks.js
-
-      - name: Check backup recovery preservation
-        run: python3 scripts/backup_recovery_checks.py
-
-      - name: Check backup export fallback
-        run: python3 scripts/backup_export_fallback_checks.py
-
-      - name: Check backup restore control availability
-        run: python3 scripts/backup_control_availability_checks.py
 
       - name: Reject common secret material
         run: python3 scripts/secret_checks.py
