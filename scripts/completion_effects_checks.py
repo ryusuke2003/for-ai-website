@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HOOK_SOURCE = (ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js").read_text(encoding="utf-8")
 SETTINGS_SOURCE = (ROOT / "src" / "features" / "timer" / "TimerSettings.jsx").read_text(encoding="utf-8")
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
-PRIVACY_RESET_SOURCE = (ROOT / "privacy-reset.js").read_text(encoding="utf-8")
+PRIVACY_RESET_SOURCE = (ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js").read_text(encoding="utf-8")
 
 
 def require(condition, message):
