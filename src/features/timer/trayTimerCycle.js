@@ -15,10 +15,7 @@ function isValidFocusMinutes(minutes) {
 function readLastFocusMinutes() {
   try {
     const stored = Number(localStorage.getItem(TRAY_LAST_FOCUS_MINUTES_KEY));
-    if (isValidFocusMinutes(stored)) {
-      fallbackLastFocusMinutes = stored;
-      return stored;
-    }
+    if (isValidFocusMinutes(stored)) return stored;
   } catch {
     // localStorageが使えなくても、この起動中はメモリ上の値で継続する。
   }
@@ -29,11 +26,10 @@ function readLastFocusMinutes() {
 function rememberFocusMinutes(minutes) {
   if (!isValidFocusMinutes(minutes)) return false;
 
-  fallbackLastFocusMinutes = minutes;
   try {
     localStorage.setItem(TRAY_LAST_FOCUS_MINUTES_KEY, String(minutes));
   } catch {
-    // 休憩から戻すための補助情報なので、保存失敗時もタイマー本体は継続する。
+    fallbackLastFocusMinutes = minutes;
   }
   return true;
 }
