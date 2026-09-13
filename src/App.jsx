@@ -1,4 +1,6 @@
+import { useEffect, useState } from 'react';
 import { AppFooter } from './components/AppFooter.jsx';
+import { AppNavigation } from './components/AppNavigation.jsx';
 import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { BackupPanel } from './features/backup/BackupPanel.jsx';
@@ -13,12 +15,17 @@ import { TimerSettings } from './features/timer/TimerSettings.jsx';
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
+import { TodoPage } from './features/todo/TodoPage.jsx';
 
 const BREAK_MINUTES = 5;
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
 const HINT_CLASS = 'hint mt-3 text-[0.82rem] text-[var(--one-muted)]';
+
+function pageFromHash() {
+  return window.location.hash === '#todo' ? 'todo' : 'timer';
+}
 
 function SectionHeading({ step, id, children }) {
   return (
@@ -100,20 +107,53 @@ function FocusModeStatus({ status }) {
 export function App() {
   const timerState = useTimerState();
   const focusMode = useFocusModeControl(timerState.completionReady);
+  const [page, setPage] = useState(pageFromHash);
+
+  useEffect(() => {
+    function handleHashChange() {
+      setPage(pageFromHash());
+    }
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  function navigate(nextPage) {
+    if (nextPage === 'todo') {
+      window.location.hash = 'todo';
+      return;
+    }
+
+    if (window.location.hash) {
+      window.history.pushState(null, '', window.location.pathname + window.location.search);
+      setPage('timer');
+      return;
+    }
+
+    setPage('timer');
+  }
 
   return (
-    <main className="shell mx-auto w-[min(760px,calc(100%_-_32px))] pb-10 pt-[72px] max-[560px]:pt-11">
-      <header className="mb-4">
+    <main className="shell mx-auto w-[min(760px,calc(100%_-_32px))] pb-10 pt-8 max-[560px]:pt-6">
+      <header className="mb-4 flex items-start justify-between gap-4 max-[560px]:flex-col max-[560px]:gap-0">
+        <AppNavigation page={page} onNavigate={navigate} />
         <ThemeSwitcher />
         <div className="sr-only">
           <StorageHealthStatus />
         </div>
       </header>
-      <TimerSection focusMode={focusMode} />
-      <ProgressSection />
-      <BackupSection />
-      <FocusModeStatus status={focusMode.status} />
-      <AppFooter />
+
+      {page === 'todo' ? (
+        <TodoPage />
+      ) : (
+        <>
+          <TimerSection focusMode={focusMode} />
+          <ProgressSection />
+          <BackupSection />
+          <FocusModeStatus status={focusMode.status} />
+          <AppFooter />
+        </>
+      )}
     </main>
   );
 }
