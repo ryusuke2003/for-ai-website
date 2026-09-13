@@ -88,7 +88,7 @@ function ProgressSection() {
 function BackupSection() {
   return (
     <section className={`${CARD_CLASS} backup-card`} aria-labelledby="backup-title">
-      <SectionHeading step="03" id="done-title">記録をバックアップする</SectionHeading>
+      <SectionHeading step="03" id="backup-title">記録をバックアップする</SectionHeading>
       <BackupPanel />
     </section>
   );
