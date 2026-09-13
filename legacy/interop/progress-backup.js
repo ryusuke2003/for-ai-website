@@ -11,15 +11,39 @@ if (
   let backupPanelDirty = false;
   let publishQueued = false;
 
-  const legacyDailyGoalProgress = typeof dailyGoalProgress !== 'undefined'
-    ? dailyGoalProgress
-    : document.querySelector('.daily-goal-progress');
-
   function levelFromClassList(classList) {
     for (let level = 0; level <= 4; level += 1) {
       if (classList.contains(`level-${level}`)) return level;
     }
     return 0;
+  }
+
+  function buildDailyGoalProgressSnapshot() {
+    if (
+      !Number.isInteger(dailyGoal)
+      || dailyGoal < MIN_DAILY_GOAL
+      || dailyGoal > MAX_DAILY_GOAL
+    ) {
+      return {
+        hidden: true,
+        max: 1,
+        value: 0,
+        ariaValueText: '',
+      };
+    }
+
+    const today = todayFocusCount();
+    const visibleValue = Math.min(today, dailyGoal);
+    const achieved = today >= dailyGoal;
+
+    return {
+      hidden: false,
+      max: dailyGoal,
+      value: visibleValue,
+      ariaValueText: achieved
+        ? `目標${dailyGoal}回を達成、現在${today}回`
+        : `目標${dailyGoal}回中${today}回`,
+    };
   }
 
   function buildProgressDetailsSnapshot() {
@@ -40,6 +64,7 @@ if (
       placeholder: item.classList.contains('is-placeholder'),
       level: levelFromClassList(item.classList),
     }));
+    const goalProgress = buildDailyGoalProgressSnapshot();
 
     return {
       goalValue: dailyGoalInput.value,
@@ -48,10 +73,10 @@ if (
       goalApplyDisabled: dailyGoalApplyButton.disabled,
       goalClearHidden: dailyGoalClearButton.hidden,
       goalStatus: dailyGoalStatus.textContent ?? '',
-      goalProgressHidden: legacyDailyGoalProgress?.hidden ?? true,
-      goalProgressMax: legacyDailyGoalProgress?.max ?? 1,
-      goalProgressValue: legacyDailyGoalProgress?.value ?? 0,
-      goalProgressAriaValueText: legacyDailyGoalProgress?.getAttribute('aria-valuetext') ?? '',
+      goalProgressHidden: goalProgress.hidden,
+      goalProgressMax: goalProgress.max,
+      goalProgressValue: goalProgress.value,
+      goalProgressAriaValueText: goalProgress.ariaValueText,
       history,
       activity,
       activitySummary: activitySummary.textContent ?? '直近30日: 0回 · 0日活動',
@@ -148,7 +173,6 @@ if (
     'renderActivityMap',
     'renderProgressInsights',
     'renderDailyGoal',
-    'renderDailyGoalProgress',
     'markCurrentHistoryDay',
   ]) {
     wrapStateMutation(functionName, { progressDetails: true });
