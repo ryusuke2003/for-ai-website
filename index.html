@@ -16,7 +16,6 @@
   <script src="storage-status.js" defer></script>
   <script src="completion-sound.js" defer></script>
   <script src="wake-lock.js" defer></script>
-  <script src="theme.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="daily-goal-progress.js" defer></script>
   <script src="tab-guard.js" defer></script>
@@ -29,13 +28,15 @@
 <body>
   <main class="shell">
     <header class="hero">
-      <div class="theme-switcher" role="group" aria-label="表示テーマ" aria-describedby="theme-status">
-        <span aria-hidden="true">表示</span>
-        <button type="button" data-theme-choice="system" aria-pressed="true">自動</button>
-        <button type="button" data-theme-choice="light" aria-pressed="false">ライト</button>
-        <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
+      <div id="react-theme-root">
+        <div class="theme-switcher" role="group" aria-label="表示テーマ" aria-describedby="theme-status">
+          <span aria-hidden="true">表示</span>
+          <button type="button" data-theme-choice="system" aria-pressed="true">自動</button>
+          <button type="button" data-theme-choice="light" aria-pressed="false">ライト</button>
+          <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
+        </div>
+        <p id="theme-status" class="sr-only" role="status" aria-live="polite">表示テーマは自動です。</p>
       </div>
-      <p id="theme-status" class="sr-only" role="status" aria-live="polite">表示テーマは自動です。</p>
       <div id="react-hero-root">
         <p class="eyebrow">ONE SPRINT AT A TIME</p>
         <h1>まずは25分。</h1>
