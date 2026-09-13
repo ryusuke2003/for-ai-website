@@ -8,6 +8,7 @@ const FALLBACK_STATE = Object.freeze({
   completionReady: false,
   completionDate: null,
   focusMode: false,
+  focusModeStatus: '',
   feedback: '準備できたらスタート。',
   feedbackState: 'idle',
 });
