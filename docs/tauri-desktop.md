@@ -4,7 +4,7 @@ ONE は React / Vite のフロントエンドをそのまま利用し、Tauri v2
 
 ## 必要な環境
 
-- Node.js 22.12以上
+- Node.js 22.22.2以上
 - Rust stable
 - Xcode Command Line Tools
 
@@ -33,9 +33,19 @@ npm run dev
 デスクトップ版はメニューバーにONEを常駐させます。macOSではDockアイコンを表示せず、メニューバーをアプリの主な入口にします。
 
 - 左クリック: メインウィンドウを表示 / 非表示
-- 右クリック: 「ONEを表示 / 隠す」「ONEを終了」
+- 右クリック: タイマー操作とアプリ操作のメニューを表示
 - ウィンドウの閉じるボタン: アプリを終了せず、ウィンドウを非表示
 - Dock: ONEのアイコンは表示しない
+
+右クリックメニューから、ウィンドウを開かずに次を直接実行できます。
+
+- `開始`: 現在選択中のタイマーを開始 / 再開
+- `一時停止`: 実行中のタイマーを一時停止
+- `リセット`: 現在選択中の時間へ戻す
+- `25分開始`: 25分へ切り替えてそのまま開始
+- `5分休憩`: 5分休憩へ切り替えてそのまま開始
+- `ONEを表示 / 隠す`
+- `ONEを終了`
 
 メニューバーのtitleはタイマー状態と同期します。
 
@@ -47,6 +57,8 @@ npm run dev
 | 完了 | `00:00` |
 
 `src/desktop/trayTimerSync.js` が `timerStore` を購読し、Tauri実行時だけ `set_tray_title` commandを呼びます。ブラウザ版ではTauri APIを呼びません。
+
+Trayのタイマー操作は `src-tauri/src/lib.rs` から `one:tray-timer-action` eventをmain WebViewへ送り、`src/desktop/trayTimerActions.js` が既存の `timerActions` へ委譲します。タイマー状態をRust側へ二重実装せず、ウィンドウが非表示でも同じReact timer storeを操作します。
 
 Rust側のTray生成、Dock非表示、ウィンドウ常駐、終了処理、title反映は `src-tauri/src/lib.rs` が担当します。
 
@@ -91,7 +103,8 @@ Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環
 - main windowのTauri capabilityは `core:default` のみ
 - filesystem / shell / HTTP / opener等のTauri plugin権限は追加しない
 - frontendのCSPは `index.html` 側で維持
-- frontendからRustへ渡す用途は現在Tray title更新に限定
+- frontendからRustへのcommandはTray title更新に限定
+- RustからfrontendへのTray操作は固定された5種類のtimer action eventだけを送る
 - npmは `package-lock.json`、Rustは `Cargo.lock` をCIで強制
 - GitHub Actionsの外部Actionはcommit SHAに固定
 
