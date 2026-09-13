@@ -7,6 +7,8 @@ const THEME_OPTIONS = [
   { value: 'light', label: 'ライト' },
   { value: 'dark', label: 'ダーク' },
 ];
+const THEME_BUTTON_CLASS = 'rounded-full border-0 bg-transparent px-2.5 py-1.5 font-extrabold text-inherit';
+const ACTIVE_THEME_BUTTON_CLASS = 'bg-[var(--one-active-bg)] text-[var(--one-active-fg)]';
 
 function reportThemeStorageFailure() {
   if (typeof globalThis.reportStorageFailure === 'function') {
@@ -123,24 +125,27 @@ export function ThemeSwitcher() {
   return (
     <>
       <div
-        className="theme-switcher mb-6 flex items-center justify-end gap-1.5 text-[0.76rem] font-extrabold max-[560px]:mb-5 max-[560px]:justify-start"
+        className="theme-switcher mb-6 flex items-center justify-end gap-1.5 text-[0.76rem] font-extrabold text-[var(--one-subtle)] max-[560px]:mb-5 max-[560px]:justify-start"
         role="group"
         aria-label="表示テーマ"
         aria-describedby="theme-status"
       >
         <span className="mr-0.5 tracking-[0.06em]" aria-hidden="true">表示</span>
-        {THEME_OPTIONS.map((option) => (
-          <button
-            className="rounded-full border-0 bg-transparent px-2.5 py-1.5 font-extrabold text-inherit"
-            key={option.value}
-            type="button"
-            data-theme-choice={option.value}
-            aria-pressed={theme === option.value}
-            onClick={() => chooseTheme(option.value)}
-          >
-            {option.label}
-          </button>
-        ))}
+        {THEME_OPTIONS.map((option) => {
+          const active = theme === option.value;
+          return (
+            <button
+              className={`${THEME_BUTTON_CLASS} ${active ? ACTIVE_THEME_BUTTON_CLASS : ''}`}
+              key={option.value}
+              type="button"
+              data-theme-choice={option.value}
+              aria-pressed={active}
+              onClick={() => chooseTheme(option.value)}
+            >
+              {option.label}
+            </button>
+          );
+        })}
       </div>
       <p id="theme-status" className="sr-only" role="status" aria-live="polite">
         {status}
