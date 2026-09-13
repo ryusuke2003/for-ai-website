@@ -2,7 +2,7 @@ import { placeTodoWithoutOverlap } from './todoSchedule.js';
 
 const TIMELINE_SELECTOR = '[data-testid="todo-timeline"]';
 const TIME_RANGE_PREFIX = 'todo-time-range-';
-const PX_PER_HOUR = 72;
+const PX_PER_HOUR = 300;
 const MINUTE_STEP = 5;
 const DAY_MINUTES = 24 * 60;
 const PREVIEW_TRANSITION = 'transform 120ms ease';

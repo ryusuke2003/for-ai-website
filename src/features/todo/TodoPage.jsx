@@ -7,7 +7,7 @@ const TEMPLATE_STORAGE_KEY = 'one.todoTemplates.v1';
 const DRAG_MIME = 'application/x-one-todo';
 const MINUTE_STEP = 5;
 const DAY_MINUTES = 24 * 60;
-const PX_PER_HOUR = 72;
+const PX_PER_HOUR = 300;
 const TIMELINE_HEIGHT = 24 * PX_PER_HOUR;
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SUBCARD_CLASS = 'rounded-3xl border border-[var(--one-border)] bg-[var(--one-stat-bg)] p-5 max-[560px]:rounded-[20px] max-[560px]:p-4';
@@ -409,12 +409,13 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
 function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
   const top = (todo.startMinute / 60) * PX_PER_HOUR;
   const naturalHeight = (todo.duration / 60) * PX_PER_HOUR;
-  const height = Math.max(38, naturalHeight - 4);
+  const compact = todo.duration === MINUTE_STEP;
+  const height = Math.max(24, naturalHeight - 4);
   const timeRange = `${formatMinuteOfDay(todo.startMinute)}–${formatMinuteOfDay(todo.startMinute + todo.duration)}`;
 
   return (
     <article
-      className={`absolute left-[72px] right-3 z-10 cursor-grab overflow-hidden rounded-2xl border border-[var(--one-border-strong)] bg-[var(--one-card)] px-3 py-2 shadow-[var(--one-card-shadow)] active:cursor-grabbing ${todo.completed ? 'opacity-55' : ''}`}
+      className={`absolute left-[72px] right-3 z-10 cursor-grab overflow-hidden rounded-2xl border border-[var(--one-border-strong)] bg-[var(--one-card)] px-3 ${compact ? 'py-0.5' : 'py-2'} shadow-[var(--one-card-shadow)] active:cursor-grabbing ${todo.completed ? 'opacity-55' : ''}`}
       style={{ top: `${top + 2}px`, height: `${height}px` }}
       draggable
       onDragStart={onDragStart}
