@@ -33,6 +33,7 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
 
   const focusLabel = focusModeActive ? '通常表示' : '集中表示';
   const focusAriaLabel = focusModeActive ? '通常表示に戻る' : '集中表示に切り替える';
+  const canRestoreReset = timerActions.canRestoreReset();
 
   return (
     <>
@@ -50,6 +51,15 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
       </button>
       <button className={SECONDARY_BUTTON_CLASS} id="reset-button" type="button" disabled={state.completionReady} onClick={() => timerActions.reset()}>
         リセット
+      </button>
+      <button
+        className={SECONDARY_BUTTON_CLASS}
+        id="restore-reset-button"
+        type="button"
+        disabled={state.completionReady || !canRestoreReset}
+        onClick={() => timerActions.restoreReset()}
+      >
+        復元
       </button>
       <button
         className={SECONDARY_BUTTON_CLASS}
