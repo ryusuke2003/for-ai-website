@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STORE_SOURCE = (ROOT / "src" / "features" / "progress" / "progressStore.js").read_text(encoding="utf-8")
-TAB_GUARD_SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
+TAB_GUARD_SOURCE = (ROOT / "src" / "features" / "timer" / "tabGuard.js").read_text(encoding="utf-8")
 
 
 def fail(message):
@@ -95,7 +95,7 @@ def main():
         "function verifyCompletionConsumedState()",
     ), "完了claim直後の最新進捗再読込を維持してください")
 
-    print("Cross-tab progress sync is React-store owned while tab-guard keeps claim-specific refreshes.")
+    print("Cross-tab progress sync is React-store owned while module tab guard keeps claim-specific refreshes.")
 
 
 if __name__ == "__main__":
