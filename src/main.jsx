@@ -1,13 +1,13 @@
 import React from 'react';
-import { hydrateRoot } from 'react-dom/client';
+import { createRoot } from 'react-dom/client';
 import { AppFooter } from './components/AppFooter.jsx';
 import { HeroIntro } from './components/HeroIntro.jsx';
 
-function hydrateComponent(selector, component) {
+function mountComponent(selector, component) {
   const root = document.querySelector(selector);
   if (!root) return;
-  hydrateRoot(root, component);
+  createRoot(root).render(component);
 }
 
-hydrateComponent('#react-hero-root', <HeroIntro />);
-hydrateComponent('#react-footer-root', <AppFooter />);
+mountComponent('#react-hero-root', <HeroIntro />);
+mountComponent('#react-footer-root', <AppFooter />);
