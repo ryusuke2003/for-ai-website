@@ -14,7 +14,6 @@
   <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
   <script src="legacy/interop/timer.js" defer></script>
-  <script src="storage-status.js" defer></script>
   <script src="completion-sound.js" defer></script>
   <script src="wake-lock.js" defer></script>
   <script src="stats.js" defer></script>
@@ -35,8 +34,6 @@
       React replaces this subtree on mount; it is not a user-facing fallback UI.
     -->
     <div id="legacy-runtime-scaffold" hidden aria-hidden="true">
-      <p id="storage-health-status" role="status" aria-live="polite">端末保存の利用状態を確認しています。</p>
-
       <div class="timer-card">
         <div id="timer" role="timer" aria-label="残り時間">25:00</div>
         <progress id="timer-progress" max="1500" value="0" aria-label="集中時間の進捗"></progress>
