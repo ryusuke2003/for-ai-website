@@ -37,9 +37,11 @@ jobs:
           test -f dist/react-timer-controls-bridge.js
           test -f dist/react-timer-display-bridge.js
           test -f dist/react-timer-settings-bridge.js
+          test -f dist/react-progress-overview-bridge.js
           grep -q 'react-timer-controls-bridge.js' dist/index.html
           grep -q 'react-timer-display-bridge.js' dist/index.html
           grep -q 'react-timer-settings-bridge.js' dist/index.html
+          grep -q 'react-progress-overview-bridge.js' dist/index.html
           if grep -q 'src/main.jsx' dist/index.html; then
             echo 'Unbundled React entry remains in dist/index.html.' >&2
             exit 1
