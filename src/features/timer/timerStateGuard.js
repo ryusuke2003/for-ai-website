@@ -84,6 +84,3 @@ export const timerStateGuard = Object.freeze({
   normalize: normalizeTimerState,
   parse: parseTimerState,
 });
-
-// tabGuard / backupの直接import移行が完了するまでのmodule互換境界。
-globalThis.ONE_TIMER_STATE_GUARD = timerStateGuard;
