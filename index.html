@@ -27,9 +27,9 @@
   <script type="module" data-vite-entry="/src/main.jsx"></script>
 </head>
 <body>
-  <main class="shell">
-    <header class="hero">
-      <div id="react-theme-root">
+  <div id="root">
+    <main class="shell">
+      <header class="hero">
         <div class="theme-switcher" role="group" aria-label="表示テーマ" aria-describedby="theme-status">
           <span aria-hidden="true">表示</span>
           <button type="button" data-theme-choice="system" aria-pressed="true">自動</button>
@@ -37,33 +37,27 @@
           <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
         </div>
         <p id="theme-status" class="sr-only" role="status" aria-live="polite">表示テーマは自動です。</p>
-      </div>
-      <div id="react-hero-root">
         <p class="eyebrow">ONE SPRINT AT A TIME</p>
         <h1>まずは25分。</h1>
         <p class="lead">集中する時間を決めて始める。終わったら1回を記録して、続けた日や積み重ねを見返せる。</p>
-      </div>
-      <p class="hint" id="storage-health-status" role="status" aria-live="polite">端末保存の利用状態を確認しています。</p>
-    </header>
+        <p class="hint" id="storage-health-status" role="status" aria-live="polite">端末保存の利用状態を確認しています。</p>
+      </header>
 
-    <section class="card timer-card" aria-labelledby="timer-title">
-      <div class="section-heading">
-        <span class="step">01</span>
-        <h2 id="timer-title">時間を決めて集中する</h2>
-      </div>
-      <div id="react-timer-display-root">
+      <section class="card timer-card" aria-labelledby="timer-title">
+        <div class="section-heading">
+          <span class="step">01</span>
+          <h2 id="timer-title">時間を決めて集中する</h2>
+        </div>
         <div class="timer" id="timer" role="timer" aria-label="残り時間">25:00</div>
         <progress class="timer-progress" id="timer-progress" max="1500" value="0" aria-label="集中時間の進捗"></progress>
         <p class="timer-status" id="timer-status" role="status" aria-live="polite">準備できたらスタート。</p>
         <p class="timer-status timer-end-time" id="timer-end-time" hidden>終了予定 <time id="timer-end-at"></time></p>
-      </div>
-      <div class="controls" id="react-timer-controls-root">
-        <button class="primary" id="start-button" type="button" aria-keyshortcuts="Space">スタート</button>
-        <button class="secondary" id="reset-button" type="button">リセット</button>
-        <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false" aria-keyshortcuts="F Escape">集中表示</button>
-      </div>
-      <p class="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
-      <div id="react-timer-settings-root">
+        <div class="controls">
+          <button class="primary" id="start-button" type="button" aria-keyshortcuts="Space">スタート</button>
+          <button class="secondary" id="reset-button" type="button">リセット</button>
+          <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false" aria-keyshortcuts="F Escape">集中表示</button>
+        </div>
+        <p class="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
         <div class="presets" aria-label="タイマー時間と完了通知">
           <button type="button" data-minutes="10">10分</button>
           <button type="button" data-minutes="25" class="active" aria-pressed="true">25分</button>
@@ -82,114 +76,88 @@
         <p class="hint" id="completion-sound-status" role="status" aria-live="polite">完了音はオフです。オンにすると短い試聴音が鳴ります。</p>
         <p class="hint" id="completion-notification-status" role="status" aria-live="polite">完了通知はオフです。オンにするとブラウザの通知許可を確認します。</p>
         <p class="hint" id="wake-lock-status" role="status" aria-live="polite">画面維持はオフです。オンにすると集中中だけ画面のスリープを抑えます。</p>
-      </div>
-      <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
-      <p class="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
-    </section>
+        <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
+        <p class="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
+      </section>
 
-    <section class="card progress-card" aria-labelledby="done-title">
-      <div class="section-heading">
-        <span class="step">02</span>
-        <h2 id="done-title">集中を記録して振り返る</h2>
-      </div>
-      <div class="controls">
-        <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
-        <button class="secondary" id="discard-button" type="button" aria-describedby="done-hint" hidden>記録せず破棄する</button>
-      </div>
-      <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。完了後は「記録する」か「記録せず破棄する」を選ぶまで次のタイマー操作をロックします。日付をまたいでも完了した日の回数に入ります。</p>
-
-      <div class="progress-summary" aria-live="polite">
-        <div class="progress-stat">
-          <strong id="today-count">0</strong>
-          <span>今日</span>
+      <section class="card progress-card" aria-labelledby="done-title">
+        <div class="section-heading">
+          <span class="step">02</span>
+          <h2 id="done-title">集中を記録して振り返る</h2>
         </div>
-        <div class="progress-stat">
-          <strong id="week-count">0</strong>
-          <span>今週</span>
-        </div>
-        <div class="progress-stat">
-          <strong id="streak-count" aria-label="0日">0</strong>
-          <span>連続日</span>
-        </div>
-        <div class="progress-stat">
-          <strong id="done-count">0</strong>
-          <span>累計</span>
-        </div>
-      </div>
-      <p class="hint" id="streak-status">今日1回から連続記録を始められます。</p>
-
-      <div class="presets" aria-describedby="daily-goal-status">
-        <span class="custom-time">
-          <label for="daily-goal-input">今日の目標</label>
-          <input class="custom-minutes-input" id="daily-goal-input" type="number" min="1" max="12" step="1" inputmode="numeric" placeholder="3" aria-describedby="daily-goal-status">
-          <span aria-hidden="true">回</span>
-          <button id="daily-goal-apply" type="button" aria-describedby="daily-goal-status">設定</button>
-        </span>
-        <button id="daily-goal-clear" type="button" aria-describedby="daily-goal-status" hidden>目標を解除</button>
-      </div>
-      <p class="hint" id="daily-goal-status" role="status" aria-live="polite">今日の目標は未設定です。1〜12回で設定できます。</p>
-
-      <div class="history" aria-labelledby="history-title">
-        <div class="history-heading">
-          <h3 id="history-title">直近7日</h3>
-          <span>集中した回数</span>
-        </div>
-        <div class="history-grid" id="history-grid" role="list"></div>
-      </div>
-
-      <div class="activity" aria-labelledby="activity-title">
-        <div class="history-heading">
-          <h3 id="activity-title">直近30日</h3>
-          <span>続けた日を俯瞰</span>
-        </div>
-        <div class="activity-grid" id="activity-grid" role="list" aria-describedby="activity-summary"></div>
-        <p class="hint" id="activity-summary">直近30日: 0回 · 0日活動</p>
-      </div>
-
-      <p class="hint">日ごとの回数もこの端末だけに保存します。履歴は最大90日分です。</p>
-    </section>
-
-    <section class="card backup-card" aria-labelledby="backup-title">
-      <div class="section-heading">
-        <span class="step">03</span>
-        <h2 id="backup-title">記録をバックアップする</h2>
-      </div>
-      <div class="controls">
-        <button class="secondary" id="backup-export-button" type="button" aria-describedby="backup-hint">JSONを書き出す</button>
-        <button class="secondary" id="backup-import-button" type="button" aria-describedby="backup-hint">JSONから復元</button>
-        <button class="secondary" id="backup-undo-button" type="button" aria-describedby="backup-hint" hidden>直前の復元を取り消す</button>
-      </div>
-      <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
-      <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。実行中タイマー、タブ間セッションID、今日の目標、表示・通知などのUI設定は含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。</p>
-      <p class="hint" id="backup-status" role="status" aria-live="polite"></p>
-
-      <div class="history" aria-labelledby="data-reset-title">
-        <div class="history-heading">
-          <h3 id="data-reset-title">この端末のONEデータ</h3>
-          <span>プライバシー</span>
-        </div>
-        <p class="hint" id="data-reset-hint">タイマー、集中記録、今日の目標、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
         <div class="controls">
-          <button class="secondary" id="data-reset-button" type="button" aria-describedby="data-reset-hint data-reset-status">この端末のデータを削除</button>
+          <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
+          <button class="secondary" id="discard-button" type="button" aria-describedby="done-hint" hidden>記録せず破棄する</button>
         </div>
-        <div id="data-reset-confirm" hidden>
-          <p class="hint">この操作は取り消せません。必要な記録がある場合は先にJSONを書き出してください。</p>
+        <p class="hint" id="done-hint">タイマーが0:00になった集中だけ、1回だけ記録できます。完了後は「記録する」か「記録せず破棄する」を選ぶまで次のタイマー操作をロックします。日付をまたいでも完了した日の回数に入ります。</p>
+
+        <div class="progress-summary" aria-live="polite">
+          <div class="progress-stat"><strong id="today-count">0</strong><span>今日</span></div>
+          <div class="progress-stat"><strong id="week-count">0</strong><span>今週</span></div>
+          <div class="progress-stat"><strong id="streak-count" aria-label="0日">0</strong><span>連続日</span></div>
+          <div class="progress-stat"><strong id="done-count">0</strong><span>累計</span></div>
+        </div>
+        <p class="hint" id="streak-status">今日1回から連続記録を始められます。</p>
+
+        <div class="presets" aria-describedby="daily-goal-status">
+          <span class="custom-time">
+            <label for="daily-goal-input">今日の目標</label>
+            <input class="custom-minutes-input" id="daily-goal-input" type="number" min="1" max="12" step="1" inputmode="numeric" placeholder="3" aria-describedby="daily-goal-status">
+            <span aria-hidden="true">回</span>
+            <button id="daily-goal-apply" type="button" aria-describedby="daily-goal-status">設定</button>
+          </span>
+          <button id="daily-goal-clear" type="button" aria-describedby="daily-goal-status" hidden>目標を解除</button>
+        </div>
+        <p class="hint" id="daily-goal-status" role="status" aria-live="polite">今日の目標は未設定です。1〜12回で設定できます。</p>
+
+        <div class="history" aria-labelledby="history-title">
+          <div class="history-heading"><h3 id="history-title">直近7日</h3><span>集中した回数</span></div>
+          <div class="history-grid" id="history-grid" role="list"></div>
+        </div>
+
+        <div class="activity" aria-labelledby="activity-title">
+          <div class="history-heading"><h3 id="activity-title">直近30日</h3><span>続けた日を俯瞰</span></div>
+          <div class="activity-grid" id="activity-grid" role="list" aria-describedby="activity-summary"></div>
+          <p class="hint" id="activity-summary">直近30日: 0回 · 0日活動</p>
+        </div>
+
+        <p class="hint">日ごとの回数もこの端末だけに保存します。履歴は最大90日分です。</p>
+      </section>
+
+      <section class="card backup-card" aria-labelledby="backup-title">
+        <div class="section-heading">
+          <span class="step">03</span>
+          <h2 id="backup-title">記録をバックアップする</h2>
+        </div>
+        <div class="controls">
+          <button class="secondary" id="backup-export-button" type="button" aria-describedby="backup-hint">JSONを書き出す</button>
+          <button class="secondary" id="backup-import-button" type="button" aria-describedby="backup-hint">JSONから復元</button>
+          <button class="secondary" id="backup-undo-button" type="button" aria-describedby="backup-hint" hidden>直前の復元を取り消す</button>
+        </div>
+        <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
+        <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。実行中タイマー、タブ間セッションID、今日の目標、表示・通知などのUI設定は含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。</p>
+        <p class="hint" id="backup-status" role="status" aria-live="polite"></p>
+
+        <div class="history" aria-labelledby="data-reset-title">
+          <div class="history-heading"><h3 id="data-reset-title">この端末のONEデータ</h3><span>プライバシー</span></div>
+          <p class="hint" id="data-reset-hint">タイマー、集中記録、今日の目標、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
           <div class="controls">
-            <button class="primary" id="data-reset-confirm-button" type="button" aria-describedby="data-reset-hint data-reset-status">本当にすべて削除</button>
-            <button class="secondary" id="data-reset-cancel-button" type="button">キャンセル</button>
+            <button class="secondary" id="data-reset-button" type="button" aria-describedby="data-reset-hint data-reset-status">この端末のデータを削除</button>
           </div>
+          <div id="data-reset-confirm" hidden>
+            <p class="hint">この操作は取り消せません。必要な記録がある場合は先にJSONを書き出してください。</p>
+            <div class="controls">
+              <button class="primary" id="data-reset-confirm-button" type="button" aria-describedby="data-reset-hint data-reset-status">本当にすべて削除</button>
+              <button class="secondary" id="data-reset-cancel-button" type="button">キャンセル</button>
+            </div>
+          </div>
+          <p class="hint" id="data-reset-status" role="status" aria-live="polite"></p>
         </div>
-        <p class="hint" id="data-reset-status" role="status" aria-live="polite"></p>
-      </div>
-    </section>
+      </section>
 
-    <p id="focus-mode-status" class="sr-only" aria-live="polite"></p>
-
-    <div id="react-footer-root">
-      <footer>
-        <p>データ収集なし · アカウントなし · 外部通信なし</p>
-      </footer>
-    </div>
-  </main>
+      <p id="focus-mode-status" class="sr-only" aria-live="polite"></p>
+      <footer><p>データ収集なし · アカウントなし · 外部通信なし</p></footer>
+    </main>
+  </div>
 </body>
 </html>
