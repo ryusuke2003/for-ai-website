@@ -17,8 +17,6 @@ TIMER_SETTINGS = (ROOT / "src/features/timer/TimerSettings.jsx").read_text(encod
 PROGRESS_OVERVIEW = (ROOT / "src/features/progress/ProgressOverview.jsx").read_text(encoding="utf-8")
 PROGRESS_DETAILS = (ROOT / "src/features/progress/ProgressDetails.jsx").read_text(encoding="utf-8")
 BACKUP_PANEL = (ROOT / "src/features/backup/BackupPanel.jsx").read_text(encoding="utf-8")
-STYLES_PATH = ROOT / "styles.css"
-STYLES = STYLES_PATH.read_text(encoding="utf-8")
 
 
 def require(condition, message):
@@ -41,7 +39,7 @@ def main():
     require("import './tailwind.css';" in MAIN, "ReactエントリからTailwind CSSを読み込んでください")
     require('tailwindcss/theme.css' in TAILWIND, "Tailwind theme layerを読み込んでください")
     require('tailwindcss/utilities.css' in TAILWIND, "Tailwind utilities layerを読み込んでください")
-    require('tailwindcss/preflight.css' not in TAILWIND, "段階移行中はPreflightを有効化しないでください")
+    require('tailwindcss/preflight.css' not in TAILWIND, "Preflightを意図せず有効化しないでください")
 
     require_tokens(HERO, (
         "text-[clamp(2.8rem,10vw,6.6rem)]",
@@ -94,16 +92,21 @@ def main():
         "bg-[var(--one-primary-bg)]",
     ), "BackupPanel")
 
-    require("--one-card:" in STYLES, "light/dark共通のテーマ変数をstyles.cssへ定義してください")
-    require("--one-activity-4:" in STYLES, "履歴グラフのテーマ変数をstyles.cssへ定義してください")
-    require("@media (prefers-color-scheme: dark)" in STYLES, "自動ダークテーマを維持してください")
-    require(".history-grid {" not in STYLES, "7日グラフのlegacy CSSを残さないでください")
-    require(".activity-grid {" not in STYLES, "30日グラフのlegacy CSSを残さないでください")
-    require(".progress-summary {" not in STYLES, "進捗サマリーのlegacy CSSを残さないでください")
-    require(STYLES_PATH.stat().st_size < 9000, "styles.cssをテーマ基盤と集中表示の互換CSS中心まで縮小してください")
-    require((ROOT / "timer-progress.css").exists(), "progress疑似要素CSSは後続整理まで残してください")
+    for token in (
+        "--one-card:",
+        "--one-activity-4:",
+        "@media (prefers-color-scheme: dark)",
+        ".timer-progress {",
+        ".daily-goal-progress {",
+        "body.focus-mode .timer-card {",
+        "button:focus-visible,",
+    ):
+        require(token in TAILWIND, f"共通CSS基盤がsrc/tailwind.cssにありません: {token}")
 
-    print("Tailwind migration checks passed: cards, responsive layout, 7/30-day charts, and theme colors use utilities/CSS variables with a small compatibility stylesheet.")
+    require(not (ROOT / "styles.css").exists(), "legacy styles.cssを復活させないでください")
+    require(not (ROOT / "timer-progress.css").exists(), "timer-progress.cssを復活させないでください")
+
+    print("Tailwind migration checks passed: React utilities, theme variables, focus mode, and progress styles share the single src/tailwind.css entry.")
 
 
 if __name__ == "__main__":
