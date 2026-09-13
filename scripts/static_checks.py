@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
 APP_PATH = ROOT / "app.js"
 REACT_APP_PATH = ROOT / "src" / "App.jsx"
+STORAGE_COMPONENT_PATH = ROOT / "src" / "components" / "StorageHealthStatus.jsx"
 THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
 PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
@@ -150,11 +151,13 @@ def main():
     fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in app_source, "保存失敗時は全体へ通知してください", errors)
 
     react_app_source = REACT_APP_PATH.read_text(encoding="utf-8")
-    fail_if('id="storage-health-status"' not in react_app_source, "端末保存状態はReact UIに表示してください", errors)
-    fail_if('role="status"' not in react_app_source or 'aria-live="polite"' not in react_app_source, "端末保存状態はpoliteなstatusにしてください", errors)
-    fail_if("STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1'" not in react_app_source, "端末保存確認は既存プローブキーを再利用してください", errors)
-    fail_if("window.addEventListener('one:storage-error', handleStorageError)" not in react_app_source, "保存失敗をReact端末保存表示へ反映してください", errors)
-    fail_if("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token" not in react_app_source, "保存プローブは読み戻し確認まで行ってください", errors)
+    storage_component = STORAGE_COMPONENT_PATH.read_text(encoding="utf-8")
+    fail_if("StorageHealthStatus" not in react_app_source, "React Appから端末保存状態を表示してください", errors)
+    fail_if('id="storage-health-status"' not in storage_component, "端末保存状態はReact UIに表示してください", errors)
+    fail_if('role="status"' not in storage_component or 'aria-live="polite"' not in storage_component, "端末保存状態はpoliteなstatusにしてください", errors)
+    fail_if("STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1'" not in storage_component, "端末保存確認は既存プローブキーを再利用してください", errors)
+    fail_if("window.addEventListener('one:storage-error', handleStorageError)" not in storage_component, "保存失敗をReact端末保存表示へ反映してください", errors)
+    fail_if("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token" not in storage_component, "保存プローブは読み戻し確認まで行ってください", errors)
 
     bootstrap_source = THEME_BOOTSTRAP_PATH.read_text(encoding="utf-8")
     theme_component = THEME_COMPONENT_PATH.read_text(encoding="utf-8")
@@ -165,7 +168,7 @@ def main():
 
     privacy_reset_source = PRIVACY_RESET_PATH.read_text(encoding="utf-8")
     fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source, "削除対象キーは明示Setで管理してください", errors)
-    storage_source = "\n".join(script_sources + [react_app_source, theme_component])
+    storage_source = "\n".join(script_sources + [storage_component, theme_component])
     storage_keys = set(re.findall(r"['\"](one\.[A-Za-z0-9.]+)['\"]", storage_source))
     for storage_key in sorted(storage_keys):
         represented = f"'{storage_key}'" in privacy_reset_source or f'"{storage_key}"' in privacy_reset_source
