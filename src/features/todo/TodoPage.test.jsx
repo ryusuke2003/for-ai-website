@@ -5,12 +5,15 @@ import { TodoPage } from './TodoPage.jsx';
 const TODO_STORAGE_KEY = 'one.todos.v2';
 const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 
-function dataTransfer() {
+function dataTransfer({ rejectCustomType = false } = {}) {
   const values = new Map();
   return {
     effectAllowed: 'none',
     dropEffect: 'none',
     setData(type, value) {
+      if (rejectCustomType && type !== 'text/plain') {
+        throw new Error('custom drag types are not available');
+      }
       values.set(type, value);
     },
     getData(type) {
@@ -61,7 +64,7 @@ describe('TodoPage', () => {
     expect(Number(hourPicker.getAttribute('aria-valuenow'))).toBe((before + 1) % 24);
   });
 
-  it('テンプレートを保存し、クリックでタスク入力欄へ反映できる', () => {
+  it('テンプレートを保存し、使うボタンでタスク入力欄へ反映できる', () => {
     render(<TodoPage />);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'テンプレート名' }), {
@@ -69,8 +72,8 @@ describe('TodoPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'テンプレートを保存' }));
 
-    const templateButton = screen.getByText('セキスペ復習').closest('button');
-    fireEvent.click(templateButton);
+    expect(screen.getByText('セキスペ復習').closest('button')).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: 'セキスペ復習を入力欄で使う' }));
 
     expect(screen.getByRole('textbox', { name: 'やること' }).value).toBe('セキスペ復習');
   });
@@ -83,10 +86,9 @@ describe('TodoPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: 'テンプレートを保存' }));
 
-    const templateButton = screen.getByText('暗記問題').closest('button');
-    const draggableTemplate = templateButton.closest('[draggable="true"]');
+    const draggableTemplate = screen.getByText('暗記問題').closest('[draggable="true"]');
     const timeline = screen.getByTestId('todo-timeline');
-    const transfer = dataTransfer();
+    const transfer = dataTransfer({ rejectCustomType: true });
 
     timeline.getBoundingClientRect = () => ({
       x: 0,
