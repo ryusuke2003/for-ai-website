@@ -27,6 +27,17 @@ fn emit_timer_action(app: &tauri::AppHandle, action: &str) {
 }
 
 #[cfg(target_os = "macos")]
+fn open_todo(app: &tauri::AppHandle) {
+    let Some(window) = app.get_webview_window("main") else {
+        return;
+    };
+
+    let _ = window.emit("one:tray-navigation", "todo");
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
+#[cfg(target_os = "macos")]
 #[tauri::command]
 fn set_tray_title(app: tauri::AppHandle, title: String) -> Result<(), String> {
     let tray = app
@@ -51,6 +62,7 @@ pub fn run() {
         app.set_dock_visibility(false);
 
         let open_item = MenuItem::with_id(app, "open-window", "ONEを開く", true, None::<&str>)?;
+        let todo_item = MenuItem::with_id(app, "open-todo", "Todoを開く", true, None::<&str>)?;
         let start_item = MenuItem::with_id(app, "timer-start", "開始 / 再開", true, None::<&str>)?;
         let pause_item = MenuItem::with_id(app, "timer-pause", "一時停止", true, None::<&str>)?;
         let reset_item = MenuItem::with_id(app, "timer-reset", "リセット", true, None::<&str>)?;
@@ -59,6 +71,7 @@ pub fn run() {
             app,
             &[
                 &open_item,
+                &todo_item,
                 &start_item,
                 &pause_item,
                 &reset_item,
@@ -74,6 +87,7 @@ pub fn run() {
             .tooltip("ONE")
             .on_menu_event(|app, event| match event.id().as_ref() {
                 "open-window" => show_main_window(app),
+                "open-todo" => open_todo(app),
                 "timer-start" => emit_timer_action(app, "start"),
                 "timer-pause" => emit_timer_action(app, "pause"),
                 "timer-reset" => emit_timer_action(app, "reset"),
