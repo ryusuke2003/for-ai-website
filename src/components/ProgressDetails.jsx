@@ -1,52 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useProgressDetailsState } from '../state/useProgressDetailsState';
 
-const DEFAULT_STATE = {
-  goalValue: '',
-  goalInvalid: false,
-  goalInputDisabled: false,
-  goalApplyDisabled: false,
-  goalClearHidden: true,
-  goalStatus: '今日の目標は未設定です。1〜12回で設定できます。',
-  goalProgressHidden: true,
-  goalProgressMax: 1,
-  goalProgressValue: 0,
-  goalProgressAriaValueText: '',
-  history: [],
-  activity: [],
-  activitySummary: '直近30日: 0回 · 0日活動',
-};
-
-function readBridgeState() {
-  return globalThis.ONE_REACT_PROGRESS_DETAILS?.snapshot?.() ?? DEFAULT_STATE;
+function bridge() {
+  return globalThis.ONE_REACT_PROGRESS_DETAILS;
 }
 
 function setGoalValue(value) {
-  globalThis.ONE_REACT_PROGRESS_DETAILS?.setGoalValue?.(value);
+  bridge()?.setGoalValue?.(value);
 }
 
 function applyGoal() {
-  globalThis.ONE_REACT_PROGRESS_DETAILS?.applyGoal?.();
+  bridge()?.applyGoal?.();
 }
 
 function clearGoal() {
-  globalThis.ONE_REACT_PROGRESS_DETAILS?.clearGoal?.();
+  bridge()?.clearGoal?.();
 }
 
 export function ProgressDetails() {
-  const [state, setState] = useState(readBridgeState);
-
-  useEffect(() => {
-    function handleState(event) {
-      setState(event.detail ?? readBridgeState());
-    }
-
-    window.addEventListener('one:progress-details-state', handleState);
-    setState(readBridgeState());
-
-    return () => {
-      window.removeEventListener('one:progress-details-state', handleState);
-    };
-  }, []);
+  const state = useProgressDetailsState();
 
   return (
     <>

@@ -24,11 +24,11 @@ jobs:
           node --check app.js
           node --check react-timer-state-source.js
           node --check react-secondary-state-source.js
+          node --check react-remaining-state-source.js
           node --check react-timer-controls-bridge.js
           node --check react-timer-settings-bridge.js
           node --check react-progress-overview-bridge.js
           node --check react-progress-details-bridge.js
-          node --check backup-timer-context-compat.js
           node --check react-backup-panel-bridge.js
           node --check storage-status.js
           node --check completion-sound.js

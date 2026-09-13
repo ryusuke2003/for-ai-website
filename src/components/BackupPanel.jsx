@@ -1,31 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
-
-const DEFAULT_STATE = {
-  importDisabled: false,
-  undoHidden: true,
-  undoDisabled: false,
-  backupStatus: '',
-  resetButtonHidden: false,
-  resetConfirmHidden: true,
-  resetConfirmDisabled: false,
-  resetCancelDisabled: false,
-  resetStatus: '',
-};
+import { useEffect, useRef } from 'react';
+import { useBackupPanelState } from '../state/useBackupPanelState';
 
 function bridge() {
   return globalThis.ONE_REACT_BACKUP_PANEL;
 }
 
-function readBridgeState() {
-  return bridge()?.snapshot?.() ?? DEFAULT_STATE;
-}
-
-function visibleBackupStatus(message) {
-  return String(message ?? '').replace('タスク本文や実行中タイマー', '実行中タイマー');
-}
-
 export function BackupPanel() {
-  const [state, setState] = useState(readBridgeState);
+  const state = useBackupPanelState();
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
   const undoButtonRef = useRef(null);
@@ -34,10 +15,6 @@ export function BackupPanel() {
   const resetCancelButtonRef = useRef(null);
 
   useEffect(() => {
-    function handleState(event) {
-      setState(event.detail ?? readBridgeState());
-    }
-
     function handleFocus(event) {
       const refs = {
         export: exportButtonRef,
@@ -49,12 +26,8 @@ export function BackupPanel() {
       refs[event.detail?.control]?.current?.focus();
     }
 
-    window.addEventListener('one:backup-panel-state', handleState);
     window.addEventListener('one:backup-panel-focus', handleFocus);
-    setState(readBridgeState());
-
     return () => {
-      window.removeEventListener('one:backup-panel-state', handleState);
       window.removeEventListener('one:backup-panel-focus', handleFocus);
     };
   }, []);
@@ -112,7 +85,7 @@ export function BackupPanel() {
         累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。実行中タイマー、タブ間セッションID、今日の目標、表示・通知などのUI設定は含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。
       </p>
       <p className="hint" id="backup-status" role="status" aria-live="polite">
-        {visibleBackupStatus(state.backupStatus)}
+        {state.backupStatus}
       </p>
 
       <div className="history" aria-labelledby="data-reset-title">
