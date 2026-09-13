@@ -25,9 +25,11 @@ def main():
     timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
     custom_timer = CUSTOM_TIMER_HOOK_PATH.read_text(encoding="utf-8")
 
+    require("import { timerStateGuard } from './timerStateGuard.js';" in tab_guard,
+            "module tab guardはtimerStateGuardを直接importしてください")
     parse_idle = section(tab_guard, "function parseIdleTimerState", "function syncIdleTimerFromStorage")
-    require("ONE_TIMER_STATE_GUARD?.parse(raw)" in parse_idle,
-            "別タブのタイマー保存値は共通検証器で検証してください")
+    require("timerStateGuard.parse(raw)" in parse_idle,
+            "別タブのタイマー保存値はmodule検証器で検証してください")
     require("state.running === true" in parse_idle, "実行中の保存状態は同期対象外にしてください")
     require("state.completionReady === true" in parse_idle, "未記録の完了状態は同期対象外にしてください")
     require("state.remainingSeconds !== fullDuration" in parse_idle,
