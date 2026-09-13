@@ -1,28 +1,20 @@
 #[cfg(target_os = "macos")]
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    tray::TrayIconBuilder,
     Emitter, Manager, WindowEvent,
 };
 
 const TRAY_ID: &str = "one-main-tray";
 
 #[cfg(target_os = "macos")]
-fn toggle_main_window(app: &tauri::AppHandle) {
+fn show_main_window(app: &tauri::AppHandle) {
     let Some(window) = app.get_webview_window("main") else {
         return;
     };
 
-    match window.is_visible() {
-        Ok(true) => {
-            let _ = window.hide();
-        }
-        Ok(false) => {
-            let _ = window.show();
-            let _ = window.set_focus();
-        }
-        Err(_) => {}
-    }
+    let _ = window.show();
+    let _ = window.set_focus();
 }
 
 #[cfg(target_os = "macos")]
@@ -58,57 +50,35 @@ pub fn run() {
     let builder = builder.setup(|app| {
         app.set_dock_visibility(false);
 
-        let start_item = MenuItem::with_id(app, "timer-start", "開始", true, None::<&str>)?;
+        let open_item = MenuItem::with_id(app, "open-window", "ONEを開く", true, None::<&str>)?;
+        let start_item = MenuItem::with_id(app, "timer-start", "開始 / 再開", true, None::<&str>)?;
         let pause_item = MenuItem::with_id(app, "timer-pause", "一時停止", true, None::<&str>)?;
         let reset_item = MenuItem::with_id(app, "timer-reset", "リセット", true, None::<&str>)?;
-        let focus_25_item = MenuItem::with_id(app, "timer-25", "25分開始", true, None::<&str>)?;
-        let break_5_item = MenuItem::with_id(app, "timer-break-5", "5分休憩", true, None::<&str>)?;
-        let toggle_item = MenuItem::with_id(
-            app,
-            "toggle-window",
-            "ONEを表示 / 隠す",
-            true,
-            None::<&str>,
-        )?;
         let quit_item = MenuItem::with_id(app, "quit", "ONEを終了", true, None::<&str>)?;
         let menu = Menu::with_items(
             app,
             &[
+                &open_item,
                 &start_item,
                 &pause_item,
                 &reset_item,
-                &focus_25_item,
-                &break_5_item,
-                &toggle_item,
                 &quit_item,
             ],
         )?;
 
         let mut tray_builder = TrayIconBuilder::with_id(TRAY_ID)
             .menu(&menu)
-            .show_menu_on_left_click(false)
+            .show_menu_on_left_click(true)
             .icon_as_template(true)
             .title("")
             .tooltip("ONE")
             .on_menu_event(|app, event| match event.id().as_ref() {
+                "open-window" => show_main_window(app),
                 "timer-start" => emit_timer_action(app, "start"),
                 "timer-pause" => emit_timer_action(app, "pause"),
                 "timer-reset" => emit_timer_action(app, "reset"),
-                "timer-25" => emit_timer_action(app, "start-25"),
-                "timer-break-5" => emit_timer_action(app, "break-5"),
-                "toggle-window" => toggle_main_window(app),
                 "quit" => app.exit(0),
                 _ => {}
-            })
-            .on_tray_icon_event(|tray, event| {
-                if let TrayIconEvent::Click {
-                    button: MouseButton::Left,
-                    button_state: MouseButtonState::Up,
-                    ..
-                } = event
-                {
-                    toggle_main_window(tray.app_handle());
-                }
             });
 
         if let Some(icon) = app.default_window_icon() {
