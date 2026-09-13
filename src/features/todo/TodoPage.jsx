@@ -46,6 +46,11 @@ function defaultStartMinute() {
   return clamp(Math.ceil(minutes / MINUTE_STEP) * MINUTE_STEP, 0, DAY_MINUTES - MINUTE_STEP);
 }
 
+function currentMinuteOfDay() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
 function normalizeTodos(value) {
   if (!Array.isArray(value)) return [];
 
@@ -446,17 +451,28 @@ function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
 
 function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onMoveTask, onToggle, onRemove }) {
   const viewportRef = useRef(null);
-  const currentMinute = useMemo(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  }, []);
+  const currentMinute = useMemo(currentMinuteOfDay, []);
 
-  useEffect(() => {
+  function scrollToMinute(minute, behavior = 'auto') {
     const viewport = viewportRef.current;
     if (!viewport) return;
+
+    const top = Math.max(0, ((minute - 60) / 60) * PX_PER_HOUR);
+    if (behavior === 'smooth' && typeof viewport.scrollTo === 'function') {
+      viewport.scrollTo({ top, behavior: 'smooth' });
+      return;
+    }
+    viewport.scrollTop = top;
+  }
+
+  useEffect(() => {
     const firstMinute = todos[0]?.startMinute ?? currentMinute;
-    viewport.scrollTop = Math.max(0, ((firstMinute - 60) / 60) * PX_PER_HOUR);
+    scrollToMinute(firstMinute);
   }, []);
+
+  function scrollToCurrentTime() {
+    scrollToMinute(currentMinuteOfDay(), 'smooth');
+  }
 
   function minuteFromDrop(event, duration) {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -491,17 +507,26 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
 
   return (
     <section className={SUBCARD_CLASS} aria-labelledby="timeline-title">
-      <div className="mb-4 flex items-baseline justify-between gap-4">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
           <p className="m-0 text-[0.72rem] font-extrabold tracking-[0.1em] text-[var(--one-subtle)]">TODAY</p>
           <h2 id="timeline-title" className="mb-0 mt-1 text-[1.05rem]">今日の時間割</h2>
         </div>
-        <span className="text-[0.74rem] font-bold text-[var(--one-muted)]">{dayLabel()}</span>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            className="rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.72rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
+            type="button"
+            onClick={scrollToCurrentTime}
+          >
+            現在時刻へ
+          </button>
+          <span className="text-[0.74rem] font-bold text-[var(--one-muted)]">{dayLabel()}</span>
+        </div>
       </div>
 
       <p className="mb-3 mt-0 text-[0.76rem] font-semibold text-[var(--one-muted)]">タスクやテンプレートをドラッグすると5分刻みで配置できます。重なる場合は、操作中ではない予定をドラッグ方向へ連鎖的に押し出します。</p>
 
-      <div ref={viewportRef} className="h-[610px] overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)] max-[560px]:h-[520px]">
+      <div ref={viewportRef} data-testid="todo-timeline-viewport" className="h-[610px] overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)] max-[560px]:h-[520px]">
         <div
           className="relative"
           style={{ height: `${TIMELINE_HEIGHT}px` }}
