@@ -1,3 +1,5 @@
+import { registerTimerRuntime, tabGuardActions } from './tabGuard.js';
+
 const DEFAULT_MINUTES = 25;
 const TICK_INTERVAL_MS = 250;
 const TIMER_STORAGE_KEY = 'one.timer.v1';
@@ -187,7 +189,7 @@ function tick() {
 
 function startTimer() {
   if (currentState.completionReady) return false;
-  if (globalThis.ONE_TAB_GUARD?.beforeStart?.(currentState) === false) return false;
+  if (tabGuardActions.beforeStart(currentState) === false) return false;
 
   const remainingSeconds = currentState.remainingSeconds > 0
     ? currentState.remainingSeconds
@@ -235,7 +237,7 @@ function pauseTimer() {
 
 function resetToSelectedMinutes({ consumeCompletion = false } = {}) {
   if (currentState.completionReady && !consumeCompletion) return false;
-  if (!consumeCompletion) globalThis.ONE_TAB_GUARD?.beforeReset?.(currentState);
+  if (!consumeCompletion) tabGuardActions.beforeReset(currentState);
 
   clearTimerInterval();
   replaceState({
@@ -253,7 +255,7 @@ function resetToSelectedMinutes({ consumeCompletion = false } = {}) {
 
 function selectMinutes(minutes, { focusStart = false } = {}) {
   if (!validTimerMinutes(minutes) || currentState.completionReady) return false;
-  if (globalThis.ONE_TAB_GUARD?.beforeSelectMinutes?.(currentState) === false) return false;
+  if (tabGuardActions.beforeSelectMinutes(currentState) === false) return false;
 
   clearTimerInterval();
   replaceState({
@@ -375,6 +377,6 @@ if (currentState.running) {
   timerId = window.setInterval(tick, TICK_INTERVAL_MS);
 }
 persistTimerState(currentState);
-globalThis.ONE_TAB_GUARD?.registerTimerRuntime?.(timerRuntime);
+registerTimerRuntime(timerRuntime);
 window.addEventListener('one:privacy-reset-prepare', preparePrivacyReset);
 notify();
