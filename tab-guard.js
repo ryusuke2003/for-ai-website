@@ -4,6 +4,8 @@ const SESSION_ID_PATTERN = /^[a-z0-9-]{8,80}$/;
 
 let localSessionId = null;
 let tabCoordinationEnabled = false;
+let timerRuntime = null;
+let timerRuntimeRegistered = false;
 
 function disableTabCoordination() {
   tabCoordinationEnabled = false;
@@ -11,9 +13,11 @@ function disableTabCoordination() {
 }
 
 function storageCoordinationUnavailable() {
-  if (!storageAccessFailed) return false;
-  disableTabCoordination();
-  return true;
+  if (storageAccessFailed) {
+    disableTabCoordination();
+    return true;
+  }
+  return !tabCoordinationEnabled;
 }
 
 function detectTabStorage() {
@@ -94,6 +98,10 @@ function ensureStoredSessionId() {
   return readStoredSessionId() ?? candidate;
 }
 
+function timerSnapshot() {
+  return timerRuntime?.snapshot?.() ?? null;
+}
+
 function isTimerStateActive(state) {
   const minutes = state?.selectedMinutes;
   const remaining = state?.remainingSeconds;
@@ -106,10 +114,7 @@ function isTimerStateActive(state) {
 }
 
 function hasLocalTimerContext() {
-  const fullDuration = selectedMinutes * 60;
-  return timerId !== null
-    || completionReady
-    || (remainingSeconds > 0 && remainingSeconds < fullDuration);
+  return isTimerStateActive(timerSnapshot());
 }
 
 function parseIdleTimerState(raw) {
@@ -129,30 +134,13 @@ function parseIdleTimerState(raw) {
 }
 
 function syncIdleTimerFromStorage(raw) {
-  if (storageCoordinationUnavailable() || hasLocalTimerContext()) return false;
+  if (!timerRuntime || storageCoordinationUnavailable() || hasLocalTimerContext()) return false;
 
   const state = parseIdleTimerState(raw);
   if (!state) return false;
 
-  selectedMinutes = state.selectedMinutes;
-  remainingSeconds = state.remainingSeconds;
-  endAt = null;
   localSessionId = null;
-  setRecordAvailability(false);
-
-  presetButtons.forEach((button) => {
-    const active = button.id !== 'custom-preset'
-      && Number.parseInt(button.dataset.minutes, 10) === selectedMinutes;
-    button.classList.toggle('active', active);
-    button.setAttribute('aria-pressed', String(active));
-  });
-
-  renderTimer();
-  setTimerFeedback(`別のタブで${selectedMinutes}分に変更されました。`, 'idle');
-  window.dispatchEvent(new CustomEvent('one:idle-timer-sync', {
-    detail: { selectedMinutes },
-  }));
-  return true;
+  return timerRuntime.syncIdleState?.(state) === true;
 }
 
 function refreshGuardProgressFromStorage() {
@@ -168,25 +156,23 @@ function refreshGuardProgressFromStorage() {
   return true;
 }
 
-function stopCrossTabAction(event, message, state = 'idle') {
-  event.preventDefault();
-  event.stopImmediatePropagation();
-  setTimerFeedback(message, state);
+function setCrossTabFeedback(message, state = 'idle') {
+  timerRuntime?.setFeedback?.(message, state);
 }
 
-function blockStaleTabAction(event, message) {
+function blockStaleTabAction(message) {
   if (!refreshGuardProgressFromStorage()) return false;
-  stopCrossTabAction(event, message, 'complete');
-  setRecordAvailability(false);
+  timerRuntime?.clearPendingCompletion?.(message, 'complete');
   return true;
 }
 
-function claimPendingCompletion(event) {
+function claimPendingCompletion() {
+  const current = timerSnapshot();
+  if (!current?.completionReady) return false;
   if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return true;
-  if (!completionReady) return false;
+
   if (!localSessionId) {
     return !blockStaleTabAction(
-      event,
       'このタブでは集中セッションを確認できません。再読み込みして最新状態に合わせてください。',
     );
   }
@@ -202,7 +188,6 @@ function claimPendingCompletion(event) {
 
   if (!stillPending) {
     const blocked = blockStaleTabAction(
-      event,
       'この集中は別のタブですでに処理されています。最新の記録を反映しました。',
     );
     if (blocked) localSessionId = null;
@@ -219,11 +204,12 @@ function claimPendingCompletion(event) {
 function verifyCompletionConsumedState() {
   if (storageAccessFailed) return false;
 
+  const current = timerSnapshot();
   const storedState = readTimerState();
-  if (storageAccessFailed) return false;
+  if (storageAccessFailed || !current) return false;
 
-  const fullDuration = selectedMinutes * 60;
-  const persisted = storedState?.selectedMinutes === selectedMinutes
+  const fullDuration = current.selectedMinutes * 60;
+  const persisted = storedState?.selectedMinutes === current.selectedMinutes
     && storedState?.remainingSeconds === fullDuration
     && storedState?.running === false
     && storedState?.endAt === null
@@ -246,16 +232,6 @@ function persistDoneCountAtLeast(expectedCount) {
   return false;
 }
 
-function incrementFocusHistoryInMemory(key = dateKey()) {
-  const historyKey = isValidDateKey(key) ? key : dateKey();
-  const current = Number.isInteger(focusHistory[historyKey]) ? focusHistory[historyKey] : 0;
-  const next = Math.min(current + 1, MAX_DAILY_COUNT);
-  focusHistory[historyKey] = next;
-  focusHistory = normalizeHistory(focusHistory);
-  renderHistory();
-  return { historyKey, expectedCount: focusHistory[historyKey] ?? next };
-}
-
 function persistHistoryEntryAtLeast(historyKey, expectedCount) {
   if (!safeWrite(STORAGE_KEYS.history, JSON.stringify(focusHistory))) return false;
 
@@ -267,22 +243,22 @@ function persistHistoryEntryAtLeast(historyKey, expectedCount) {
   return false;
 }
 
-function refreshRecoveryAfterCompletionAction() {
-  if (typeof refreshRecoveryAvailability === 'function') refreshRecoveryAvailability();
+function focusStartControl() {
+  window.dispatchEvent(new CustomEvent('one:timer-controls-focus', {
+    detail: { control: 'start' },
+  }));
 }
 
-function recordPendingCompletion(event) {
-  if (!completionReady || !claimPendingCompletion(event)) return;
+function recordPendingCompletion() {
+  const before = timerSnapshot();
+  if (!before?.completionReady || !claimPendingCompletion()) return false;
 
-  event.preventDefault();
-  event.stopImmediatePropagation();
-
-  const completedOn = completionDateKey;
+  const completedOn = before.completionDate;
   const current = parseDoneCount(doneCount.textContent);
   const next = Math.min(current + 1, Number.MAX_SAFE_INTEGER);
 
-  resetTimer();
-  const completionConsumed = verifyCompletionConsumedState();
+  const consumedLocally = timerRuntime?.consumeCompletion?.() === true;
+  const completionConsumed = consumedLocally && verifyCompletionConsumedState();
 
   doneCount.textContent = String(next);
   const historyUpdate = incrementFocusHistoryInMemory(completedOn);
@@ -300,33 +276,31 @@ function recordPendingCompletion(event) {
   }
 
   if (completionConsumed && countPersisted && historyPersisted) {
-    setTimerFeedback(
+    setCrossTabFeedback(
       completedOn && completedOn !== dateKey()
         ? `${completedOn}に完了した集中を1回記録しました。`
         : '完了した集中を1回記録しました。次のスプリントを始められます。',
     );
   } else {
-    setTimerFeedback(
+    setCrossTabFeedback(
       'このタブでは集中を1回記録しましたが、端末保存を最後まで確認できませんでした。再読み込みせず「JSONを書き出す」で現在の記録を救出してください。',
       'complete',
     );
   }
 
-  refreshRecoveryAfterCompletionAction();
-  startButton.focus();
+  focusStartControl();
+  return true;
 }
 
-function discardPendingCompletion(event) {
-  if (!completionReady || !claimPendingCompletion(event)) return;
+function discardPendingCompletion() {
+  const before = timerSnapshot();
+  if (!before?.completionReady || !claimPendingCompletion()) return false;
 
-  event.preventDefault();
-  event.stopImmediatePropagation();
+  const discardedOn = before.completionDate;
+  const consumedLocally = timerRuntime?.consumeCompletion?.() === true;
+  const completionConsumed = consumedLocally && verifyCompletionConsumedState();
 
-  const discardedOn = completionDateKey;
-  resetTimer();
-  const completionConsumed = verifyCompletionConsumedState();
-
-  setTimerFeedback(
+  setCrossTabFeedback(
     completionConsumed
       ? discardedOn && discardedOn !== dateKey()
         ? `${discardedOn}に完了した集中を記録せず破棄しました。`
@@ -335,11 +309,11 @@ function discardPendingCompletion(event) {
     completionConsumed ? 'idle' : 'complete',
   );
 
-  refreshRecoveryAfterCompletionAction();
-  startButton.focus();
+  focusStartControl();
+  return true;
 }
 
-function blockIfAnotherTabOwnsTimer(event) {
+function blockIfAnotherTabOwnsTimer() {
   if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
 
   const storedState = readTimerState();
@@ -348,26 +322,49 @@ function blockIfAnotherTabOwnsTimer(event) {
   if (!isTimerStateActive(storedState) || !storedSessionId) return false;
   if (localSessionId === storedSessionId) return false;
 
-  stopCrossTabAction(
-    event,
+  setCrossTabFeedback(
     '別のタブで集中タイマーが進行中です。そのタブで続けるか、再読み込みして状態を合わせてください。',
   );
   return true;
 }
 
-function blockIfLocalSessionIsStale(event) {
+function blockIfLocalSessionIsStale() {
   if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
 
   const storedSessionId = readStoredSessionId();
   if (storageCoordinationUnavailable()) return false;
   if (localSessionId && storedSessionId === localSessionId) return false;
 
-  stopCrossTabAction(
-    event,
+  setCrossTabFeedback(
     'このタブのタイマー状態は別のタブで変更されています。再読み込みして最新状態に合わせてください。',
   );
   localSessionId = null;
   return true;
+}
+
+function beforeStart(state) {
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return true;
+  if (blockIfAnotherTabOwnsTimer()) return false;
+
+  const fullDuration = state.selectedMinutes * 60;
+  const resuming = state.remainingSeconds > 0 && state.remainingSeconds < fullDuration;
+  if (resuming) return !blockIfLocalSessionIsStale();
+
+  localSessionId = createSessionId();
+  if (!localSessionId) return true;
+  writeStoredSessionId(localSessionId);
+  return true;
+}
+
+function beforeReset(state) {
+  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || state?.completionReady) return true;
+  localSessionId = null;
+  clearStoredSessionId();
+  return true;
+}
+
+function beforeSelectMinutes(state) {
+  return beforeReset(state);
 }
 
 function initializeTabGuard() {
@@ -382,38 +379,15 @@ function initializeTabGuard() {
   clearStoredSessionId();
 }
 
-startButton.addEventListener('click', (event) => {
-  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || timerId !== null || completionReady) return;
-  if (blockIfAnotherTabOwnsTimer(event)) return;
+function registerTimerRuntime(runtime) {
+  if (timerRuntimeRegistered) return false;
+  if (!runtime || typeof runtime.snapshot !== 'function') return false;
 
-  const fullDuration = selectedMinutes * 60;
-  const resuming = remainingSeconds > 0 && remainingSeconds < fullDuration;
-  if (resuming) {
-    if (blockIfLocalSessionIsStale(event)) return;
-    return;
-  }
-
-  localSessionId = createSessionId();
-  if (!localSessionId) return;
-  writeStoredSessionId(localSessionId);
-}, true);
-
-resetButton.addEventListener('click', () => {
-  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || completionReady) return;
-  localSessionId = null;
-  clearStoredSessionId();
-}, true);
-
-presetButtons.forEach((button) => {
-  button.addEventListener('click', () => {
-    if (!tabCoordinationEnabled || storageCoordinationUnavailable() || completionReady) return;
-    localSessionId = null;
-    clearStoredSessionId();
-  }, true);
-});
-
-doneButton.addEventListener('click', recordPendingCompletion, true);
-discardButton.addEventListener('click', discardPendingCompletion, true);
+  timerRuntime = runtime;
+  timerRuntimeRegistered = true;
+  initializeTabGuard();
+  return true;
+}
 
 window.addEventListener('storage', (event) => {
   if (event.key === STORAGE_KEYS.timer) {
@@ -421,16 +395,48 @@ window.addEventListener('storage', (event) => {
     return;
   }
 
-  if (!tabCoordinationEnabled || storageCoordinationUnavailable() || event.key !== TAB_SESSION_KEY || !completionReady || !localSessionId) return;
+  const current = timerSnapshot();
+  if (
+    !tabCoordinationEnabled
+    || storageCoordinationUnavailable()
+    || event.key !== TAB_SESSION_KEY
+    || !current?.completionReady
+    || !localSessionId
+  ) {
+    return;
+  }
+
   const storedSessionId = readStoredSessionId();
   if (storageCoordinationUnavailable() || storedSessionId === localSessionId) return;
   if (!refreshGuardProgressFromStorage()) return;
 
-  setRecordAvailability(false);
-  setTimerFeedback('この集中は別のタブで処理されました。最新の記録を反映しました。', 'complete');
+  timerRuntime?.clearPendingCompletion?.(
+    'この集中は別のタブで処理されました。最新の記録を反映しました。',
+    'complete',
+  );
   localSessionId = null;
 });
 
 window.addEventListener('one:storage-error', disableTabCoordination);
 
-initializeTabGuard();
+globalThis.ONE_TAB_GUARD = Object.freeze({
+  registerTimerRuntime,
+  beforeStart,
+  beforeReset,
+  beforeSelectMinutes,
+  recordPendingCompletion,
+  discardPendingCompletion,
+});
+
+globalThis.ONE_TAB_COORDINATION = Object.freeze({
+  isEnabled() {
+    return tabCoordinationEnabled && !storageAccessFailed;
+  },
+  hasActiveStoredTimer() {
+    if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
+    const storedState = readTimerState();
+    const storedSessionId = readStoredSessionId();
+    if (storageCoordinationUnavailable()) return false;
+    return Boolean(storedSessionId && isTimerStateActive(storedState));
+  },
+});
