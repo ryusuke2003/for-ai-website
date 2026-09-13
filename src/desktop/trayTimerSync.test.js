@@ -29,12 +29,12 @@ describe('formatTrayTimerTitle', () => {
     })).toBe('ONE');
   });
 
-  it('完了時は00:00を表示する', () => {
+  it('完了時はチェック付きで00:00を表示する', () => {
     expect(formatTrayTimerTitle({
       selectedMinutes: 25,
       remainingSeconds: 0,
       running: false,
       completionReady: true,
-    })).toBe('00:00');
+    })).toBe('✓ 00:00');
   });
 });
