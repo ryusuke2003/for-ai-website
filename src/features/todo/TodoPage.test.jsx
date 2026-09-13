@@ -12,7 +12,7 @@ describe('TodoPage', () => {
   it('Todoを追加し、完了と削除ができる', () => {
     render(<TodoPage />);
 
-    const input = screen.getByLabelText('やること');
+    const input = screen.getByRole('textbox', { name: 'やること' });
     fireEvent.change(input, { target: { value: 'テストを書く' } });
     fireEvent.click(screen.getByRole('button', { name: '追加' }));
 
