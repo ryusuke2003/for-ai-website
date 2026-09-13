@@ -60,8 +60,10 @@ describe('ProgressDetails daily goal progress', () => {
     })} />);
 
     const progress = screen.getByLabelText('今日の集中目標の進捗');
+    const clearButton = document.getElementById('daily-goal-clear');
     expect(progress.hidden).toBe(true);
-    expect(screen.getByRole('button', { name: '目標を解除', hidden: true }).hidden).toBe(true);
+    expect(clearButton).not.toBeNull();
+    expect(clearButton.hidden).toBe(true);
   });
 
   it('入力・設定・解除をdailyGoalの操作へ委譲する', () => {
