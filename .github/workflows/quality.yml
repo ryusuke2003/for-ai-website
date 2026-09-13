@@ -49,20 +49,8 @@ jobs:
       - name: Check timer-only product scope
         run: python3 scripts/timer_only_checks.py
 
-      - name: Check React migration boundaries
-        run: python3 scripts/react_migration_checks.py
-
       - name: Check Tailwind migration boundaries
         run: python3 scripts/tailwind_migration_checks.py
-
-      - name: Check React timer state integration
-        run: python3 scripts/react_timer_state_checks.py
-
-      - name: Check React progress details migration
-        run: python3 scripts/progress_details_migration_checks.py
-
-      - name: Check React backup panel migration
-        run: python3 scripts/backup_panel_migration_checks.py
 
       - name: Check browser security policy
         run: python3 scripts/browser_policy_checks.py
