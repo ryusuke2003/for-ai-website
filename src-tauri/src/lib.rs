@@ -42,7 +42,7 @@ fn open_todo(app: &tauri::AppHandle) {
 fn set_tray_title(app: tauri::AppHandle, title: String) -> Result<(), String> {
     let tray = app
         .tray_by_id(TRAY_ID)
-        .ok_or_else(|| "ONE tray icon is not available".to_string())?;
+        .ok_or_else(|| "timer tray icon is not available".to_string())?;
 
     tray.set_title(Some(title)).map_err(|error| error.to_string())
 }
@@ -61,12 +61,12 @@ pub fn run() {
     let builder = builder.setup(|app| {
         app.set_dock_visibility(false);
 
-        let open_item = MenuItem::with_id(app, "open-window", "ONEを開く", true, None::<&str>)?;
+        let open_item = MenuItem::with_id(app, "open-window", "タイマーを開く", true, None::<&str>)?;
         let todo_item = MenuItem::with_id(app, "open-todo", "Todoを開く", true, None::<&str>)?;
         let start_item = MenuItem::with_id(app, "timer-start", "開始 / 再開", true, None::<&str>)?;
         let pause_item = MenuItem::with_id(app, "timer-pause", "一時停止", true, None::<&str>)?;
         let reset_item = MenuItem::with_id(app, "timer-reset", "リセット", true, None::<&str>)?;
-        let quit_item = MenuItem::with_id(app, "quit", "ONEを終了", true, None::<&str>)?;
+        let quit_item = MenuItem::with_id(app, "quit", "タイマーを終了", true, None::<&str>)?;
         let menu = Menu::with_items(
             app,
             &[
@@ -84,7 +84,7 @@ pub fn run() {
             .show_menu_on_left_click(true)
             .icon_as_template(true)
             .title("")
-            .tooltip("ONE")
+            .tooltip("タイマー")
             .on_menu_event(|app, event| match event.id().as_ref() {
                 "open-window" => show_main_window(app),
                 "open-todo" => open_todo(app),
@@ -116,5 +116,5 @@ pub fn run() {
 
     builder
         .run(tauri::generate_context!())
-        .expect("error while running ONE");
+        .expect("error while running timer");
 }

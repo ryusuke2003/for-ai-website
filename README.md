@@ -2,9 +2,9 @@
 
 ChatGPT が小さな Web アプリを作り、レビューと改善を繰り返していくための公開リポジトリです。
 
-## ONE
+## タイマー
 
-ONE は、集中時間を決めてタイマーを動かし、完了した集中を記録・可視化するアプリです。
+タイマーは、集中時間を決めてタイマーを動かし、完了した集中を記録・可視化するアプリです。
 
 - React 19 + Vite 8
 - Tailwind CSS 4
@@ -24,25 +24,28 @@ ONE は、集中時間を決めてタイマーを動かし、完了した集中�
 - 今日 / 今週 / 連続日 / 累計
 - 直近7日の棒グラフと30日のアクティビティ表示
 - 1〜12回の今日の目標
+- Todoリスト
 - ライト / ダーク / 自動テーマ
 - 完了音、完了通知、Screen Wake Lock
 - JSONバックアップ / 復元 / 1世代Undo
-- ONEが利用する端末データだけを対象にした削除
+- このアプリが利用する端末データだけを対象にした削除
 - 同一オリジン内の複数タブ同期と二重記録防止
 - macOSメニューバー常駐
-- メニューバーからウィンドウ表示 / 非表示、終了
+- メニューバーからタイマー / Todoを開く、開始 / 再開、一時停止、リセット、終了
 - メニューバーにタイマー状態を表示
 
 ### macOSメニューバー表示
 
+Trayは通常時はストップウォッチアイコンだけを表示し、タイマー実行中だけ残り時間を横に表示します。
+
 | 状態 | 表示 |
 | --- | --- |
-| 待機中 | `ONE` |
-| 実行中 | `24:32` のような残り時間 |
-| 一時停止 | `⏸ 24:32` |
-| 完了 | `00:00` |
+| 待機中 | アイコンのみ |
+| 実行中 | アイコン + `24:32` のような残り時間 |
+| 一時停止 | アイコンのみ |
+| 完了 | アイコンのみ |
 
-メニューバーのONEアイコンを左クリックするとメインウィンドウを表示 / 非表示できます。右クリックメニューからも表示 / 非表示と終了ができます。ウィンドウの閉じるボタンではアプリ自体を終了せず、ウィンドウだけを隠して常駐を続けます。
+メニューバーのタイマーをクリックすると、最小限のネイティブメニューを表示します。`タイマーを開く` と `Todoを開く` から目的の画面を直接開けます。ウィンドウの閉じるボタンではアプリ自体を終了せず、ウィンドウだけを隠して常駐を続けます。
 
 ### キーボード
 
@@ -73,6 +76,10 @@ src/
 ├── main.jsx
 ├── tailwind.css
 ├── desktop/
+│   ├── trayNavigation.js
+│   ├── trayNavigation.test.js
+│   ├── trayTimerActions.js
+│   ├── trayTimerActions.test.js
 │   ├── trayTimerSync.js
 │   └── trayTimerSync.test.js
 ├── test/
@@ -81,6 +88,7 @@ src/
 └── features/
     ├── timer/
     ├── progress/
+    ├── todo/
     └── backup/
 
 public/
@@ -104,7 +112,9 @@ src-tauri/
 - `progressInsights.js`: 今週、連続日、7日 / 30日集計
 - `useBackupControl.js`: JSONバックアップ、復元、Undo、ロールバック
 - `src/desktop/trayTimerSync.js`: timerStoreとTauri Tray titleの同期
-- `src-tauri/src/lib.rs`: macOS Tray、ウィンドウ常駐、Tauri command
+- `src/desktop/trayTimerActions.js`: Trayメニューからのタイマー操作
+- `src/desktop/trayNavigation.js`: Trayメニューからの画面遷移
+- `src-tauri/src/lib.rs`: macOS Tray、ウィンドウ常駐、Tauri command / event
 - `public/theme-bootstrap.js`: React起動前のテーマ適用
 - `src/tailwind.css`: Tailwind utilitiesと共通CSS
 
@@ -117,14 +127,14 @@ src-tauri/
 - Tauri capabilityはmain window向け `core:default` のみ
 - filesystem / shell / HTTP / opener等のTauri plugin権限は追加しない
 - 保存値はサイズ・型・範囲・日付の整合性を検証
-- `localStorage.clear()` は使用せず、ONEの既知キーだけを削除
+- `localStorage.clear()` は使用せず、既知キーだけを削除
 - タブセッションIDはWeb Cryptoを優先して生成
 - 保存後は必要な箇所で読み戻し確認を行う
 - npm / CargoはlockfileをCIで強制
 
 ## ローカル開発
 
-Node.js 22.12以上を使用します。
+Node.js 22.22.2以上を使用します。
 
 ```sh
 npm ci
@@ -147,7 +157,7 @@ npm test
 npm run test:watch
 ```
 
-Pythonの `scripts/*_checks.py` は、CSP、保存形式、サイズ上限、複数タブ保存順序など、DOMを描画する必要がない静的・境界検査を中心に残しています。テスト方針は [`docs/testing-strategy.md`](docs/testing-strategy.md) を参照してください。
+Pythonの `scripts/*_checks.py` は、CSPや移行後のアーキテクチャ境界など、DOMを描画する必要がない静的・境界検査を中心に残しています。テスト方針は [`docs/testing-strategy.md`](docs/testing-strategy.md) を参照してください。
 
 ### production build
 
@@ -178,8 +188,8 @@ npm run tauri -- build --bundles app --no-sign -- --locked
 
 GitHub Actionsでは3系統を確認します。
 
-1. **Quality checks**: Python / Nodeによる保存形式・セキュリティ・境界条件の検査
+1. **Quality checks**: Pythonによるセキュリティ・アーキテクチャ境界検査
 2. **Frontend build**: `npm ci` → Vitest / RTL → npm audit → Vite build
-3. **Tauri build**: `npm ci` + `Cargo.lock --locked` → macOS `.app` bundle → `ONE-macos-app` ZIP artifact
+3. **Tauri build**: `npm ci` + `Cargo.lock --locked` → macOS `.app` bundle → `timer-macos-app` ZIP artifact
 
 Tauri artifactは7日間保存します。新しいReact UIの振る舞いは、可能な限り「ソースに特定文字列があるか」ではなく「利用者が操作した結果どうなるか」でテストします。

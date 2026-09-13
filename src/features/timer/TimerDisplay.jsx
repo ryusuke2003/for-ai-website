@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useTimerState } from './useTimerState.js';
 
-const DEFAULT_DOCUMENT_TITLE = 'ONE — 集中タイマー';
+const DEFAULT_DOCUMENT_TITLE = 'タイマー — 集中タイマー';
 const endTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
   hour: '2-digit',
   minute: '2-digit',
@@ -43,13 +43,13 @@ function endTimePresentation(state) {
 }
 
 function documentTitleFor(state, timeText) {
-  if (state.completionReady) return '完了！ — ONE';
-  if (state.running) return `${timeText} — ONE`;
+  if (state.completionReady) return '完了！ — タイマー';
+  if (state.running) return `${timeText} — タイマー`;
 
   const fullDuration = Math.max(1, state.selectedMinutes * 60);
   const partiallyElapsed = state.remainingSeconds > 0 && state.remainingSeconds < fullDuration;
   return partiallyElapsed
-    ? `${timeText} 一時停止 — ONE`
+    ? `${timeText} 一時停止 — タイマー`
     : DEFAULT_DOCUMENT_TITLE;
 }
 
