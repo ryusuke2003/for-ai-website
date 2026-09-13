@@ -3,8 +3,6 @@ const timerCard = document.querySelector('.timer-card');
 const timerStatus = document.querySelector('#timer-status');
 const startButton = document.querySelector('#start-button');
 const resetButton = document.querySelector('#reset-button');
-const focusModeButton = document.querySelector('#focus-mode-button');
-const focusModeStatus = document.querySelector('#focus-mode-status');
 const presetButtons = [...document.querySelectorAll('[data-minutes]')];
 const doneButton = document.querySelector('#done-button');
 const discardButton = document.querySelector('#discard-button');
@@ -22,7 +20,6 @@ const STORAGE_KEYS = {
   count: 'one.doneCount',
   timer: 'one.timer.v1',
   history: 'one.history.v1',
-  focusMode: 'one.focusMode.v1',
 };
 
 let selectedMinutes = DEFAULT_MINUTES;
@@ -239,46 +236,6 @@ function setStartButton(label = 'スタート', running = false) {
   startButton.setAttribute('aria-pressed', String(running));
 }
 
-function persistFocusModePreference(active) {
-  const value = active ? '1' : '0';
-  if (!safeWrite(STORAGE_KEYS.focusMode, value)) return false;
-
-  const stored = safeRead(STORAGE_KEYS.focusMode);
-  if (storageAccessFailed) return false;
-  if (stored === value) return true;
-
-  reportStorageFailure();
-  return false;
-}
-
-function setFocusMode(enabled, { persist = true, announce = true } = {}) {
-  const active = enabled === true;
-  document.body.classList.toggle('focus-mode', active);
-  focusModeButton.setAttribute('aria-pressed', String(active));
-  focusModeButton.textContent = active ? '通常表示' : '集中表示';
-  focusModeButton.setAttribute('aria-label', active ? '通常表示に戻る' : '集中表示に切り替える');
-
-  const persisted = !persist || persistFocusModePreference(active);
-  if (announce) {
-    if (!persisted) {
-      focusModeStatus.textContent = active
-        ? '集中表示に切り替えましたが、このブラウザには設定を保存できませんでした。再読み込みすると通常表示に戻る可能性があります。'
-        : '通常表示に戻りましたが、このブラウザには設定を保存できませんでした。再読み込みすると集中表示へ戻る可能性があります。';
-      return;
-    }
-
-    focusModeStatus.textContent = active
-      ? '集中表示に切り替えました。Escapeキーでも通常表示に戻れます。'
-      : '通常表示に戻りました。';
-  }
-}
-
-function revealCompletionRecord() {
-  if (document.body.classList.contains('focus-mode')) {
-    setFocusMode(false, { announce: false });
-  }
-}
-
 function stopTimer(label = 'スタート', persist = true) {
   clearTimerInterval();
   endAt = null;
@@ -291,7 +248,6 @@ function finishTimer() {
   const completedOn = dateKey(new Date(endAt ?? Date.now()));
   remainingSeconds = 0;
   setRecordAvailability(true, completedOn);
-  revealCompletionRecord();
   stopTimer('もう一度');
   setTimerFeedback('集中スプリント完了。この1回を記録するか、記録せず破棄してください。', 'complete');
   document.title = '完了！ — ONE';
@@ -393,7 +349,6 @@ function restoreTimerState() {
     if (restoredRemaining <= 0) {
       remainingSeconds = 0;
       setRecordAvailability(true, dateKey(new Date(storedEndAt)));
-      revealCompletionRecord();
       setStartButton('もう一度');
       setTimerFeedback('前回の集中スプリントは完了しています。この1回を記録するか、記録せず破棄してください。', 'complete');
       renderTimer();
@@ -413,7 +368,6 @@ function restoreTimerState() {
     completed && (state?.completionReady === true || legacyCompletedState),
     storedCompletionDate ?? dateKey(),
   );
-  if (completionReady) revealCompletionRecord();
   setStartButton(partiallyElapsed ? '再開' : completed ? 'もう一度' : 'スタート');
   setTimerFeedback(
     partiallyElapsed
@@ -450,15 +404,11 @@ function loadState() {
   doneCount.textContent = String(readDoneCount());
   focusHistory = readHistory();
   renderHistory();
-  setFocusMode(safeRead(STORAGE_KEYS.focusMode) === '1', { persist: false, announce: false });
   restoreTimerState();
 }
 
 startButton.addEventListener('click', toggleTimer);
 resetButton.addEventListener('click', resetTimer);
-focusModeButton.addEventListener('click', () => {
-  setFocusMode(!document.body.classList.contains('focus-mode'));
-});
 presetButtons.forEach((button) => button.addEventListener('click', () => selectPreset(button)));
 
 document.addEventListener('visibilitychange', () => {
