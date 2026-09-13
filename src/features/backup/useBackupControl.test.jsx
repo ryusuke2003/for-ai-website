@@ -132,8 +132,7 @@ describe('useBackupControl', () => {
     });
 
     expect(exported).toBe(true);
-    expect(result.current.backupStatus).toContain('救出用JSON');
-    expect(result.current.backupStatus).toContain('実行中タイマーは含まれていません');
+    expect(result.current.backupStatus).toContain('JSON書き出しだけ利用できます');
     const payload = JSON.parse(await getExportedBlob().text());
     expect(payload.data).toEqual({
       doneCount: 6,
