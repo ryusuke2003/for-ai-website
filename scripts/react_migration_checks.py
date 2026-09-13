@@ -82,6 +82,10 @@ def main():
         "旧theme.jsはVite/Reactテーマ管理が無効な場合だけ動く互換処理にしてください",
     )
     require(
+        "order: 'pre'" in VITE_SOURCE,
+        "ReactエントリはViteのHTML依存解析より前に注入してください",
+    )
+    require(
         "data-react-theme=\"1\"" in VITE_SOURCE,
         "Vite経由では旧theme.jsを停止するReactテーマ管理マーカーを付けてください",
     )
