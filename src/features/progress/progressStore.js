@@ -267,6 +267,7 @@ const progressRuntime = Object.freeze({
 });
 
 globalThis.ONE_PROGRESS_RUNTIME = progressRuntime;
+globalThis.ONE_REACT_PROGRESS_OVERVIEW = progressActions;
 globalThis.ONE_TAB_GUARD?.registerProgressRuntime?.(progressRuntime);
 
 window.addEventListener('storage', syncProgressFromStorage);
