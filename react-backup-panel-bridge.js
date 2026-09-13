@@ -1,29 +1,6 @@
 if (document.documentElement.dataset.reactBackupPanel === '1') {
-  function backupPanelSnapshot() {
-    return {
-      importDisabled: backupImportButton.disabled,
-      undoHidden: backupUndoButton.hidden,
-      undoDisabled: backupUndoButton.disabled,
-      backupStatus: backupStatus.textContent ?? '',
-      resetButtonHidden: dataResetButton.hidden,
-      resetConfirmHidden: dataResetConfirm.hidden,
-      resetConfirmDisabled: dataResetConfirmButton.disabled,
-      resetCancelDisabled: dataResetCancelButton.disabled,
-      resetStatus: dataResetStatus.textContent ?? '',
-    };
-  }
-
-  let lastSnapshot = '';
-
-  function publishBackupPanelState({ force = false } = {}) {
-    const snapshot = backupPanelSnapshot();
-    const serialized = JSON.stringify(snapshot);
-    if (!force && serialized === lastSnapshot) return;
-    lastSnapshot = serialized;
-
-    window.dispatchEvent(new CustomEvent('one:backup-panel-state', {
-      detail: snapshot,
-    }));
+  function refreshBackupPanelState() {
+    globalThis.ONE_REACT_REMAINING_STATE?.refreshBackupPanel?.();
   }
 
   function forwardDetachedFocus(element, control) {
@@ -40,27 +17,6 @@ if (document.documentElement.dataset.reactBackupPanel === '1') {
     };
   }
 
-  const observedElements = [
-    backupImportButton,
-    backupUndoButton,
-    backupStatus,
-    dataResetButton,
-    dataResetConfirm,
-    dataResetConfirmButton,
-    dataResetCancelButton,
-    dataResetStatus,
-  ];
-
-  const observer = new MutationObserver(() => publishBackupPanelState());
-  for (const element of observedElements) {
-    observer.observe(element, {
-      attributes: true,
-      childList: true,
-      subtree: true,
-      attributeFilter: ['disabled', 'hidden'],
-    });
-  }
-
   forwardDetachedFocus(backupExportButton, 'export');
   forwardDetachedFocus(backupUndoButton, 'undo');
   forwardDetachedFocus(dataResetButton, 'reset');
@@ -68,33 +24,32 @@ if (document.documentElement.dataset.reactBackupPanel === '1') {
   forwardDetachedFocus(dataResetCancelButton, 'reset-cancel');
 
   globalThis.ONE_REACT_BACKUP_PANEL = Object.freeze({
-    snapshot: backupPanelSnapshot,
     exportBackup() {
       backupExportButton.click();
-      publishBackupPanelState({ force: true });
+      refreshBackupPanelState();
     },
     async importFile(file) {
       await importBackup(file);
-      publishBackupPanelState({ force: true });
+      refreshBackupPanelState();
     },
     undoRestore() {
       backupUndoButton.click();
-      publishBackupPanelState({ force: true });
+      refreshBackupPanelState();
     },
     openReset() {
       dataResetButton.click();
-      publishBackupPanelState({ force: true });
+      refreshBackupPanelState();
     },
     confirmReset() {
       dataResetConfirmButton.click();
-      publishBackupPanelState({ force: true });
+      refreshBackupPanelState();
     },
     cancelReset() {
       dataResetCancelButton.click();
-      publishBackupPanelState({ force: true });
+      refreshBackupPanelState();
     },
   });
 
   refreshRecoveryAvailability();
-  publishBackupPanelState({ force: true });
+  refreshBackupPanelState();
 }
