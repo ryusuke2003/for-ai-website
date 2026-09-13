@@ -3,7 +3,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
-PROGRESS_SOURCE = (ROOT / "daily-goal-progress.js").read_text(encoding="utf-8")
+PROGRESS_DETAILS_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressDetails.jsx").read_text(encoding="utf-8")
+INTEROP_SOURCE = (ROOT / "legacy" / "interop" / "progress-backup.js").read_text(encoding="utf-8")
 STYLE_SOURCE = (ROOT / "timer-progress.css").read_text(encoding="utf-8")
 
 
@@ -27,50 +28,64 @@ def section(source, start_marker, end_marker):
 
 
 def main():
-    stats_pos = INDEX_SOURCE.find('<script src="stats.js" defer></script>')
-    progress_pos = INDEX_SOURCE.find('<script src="daily-goal-progress.js" defer></script>')
-    tab_guard_pos = INDEX_SOURCE.find('<script src="tab-guard.js" defer></script>')
-    require(min(stats_pos, progress_pos, tab_guard_pos) >= 0, "日次目標進捗モジュールの読み込み位置を確認できません")
-    require(stats_pos < progress_pos < tab_guard_pos, "日次目標進捗モジュールはstats.jsの後、tab-guard.jsの前に読み込んでください")
+    require('daily-goal-progress.js' not in INDEX_SOURCE, "削除済みclassic日次目標進捗scriptを読み込まないでください")
+    require(not (ROOT / "daily-goal-progress.js").exists(), "React移行後はdaily-goal-progress.jsを残さないでください")
 
-    require("document.createElement('progress')" in PROGRESS_SOURCE, "目標進捗はネイティブprogress要素で表現してください")
-    require("dailyGoalStatus.insertAdjacentElement('afterend', dailyGoalProgress);" in PROGRESS_SOURCE, "目標状態の直後に進捗バーを配置してください")
-    require("dailyGoalProgress.hidden = true;" in PROGRESS_SOURCE, "目標未設定時は進捗バーを隠してください")
-    require("dailyGoalProgress.setAttribute('aria-label', '今日の集中目標の進捗');" in PROGRESS_SOURCE, "進捗バーへ目的を示すラベルを付けてください")
-    require("aria-live" not in PROGRESS_SOURCE, "目標進捗バーをaria-liveにして記録更新ごとに重複通知しないでください")
-
-    reset = section(PROGRESS_SOURCE, "function resetDailyGoalProgress()", "function renderDailyGoalProgress()")
-    require("dailyGoalProgress.max = 1;" in reset and "dailyGoalProgress.value = 0;" in reset, "未設定時はprogressの値も安全な初期値へ戻してください")
-    require("removeAttribute('aria-valuetext')" in reset, "未設定へ戻るとき古い読み上げ値を残さないでください")
-
-    render = section(PROGRESS_SOURCE, "function renderDailyGoalProgress()", "const renderDailyGoalWithoutProgress")
-    require("Number.isInteger(dailyGoal)" in render, "目標値を整数として確認してから進捗へ反映してください")
-    require("dailyGoal < MIN_DAILY_GOAL" in render and "dailyGoal > MAX_DAILY_GOAL" in render, "進捗バーでも1〜12回の目標範囲を守ってください")
-    require("const today = todayFocusCount();" in render, "今日の記録回数を既存の正規化関数から取得してください")
-    require("Math.min(today, dailyGoal)" in render, "目標超過時にprogressのvalueがmaxを超えないようにしてください")
-    require("today >= dailyGoal" in render, "達成済みかを実際の今日の回数で判定してください")
-    require("dailyGoalProgress.max = dailyGoal;" in render, "progressのmaxへ目標回数を設定してください")
-    require("dailyGoalProgress.value = visibleValue;" in render, "progressのvalueへ現在進捗を設定してください")
-    require("dailyGoalProgress.hidden = false;" in render, "有効な目標がある場合だけ進捗バーを表示してください")
-    require("目標${dailyGoal}回を達成、現在${today}回" in render, "目標超過時も実際の回数を支援技術へ伝えてください")
-    require("目標${dailyGoal}回中${today}回" in render, "未達成時は現在回数と目標回数を支援技術へ伝えてください")
-    require("safeWrite(" not in render and "localStorage" not in render, "進捗表示のために新しい保存処理を追加しないでください")
-
-    wrapper = section(
-        PROGRESS_SOURCE,
-        "const renderDailyGoalWithoutProgress",
-        "\n\nrenderDailyGoalProgress();",
+    progress_markup = section(
+        PROGRESS_DETAILS_SOURCE,
+        '<progress\n        className="daily-goal-progress"',
+        '/>',
     )
-    base_pos = wrapper.find("renderDailyGoalWithoutProgress();")
-    progress_render_pos = wrapper.find("renderDailyGoalProgress();")
-    require(min(base_pos, progress_render_pos) >= 0 and base_pos < progress_render_pos, "既存の日次目標表示後に進捗バーを同期してください")
-    require("renderDailyGoal = function renderDailyGoalWithProgress()" in wrapper, "既存の日次目標描画経路へ進捗更新を統合してください")
+    require('max={state.goalProgressMax}' in progress_markup, "React progressへ目標回数を渡してください")
+    require('value={state.goalProgressValue}' in progress_markup, "React progressへ現在値を渡してください")
+    require('hidden={state.goalProgressHidden}' in progress_markup, "目標未設定時はReact progressを隠してください")
+    require('aria-label="今日の集中目標の進捗"' in progress_markup, "進捗バーへ目的を示すラベルを付けてください")
+    require('aria-valuetext={state.goalProgressAriaValueText || undefined}' in progress_markup, "進捗の読み上げ文をReactから設定してください")
+    require('aria-live' not in progress_markup, "目標進捗バーをaria-liveにして重複通知しないでください")
 
-    require(".daily-goal-progress {" in STYLE_SOURCE, "日次目標進捗バー専用のレイアウトを用意してください")
-    require("accent-color: currentColor;" in section(STYLE_SOURCE, ".daily-goal-progress {", "}"), "テーマに追従するprogress表示を維持してください")
-    require(".daily-goal-progress[hidden]" in STYLE_SOURCE and "display: none;" in STYLE_SOURCE, "author CSSでもhidden属性を確実に尊重してください")
+    builder = section(
+        INTEROP_SOURCE,
+        "function buildDailyGoalProgressSnapshot()",
+        "function buildProgressDetailsSnapshot()",
+    )
+    for token in (
+        "Number.isInteger(dailyGoal)",
+        "dailyGoal < MIN_DAILY_GOAL",
+        "dailyGoal > MAX_DAILY_GOAL",
+        "const today = todayFocusCount();",
+        "Math.min(today, dailyGoal)",
+        "today >= dailyGoal",
+        "max: dailyGoal",
+        "value: visibleValue",
+        "目標${dailyGoal}回を達成、現在${today}回",
+        "目標${dailyGoal}回中${today}回",
+    ):
+        require(token in builder, f"日次目標進捗snapshotに必要な処理がありません: {token}")
 
-    print("Daily goal progress stays visual-only, capped at the goal, hidden when unset, and synchronized through the existing goal renderer.")
+    require("hidden: true" in builder and "max: 1" in builder and "value: 0" in builder,
+            "目標未設定時は安全な初期値へ戻してください")
+    require("safeWrite(" not in builder and "localStorage" not in builder,
+            "進捗表示のために新しい保存処理を追加しないでください")
+
+    details_builder = section(
+        INTEROP_SOURCE,
+        "function buildProgressDetailsSnapshot()",
+        "function buildBackupPanelSnapshot()",
+    )
+    require("const goalProgress = buildDailyGoalProgressSnapshot();" in details_builder,
+            "ProgressDetails snapshotから共通の日次目標進捗計算を使用してください")
+    require("goalProgressHidden: goalProgress.hidden" in details_builder,
+            "React側へ進捗の表示状態を公開してください")
+    require("goalProgressAriaValueText: goalProgress.ariaValueText" in details_builder,
+            "React側へ進捗の読み上げ文を公開してください")
+
+    require(".daily-goal-progress {" in STYLE_SOURCE, "日次目標進捗バー専用のレイアウトを維持してください")
+    require("accent-color: currentColor;" in section(STYLE_SOURCE, ".daily-goal-progress {", "}"),
+            "テーマに追従するprogress表示を維持してください")
+    require(".daily-goal-progress[hidden]" in STYLE_SOURCE and "display: none;" in STYLE_SOURCE,
+            "author CSSでもhidden属性を確実に尊重してください")
+
+    print("Daily goal progress is rendered by React, capped at the goal, hidden when unset, and no longer needs a classic runtime file.")
 
 
 if __name__ == "__main__":
