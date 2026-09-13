@@ -25,7 +25,6 @@ jobs:
           node --check legacy/interop/timer.js
           node --check legacy/interop/settings-progress.js
           node --check legacy/interop/progress-backup.js
-          node --check storage-status.js
           node --check completion-sound.js
           node --check wake-lock.js
           node --check stats.js
