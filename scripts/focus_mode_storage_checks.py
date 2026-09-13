@@ -57,7 +57,7 @@ def main():
         "タイマー完了時の集中表示解除は引き続き無言で行ってください",
     )
 
-    load_state = section("function loadState", "taskInput.addEventListener")
+    load_state = section("function loadState", "startButton.addEventListener")
     require(
         "setFocusMode(safeRead(STORAGE_KEYS.focusMode) === '1', { persist: false, announce: false });" in load_state,
         "初期読込では集中表示設定を書き戻したり読み上げたりしないでください",
