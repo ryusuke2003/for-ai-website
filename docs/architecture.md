@@ -135,6 +135,10 @@ Todoとテンプレートは `localStorage` に保存し、Trayのコンパク�
 - 閉じるボタンで終了せずウィンドウを非表示
 - frontendから受け取ったタイマー表示文字列をTray titleへ反映
 - 通常サイズウィンドウへの復帰時に装飾・サイズ・位置を戻す
+- `~/Library/LaunchAgents` へのログイン時自動起動登録
+- `--autostart` 起動時は通常ウィンドウを表示せずTrayだけを常駐
+
+ログイン時自動起動では `com.ryusuke2003.one.autostart.plist` をユーザー領域に作成し、`/usr/bin/open -b com.ryusuke2003.one --args --autostart` で同じbundle identifierのアプリを起動します。管理者権限や追加のTauri plugin権限は使いません。
 
 `src/desktop/trayTimerSync.js` はTauri実行時だけ `timerStore` を購読します。タイマー実行中は `24:32` のような残り時間をRust側へ送り、待機中・一時停止・完了時は空文字列を送り、Trayはアイコンのみ表示します。ブラウザ実行時はTauri APIを呼びません。
 
@@ -147,6 +151,7 @@ Todoとテンプレートは `localStorage` に保存し、Trayのコンパク�
 - CSPは `default-src 'none'` を基準に必要なローカル資産だけを許可
 - Tauri capabilityはmain windowに対する `core:default` のみ
 - filesystem / shell / HTTP / opener等のTauri plugin権限は追加しない
+- ログイン時自動起動はユーザー自身の `~/Library/LaunchAgents` だけを書き換え、管理者権限を要求しない
 - `localStorage.clear()` は使わず、アプリの既知キーだけを削除
 - 保存値は型、サイズ、範囲、日付整合性を検証
 - GitHub Actionsの外部Actionはcommit SHAに固定

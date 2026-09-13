@@ -33,6 +33,7 @@ ChatGPT が小さな Web アプリを作り、レビューと改善を繰り返�
 - このアプリが利用する端末データだけを対象にした削除
 - 同一オリジン内の複数タブ同期と二重記録防止
 - macOSメニューバー常駐
+- macOSログイン時の自動起動（通常ウィンドウは開かずTrayだけ常駐）
 - Trayのコンパクト画面からタイマー / Todoの確認・操作
 - メニューバーにタイマー実行中の残り時間を表示
 
@@ -48,6 +49,8 @@ Trayは通常時はアイコンだけを表示し、タイマー実行中だけ�
 | 完了 | アイコンのみ |
 
 Trayアイコンを左クリックすると、メニューバー直下にコンパクトなタイマー / Todo画面を表示します。Trayを隠して再表示した場合は直前に開いていたコンパクト画面を維持し、直前のTray画面がない場合はTodoを開きます。右クリックメニューは `タイマーを終了` だけです。ウィンドウの閉じるボタンではアプリ自体を終了せず、ウィンドウだけを隠して常駐を続けます。
+
+macOS版を通常起動すると、次回ログイン用のLaunchAgentを `~/Library/LaunchAgents/com.ryusuke2003.one.autostart.plist` に登録します。ログインから起動した場合は通常ウィンドウを表示せず、メニューバーのTrayだけを起動します。安定して自動起動させるため、配布版は `/Applications/タイマー.app` に置いてから一度起動してください。
 
 ### キーボード
 
@@ -116,7 +119,7 @@ src-tauri/
 - `src/desktop/trayTimerSync.js`: timerStoreとTauri Tray titleの同期
 - `src/desktop/trayNavigation.js`: Trayコンパクト画面の遷移と再表示時の画面維持
 - `src/desktop/trayWindow.js`: コンパクト表示から通常ウィンドウへの復帰
-- `src-tauri/src/lib.rs`: macOS Tray、ウィンドウ常駐、Tauri command / event
+- `src-tauri/src/lib.rs`: macOS Tray、ログイン時自動起動、ウィンドウ常駐、Tauri command / event
 - `public/theme-bootstrap.js`: React起動前のテーマ適用
 - `src/tailwind.css`: Tailwind utilitiesと共通CSS
 
