@@ -4,7 +4,11 @@ import { useCustomTimerControl } from './useCustomTimerControl.js';
 import { useTimerState } from './useTimerState.js';
 import { useWakeLockControl } from './useWakeLockControl.js';
 
-const QUICK_PRESETS = Object.freeze([5, 25, 50]);
+const QUICK_PRESETS = Object.freeze([
+  { minutes: 5, label: '休憩 5分' },
+  { minutes: 25, label: '25分' },
+  { minutes: 50, label: '50分' },
+]);
 const OPTION_BUTTON_CLASS = 'rounded-full border-0 bg-transparent px-3 py-2 text-[var(--one-subtle)] disabled:cursor-not-allowed disabled:opacity-45';
 const ACTIVE_OPTION_CLASS = 'bg-[var(--one-active-bg)] text-[var(--one-active-fg)] font-extrabold';
 const HINT_CLASS = 'hint mt-3 text-[0.82rem] text-[var(--one-muted)]';
@@ -28,11 +32,11 @@ export function TimerSettings() {
   return (
     <>
       <div className="presets mt-[18px] flex flex-wrap justify-center gap-2.5" aria-label="タイマー時間と完了通知">
-        {QUICK_PRESETS.map((minutes) => {
+        {QUICK_PRESETS.map(({ minutes, label }) => {
           const active = timerState.selectedMinutes === minutes;
           return (
             <button key={minutes} type="button" data-minutes={minutes} className={optionButtonClass(active)} aria-pressed={active} disabled={timerState.completionReady} onClick={() => customTimer.selectPreset(minutes)}>
-              {minutes}分
+              {label}
             </button>
           );
         })}
