@@ -12,8 +12,6 @@ if (document.documentElement.dataset.reactTimerState === '1') {
       endAt: timerId !== null && Number.isFinite(endAt) ? endAt : null,
       completionReady,
       completionDate: completionReady ? completionDateKey : null,
-      focusMode: document.body.classList.contains('focus-mode'),
-      focusModeStatus: focusModeStatus.textContent ?? '',
       feedback: timerStatus.textContent ?? '準備できたらスタート。',
       feedbackState: timerCard.classList.contains('is-complete')
         ? 'complete'
@@ -59,7 +57,6 @@ if (document.documentElement.dataset.reactTimerState === '1') {
     'setRecordAvailability',
     'renderTimer',
     'setStartButton',
-    'setFocusMode',
   ]) {
     wrapStateMutation(functionName);
   }
@@ -121,7 +118,6 @@ if (document.documentElement.dataset.reactTimerControls === '1') {
   }
 
   forwardDetachedFocus(startButton, 'start');
-  forwardDetachedFocus(focusModeButton, 'focus');
 
   globalThis.ONE_REACT_TIMER_CONTROLS = Object.freeze({
     start() {
@@ -129,9 +125,6 @@ if (document.documentElement.dataset.reactTimerControls === '1') {
     },
     reset() {
       resetButton.click();
-    },
-    toggleFocus() {
-      focusModeButton.click();
     },
     selectMinutes(minutes) {
       return selectTimerMinutes(minutes);
