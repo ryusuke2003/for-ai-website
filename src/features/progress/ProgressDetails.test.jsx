@@ -1,6 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { ProgressDetails } from './ProgressDetails.jsx';
+import { buildProgressInsights } from './progressInsights.js';
 
 function progressState() {
   return {
@@ -78,5 +79,44 @@ describe('ProgressDetails daily goal progress', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '目標を解除' }));
     expect(goal.clear).toHaveBeenCalledOnce();
+  });
+});
+
+describe('ProgressDetails current date semantics', () => {
+  it('今日を7日履歴と30日マップの両方で意味的・視覚的に示す', () => {
+    const today = new Date(2026, 8, 14, 12, 0, 0, 0);
+    const state = buildProgressInsights({
+      '2026-09-13': 2,
+      '2026-09-14': 3,
+    }, today);
+
+    const historyToday = state.history.find((day) => day.current);
+    const activityToday = state.activity.find((cell) => cell.current);
+    expect(historyToday).toMatchObject({
+      ariaLabel: '今日 2026-09-14: 3回',
+      count: '3',
+      weekday: '今日',
+      current: true,
+    });
+    expect(activityToday).toMatchObject({
+      ariaLabel: '今日 2026-09-14: 3回',
+      current: true,
+      placeholder: false,
+      level: 3,
+    });
+
+    render(<ProgressDetails state={state} dailyGoal={dailyGoal()} />);
+
+    const historyCurrent = document.querySelector('#history-grid [aria-current="date"]');
+    const activityCurrent = document.querySelector('#activity-grid [aria-current="date"]');
+
+    expect(historyCurrent).not.toBeNull();
+    expect(historyCurrent.getAttribute('aria-label')).toBe('今日 2026-09-14: 3回');
+    expect(historyCurrent.textContent).toContain('今日');
+
+    expect(activityCurrent).not.toBeNull();
+    expect(activityCurrent.getAttribute('aria-label')).toBe('今日 2026-09-14: 3回');
+    expect(activityCurrent.className).toContain('outline');
+    expect(document.querySelectorAll('[aria-current="date"]')).toHaveLength(2);
   });
 });

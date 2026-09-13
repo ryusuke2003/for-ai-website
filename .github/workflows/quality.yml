@@ -23,7 +23,7 @@ jobs:
           node --check src/features/timer/timerStateGuard.js
           node --check src/features/timer/tabGuard.js
 
-      - name: Check static security and accessibility invariants
+      - name: Check static public asset and legacy boundaries
         run: python3 scripts/static_checks.py
 
       - name: Check Tailwind migration boundaries
@@ -34,9 +34,6 @@ jobs:
 
       - name: Check focus visibility
         run: python3 scripts/focus_visibility_checks.py
-
-      - name: Check current date semantics
-        run: python3 scripts/current_date_semantics_checks.py
 
       - name: Check timer architecture boundaries
         run: python3 scripts/timer_state_checks.py
