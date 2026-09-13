@@ -2,12 +2,31 @@ const storageHealthStatus = document.querySelector('#storage-health-status');
 const STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1';
 const LEGACY_TASK_STORAGE_KEYS = ['one.task', 'one.taskDate.v1'];
 
+let storageHealthSnapshot = Object.freeze({
+  state: 'checking',
+  text: '端末保存の利用状態を確認しています。',
+});
+
+function publishStorageHealth() {
+  window.dispatchEvent(new CustomEvent('one:storage-health', {
+    detail: storageHealthSnapshot,
+  }));
+}
+
 function setStorageHealth(available) {
   const usable = available === true;
-  storageHealthStatus.dataset.state = usable ? 'available' : 'unavailable';
-  storageHealthStatus.textContent = usable
+  const text = usable
     ? '端末保存: 利用できます。タイマー・集中記録・設定はこのブラウザだけに保存されます。'
     : '⚠ 端末保存を利用できません。今の画面では使えますが、再読み込みするとタイマー・集中記録・設定が消える可能性があります。';
+
+  storageHealthSnapshot = Object.freeze({
+    state: usable ? 'available' : 'unavailable',
+    text,
+  });
+
+  storageHealthStatus.dataset.state = storageHealthSnapshot.state;
+  storageHealthStatus.textContent = text;
+  publishStorageHealth();
 }
 
 function probeLocalStorage() {
@@ -50,6 +69,12 @@ function removeLegacyTaskData() {
     reportStorageFailure();
   }
 }
+
+globalThis.ONE_STORAGE_HEALTH_STATE = Object.freeze({
+  snapshot() {
+    return storageHealthSnapshot;
+  },
+});
 
 window.addEventListener('one:storage-error', () => {
   setStorageHealth(false);
