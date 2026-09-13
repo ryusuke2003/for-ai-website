@@ -273,6 +273,9 @@ globalThis.ONE_TAB_GUARD?.registerProgressRuntime?.(progressRuntime);
 window.addEventListener('storage', syncProgressFromStorage);
 window.addEventListener('pageshow', refreshFromStorage);
 window.addEventListener('focus', refreshDateSensitiveState);
+window.addEventListener('one:storage-error', () => {
+  storageAccessFailed = true;
+});
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'visible') return;
   refreshDateSensitiveState();
