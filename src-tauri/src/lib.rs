@@ -83,7 +83,7 @@ pub fn run() {
             .menu(&menu)
             .show_menu_on_left_click(true)
             .icon_as_template(true)
-            .title("ONE")
+            .title("")
             .tooltip("ONE")
             .on_menu_event(|app, event| match event.id().as_ref() {
                 "open-window" => show_main_window(app),

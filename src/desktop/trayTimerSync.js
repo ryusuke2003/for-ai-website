@@ -9,27 +9,11 @@ function formatClock(totalSeconds) {
 }
 
 export function formatTrayTimerTitle(state) {
-  if (state?.completionReady === true || state?.remainingSeconds === 0) {
-    return '✓ 00:00';
-  }
-
   if (state?.running === true) {
     return formatClock(state.remainingSeconds);
   }
 
-  const fullDuration = Number.isInteger(state?.selectedMinutes)
-    ? state.selectedMinutes * 60
-    : null;
-  const paused = Number.isInteger(state?.remainingSeconds)
-    && fullDuration !== null
-    && state.remainingSeconds > 0
-    && state.remainingSeconds < fullDuration;
-
-  if (paused) {
-    return `⏸ ${formatClock(state.remainingSeconds)}`;
-  }
-
-  return 'ONE';
+  return '';
 }
 
 export function startTrayTimerSync() {
