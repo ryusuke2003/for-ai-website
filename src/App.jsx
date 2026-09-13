@@ -133,8 +133,12 @@ export function App() {
     setPage('timer');
   }
 
+  const shellWidthClass = page === 'todo'
+    ? 'w-[min(1080px,calc(100%_-_32px))]'
+    : 'w-[min(760px,calc(100%_-_32px))]';
+
   return (
-    <main className="shell mx-auto w-[min(760px,calc(100%_-_32px))] pb-10 pt-8 max-[560px]:pt-6">
+    <main className={`shell mx-auto ${shellWidthClass} pb-10 pt-8 max-[560px]:pt-6`}>
       <header className="mb-4 flex items-start justify-between gap-4 max-[560px]:flex-col max-[560px]:gap-0">
         <AppNavigation page={page} onNavigate={navigate} />
         <ThemeSwitcher />
