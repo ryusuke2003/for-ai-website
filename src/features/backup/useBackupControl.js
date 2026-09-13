@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useProgressOverviewState } from '../progress/useProgressOverviewState.js';
+import { timerActions } from '../timer/timerStore.js';
 import { useTimerState } from '../timer/useTimerState.js';
 
 const BACKUP_FORMAT = 'one-focus-backup';
@@ -449,7 +450,7 @@ export function useBackupControl() {
       doneCount: restored.doneCount,
       history: restored.history,
     }) === true;
-    const timerApplied = globalThis.ONE_REACT_TIMER_CONTROLS?.selectMinutes?.(restored.selectedMinutes) === true;
+    const timerApplied = timerActions.selectMinutes(restored.selectedMinutes) === true;
     return progressApplied && timerApplied;
   }
 
@@ -519,134 +520,105 @@ export function useBackupControl() {
       return false;
     }
 
-    applyBackup(restored);
-    if (currentRestoreGuard() !== expectedGuard) {
-      applyBackup(recoveryData);
-      const rollbackSucceeded = currentRestoreGuard() === restoreGuard;
-      const recoveryRestored = rollbackSucceeded
-        && restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);
-      refreshRecoveryAvailability();
-
-      if (!rollbackSucceeded) {
-        setBackupStatus('復元後の保存確認に失敗し、復元前の状態へ完全には戻せませんでした。現在の記録を確認してください。');
-      } else if (!recoveryRestored) {
-        setBackupStatus('復元後の保存確認に失敗したため記録は復元前へ戻しましたが、以前の取り消し情報は安全に戻せませんでした。');
-      } else {
-        setBackupStatus('復元後の保存確認に失敗したため復元前の状態へ戻し、以前の取り消し情報も維持しました。');
-      }
+    if (restoreGuard !== currentRestoreGuard() || !canRestoreBackup()) {
+      restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);
+      setBackupStatus('復元直前に別タブまたはタイマー状態が変わったため復元を中止しました。データは変更していません。');
       return false;
     }
 
+    const applied = applyBackup(restored);
+    const savedMatches = currentRestoreGuard() === expectedGuard;
+    if (!applied || !savedMatches) {
+      const rolledBack = applyBackup(recoveryData)
+        && currentRestoreGuard() === backupDataGuard(recoveryData);
+      restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);
+      setBackupStatus(
+        rolledBack
+          ? '復元データを端末保存で確認できなかったため、元の状態へ戻しました。'
+          : '復元データを端末保存で確認できず、元の状態への戻しも確認できませんでした。JSONを書き出して現在状態を退避してください。',
+      );
+      refreshRecoveryAvailability();
+      return false;
+    }
+
+    globalThis.ONE_REACT_SECONDARY_STATE?.refreshProgress?.({ force: true });
+    setBackupStatus('バックアップを復元しました。問題があれば「復元前に戻す」で1世代だけ元に戻せます。');
     refreshRecoveryAvailability();
-    setBackupStatus('バックアップを復元しました。必要なら「直前の復元を取り消す」で復元前の記録へ戻せます。');
     return true;
   }
 
-  function undoLastRestore() {
+  function undoRestore() {
     if (!refreshBackupControlAvailability({ announce: true })) return false;
     if (!canRestoreBackup()) {
-      setBackupStatus('集中タイマーの進行中・一時停止中・未記録完了中は復元を取り消せません。');
+      setBackupStatus('タイマー状態が変わったため、復元前には戻せません。');
       return false;
     }
 
     const recovery = readRecoveryPoint();
-    const expectedGuard = recovery ? backupDataGuard(recovery.expectedData) : null;
-    if (!recovery || currentRestoreGuard() !== expectedGuard) {
-      refreshRecoveryAvailability();
-      setBackupStatus('復元後に記録またはタイマー設定が変わったため、直前の復元はもう取り消せません。');
+    if (!recovery) {
+      setBackupStatus('戻せる復元前データがありません。');
+      setUndoHidden(true);
       return false;
     }
 
-    const currentData = readStableBackupSnapshot();
-    if (!currentData || backupDataGuard(currentData) !== expectedGuard) {
-      setBackupStatus('現在の記録を安全に確認できなかったため、取り消しを中止しました。');
+    if (currentRestoreGuard() !== backupDataGuard(recovery.expectedData)) {
+      setBackupStatus('復元後に記録やタイマー設定が変わっているため、上書きを避けて復元前には戻しません。');
+      setUndoHidden(true);
       return false;
     }
 
-    const historyDays = Object.keys(recovery.data.history).length;
-    const confirmed = window.confirm(
-      `復元前の状態へ戻します。\n\n累計: ${recovery.data.doneCount}回\n日次履歴: ${historyDays}日分\nタイマー: ${recovery.data.selectedMinutes}分\n\nこの取り消しは1回だけです。戻しますか？`,
-    );
-    if (!confirmed) {
-      setBackupStatus('取り消しをキャンセルしました。データは変更していません。');
+    const applied = applyBackup(recovery.data);
+    const savedMatches = currentRestoreGuard() === backupDataGuard(recovery.data);
+    if (!applied || !savedMatches) {
+      setBackupStatus('復元前の状態へ戻せませんでした。現在の記録はJSONで退避してください。');
       return false;
     }
 
-    if (!canRestoreBackup() || currentRestoreGuard() !== expectedGuard) {
-      refreshRecoveryAvailability();
-      setBackupStatus('確認中に状態が変わったため、取り消しを中止しました。');
-      return false;
-    }
-
-    const recoveryGuard = backupDataGuard(recovery.data);
-    applyBackup(recovery.data);
-    if (currentRestoreGuard() !== recoveryGuard) {
-      applyBackup(currentData);
-      setBackupStatus('取り消し後の保存確認に失敗したため、可能な範囲で取り消し前の状態へ戻しました。');
-      return false;
-    }
-
-    const recoveryRemoved = removeRecoveryPoint();
+    removeRecoveryPoint();
+    globalThis.ONE_REACT_SECONDARY_STATE?.refreshProgress?.({ force: true });
+    setBackupStatus('復元前の状態へ戻しました。');
     refreshRecoveryAvailability();
-    if (!recoveryRemoved) {
-      setBackupStatus('直前の復元は取り消しましたが、取り消し情報を安全に削除できませんでした。現在の記録を確認してください。');
-      return true;
-    }
-
-    setBackupStatus('直前の復元を取り消し、復元前の記録へ戻しました。');
     return true;
   }
 
   useEffect(() => {
-    refreshRecoveryAvailability();
-  }, [timerState, progressState, storageFailed]);
-
-  useEffect(() => {
-    function handleStorage(event) {
-      if ([
-        DONE_COUNT_STORAGE_KEY,
-        HISTORY_STORAGE_KEY,
-        TIMER_STORAGE_KEY,
-        SESSION_STORAGE_KEY,
-        RECOVERY_STORAGE_KEY,
-      ].includes(event.key)) {
-        refreshRecoveryAvailability();
-      }
-    }
-
-    function handleStorageError() {
+    function handleStorageFailure() {
       storageAccessFailedRef.current = true;
       setStorageFailed(true);
-      refreshBackupControlAvailability({ announce: true });
+      setImportDisabled(true);
+      setUndoDisabled(true);
     }
 
-    function handlePageShow() {
+    function handleAvailabilityChange() {
       refreshRecoveryAvailability();
     }
 
-    function handleVisibilityChange() {
-      if (document.visibilityState === 'visible') refreshRecoveryAvailability();
-    }
+    window.addEventListener('one:storage-error', handleStorageFailure);
+    window.addEventListener('one:timer-state', handleAvailabilityChange);
+    window.addEventListener('one:progress-overview-state', handleAvailabilityChange);
+    window.addEventListener('storage', handleAvailabilityChange);
+    window.addEventListener('pageshow', handleAvailabilityChange);
+    document.addEventListener('visibilitychange', handleAvailabilityChange);
+    refreshRecoveryAvailability();
 
-    window.addEventListener('storage', handleStorage);
-    window.addEventListener('pageshow', handlePageShow);
-    window.addEventListener('one:storage-error', handleStorageError);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('pageshow', handlePageShow);
-      window.removeEventListener('one:storage-error', handleStorageError);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('one:storage-error', handleStorageFailure);
+      window.removeEventListener('one:timer-state', handleAvailabilityChange);
+      window.removeEventListener('one:progress-overview-state', handleAvailabilityChange);
+      window.removeEventListener('storage', handleAvailabilityChange);
+      window.removeEventListener('pageshow', handleAvailabilityChange);
+      document.removeEventListener('visibilitychange', handleAvailabilityChange);
     };
-  }, []);
+  }, [timerState.running, timerState.remainingSeconds, timerState.completionReady]);
 
   return {
+    storageFailed,
     importDisabled,
     undoHidden,
     undoDisabled,
     backupStatus,
     exportBackup,
     importBackup,
-    undoLastRestore,
+    undoRestore,
   };
 }
