@@ -22,8 +22,8 @@ jobs:
           node --check theme-bootstrap.js
           node --check timer-bootstrap.js
           node --check app.js
+          node --check react-timer-state-source.js
           node --check react-timer-controls-bridge.js
-          node --check react-timer-display-bridge.js
           node --check react-timer-settings-bridge.js
           node --check react-progress-overview-bridge.js
           node --check react-progress-details-bridge.js
@@ -50,6 +50,9 @@ jobs:
 
       - name: Check React migration boundaries
         run: python3 scripts/react_migration_checks.py
+
+      - name: Check React timer state integration
+        run: python3 scripts/react_timer_state_checks.py
 
       - name: Check React progress details migration
         run: python3 scripts/progress_details_migration_checks.py

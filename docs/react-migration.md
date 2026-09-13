@@ -1,97 +1,69 @@
 # React 段階移行方針
 
-ONE は既存のタイマー・記録機能を壊さないことを優先し、画面単位で React へ移行します。
+ONE は既存のタイマー・記録機能を壊さないことを優先し、UI → 状態同期 → 状態所有の順で React へ移行します。
 
 ## 現在
 
 - React 19.3.0 / React DOM 19.3.0
 - Vite 8.3.0
 - `src/main.jsx` を React エントリーポイントとして使用
-- Hero / Footer / ThemeSwitcher / タイマーUI / 集中記録・統計UIに加えて、バックアップ・端末データ削除UIを React 管理へ移行
+- Hero / Footer / ThemeSwitcher / タイマーUI / 集中記録・統計UI / バックアップUIは React 管理
+- タイマー表示と主操作は `useSyncExternalStore` を使う共有状態ソースへ統合中
+- 保存形式、タイマー状態機械、複数タブ排他、バックアップ安全性はまだ既存 vanilla JavaScript を正として維持
 - 初回描画のちらつきを防ぐ `theme-bootstrap.js` はCSSより前に残す
-- タイマー・集中記録・バックアップの状態管理、保存、タブ間調停はまだ既存の vanilla JavaScript を正とし、React UI とは一時的なブリッジで接続する
-- React のマウントは `DOMContentLoaded` 後に行い、既存スクリプトがフォールバックDOMを初期化し終えてから置き換える
 
 ## 移行順
 
 1. **表示専用領域** — Hero / Footer（完了）
 2. **表示テーマ** — ThemeSwitcher と保存・別タブ同期（完了）
-3. **タイマーUI**
-   - 3A: 開始・一時停止 / リセット / 集中表示（完了）
-   - 3B: 残り時間 / 進捗 / 状態 / 終了予定時刻（完了）
-   - 3C: 時間プリセット / 自由設定 / 完了音・通知・画面維持（完了）
-4. **集中記録・統計UI**
-   - 4A: 記録 / 破棄、今日 / 今週 / 連続日 / 累計（完了）
-   - 4B: 今日の目標、直近7日 / 30日の可視化（完了）
-5. **バックアップ・データ削除UI** — JSON書き出し / 復元 / Undo / 端末データ削除（この段階）
-6. **状態管理のReact統合** — 残ったvanilla JavaScriptの状態管理をReact側へ統合する
-7. **Tailwind CSS移行** — React移行完了後に、`styles.css` / `timer-progress.css` をReactコンポーネントのTailwind utilityへ段階移行し、最終的に旧CSSを削除する
+3. **タイマーUI**（完了）
+   - 3A: 開始・一時停止 / リセット / 集中表示
+   - 3B: 残り時間 / 進捗 / 状態 / 終了予定時刻
+   - 3C: 時間プリセット / 自由設定 / 完了音・通知・画面維持
+4. **集中記録・統計UI**（完了）
+   - 4A: 記録 / 破棄、今日 / 今週 / 連続日 / 累計
+   - 4B: 今日の目標、直近7日 / 30日の可視化
+5. **バックアップ・データ削除UI** — JSON書き出し / 復元 / Undo / 端末データ削除（完了）
+6. **状態管理のReact統合**
+   - 6A: タイマー表示・主操作を1つの共有状態ソースへ統合（この段階）
+   - 6B: タイマー設定・集中記録も同じ状態境界へ統合
+   - 6C: 状態所有と操作をReact側へ移し、不要になったbridge / compatを削除
+7. **Tailwind CSS移行** — React移行完了後に `styles.css` / `timer-progress.css` をutility classへ段階移行
 
-## テーマ移行の境界
+## Step 6A: タイマー共有状態
 
-React版 `ThemeSwitcher` が、テーマ選択、`one.theme.v1` の保存確認、別タブの `storage` 同期、タブ復帰時の再同期を担当します。
+これまでは `TimerDisplay` と `TimerControls` がそれぞれ専用bridgeからDOMの変化を受け取っていました。特にタイマー表示は `MutationObserver` で旧DOMを監視しており、React側の表示と旧DOMが二重の状態表現になっていました。
 
-一方、ページ描画前に保存済みテーマを適用して色のちらつきを防ぐ処理だけは `theme-bootstrap.js` に残します。これはReactの起動を待つと初回描画が先に発生するためです。
+Step 6Aでは `react-timer-state-source.js` が既存タイマー状態を1つのスナップショットにまとめ、`one:timer-state` で変更を通知します。React側は `src/state/useTimerState.js` の `useSyncExternalStore` から同じ状態を購読します。
 
-## タイマー主操作の移行境界
+`TimerDisplay` は残り時間、進捗率、終了予定時刻を共有状態から直接導出します。そのため `react-timer-display-bridge.js` とDOM監視は削除します。
 
-`TimerControls` は、開始・一時停止、リセット、集中表示の3ボタンをReactで描画します。ただしタイマーの状態機械そのものは `app.js`、複数タブの排他制御は `tab-guard.js` に残します。
+`TimerControls` も同じ共有状態からラベル、disabled、集中表示状態を導出します。一方、開始・停止などの操作はまだ `react-timer-controls-bridge.js` 経由で旧ボタンのイベント経路を通します。これは `tab-guard.js` の複数タブ排他を迂回しないためです。bridgeは状態同期を担当せず、操作委譲とフォーカス転送だけに縮小します。
 
-Vite経由では `react-timer-controls-bridge.js` が、Reactの操作を既存ボタンへ委譲し、既存側で変化したラベル・disabled・`aria-pressed` をReactへ同期します。これにより、保存形式やタブ間調停を同時に書き換えずにUIだけを先に移行できます。
+状態変更通知は同一タスク内の複数更新を `queueMicrotask` でまとめ、Reactに途中状態を過剰通知しないようにします。
 
-## タイマー表示の移行境界
+## まだ残す境界
 
-`TimerDisplay` は残り時間、進捗バー、タイマー状態メッセージ、終了予定時刻をReactで描画します。
+`TimerSettings` は完了音・通知・Wake Lockなど複数の旧スクリプトにまたがるため、Step 6Bまでは `react-timer-settings-bridge.js` を維持します。
 
-Vite経由では `react-timer-display-bridge.js` が、既存の `app.js` / `custom-timer.js` が更新するフォールバックDOMを監視し、その状態だけをReactへ渡します。タイマー計算・保存形式・document title更新はまだ既存実装を維持します。
+`ProgressOverview` / `ProgressDetails` / `BackupPanel` も、複数タブ調停、履歴の保存確認、復元ロールバックなど安全性ロジックを同時に書き換えないため、現時点では既存処理へ委譲します。
 
-## タイマー設定の移行境界
-
-`TimerSettings` は、10/25/50分のプリセット、1〜180分の自由設定、完了音、完了通知、画面維持の操作と状態表示をReactで描画します。
-
-Vite経由では `react-timer-settings-bridge.js` が、Reactの操作を既存の `app.js` / `custom-timer.js` / `completion-sound.js` / `wake-lock.js` に委譲します。既存側が更新した `disabled`、`aria-pressed`、ステータスメッセージ、別タブ同期結果をReactへ戻すため、保存形式・通知権限・Wake Lock制御・完了音の重複防止ロジックはこの段階では変更しません。
-
-自由設定の入力値もブリッジを通して既存入力へ同期し、既存の入力検証をそのまま利用します。無効値で既存コードが入力欄へフォーカスを戻す場合は、ブリッジがReact側の入力へフォーカスを転送します。
-
-## 集中記録サマリーの移行境界
-
-`ProgressOverview` は、完了した集中の「記録する / 記録せず破棄する」と、今日・今週・連続日・累計のサマリーをReactで描画します。
-
-`react-progress-overview-bridge.js` は、Reactの記録/破棄操作を既存の `app.js` / `tab-guard.js` のボタン処理へ委譲し、`stats.js` が更新する集計値、連続日メッセージ、pending completion時のdisabled/hidden状態をReactへ同期します。複数タブで同じ完了を二重記録しないための既存の排他制御は変更しません。
-
-## 目標・可視化の移行境界
-
-`ProgressDetails` は、今日の目標設定、目標進捗、直近7日の棒グラフ、直近30日のアクティビティ表示をReactで描画します。
-
-`react-progress-details-bridge.js` は、目標入力を既存の `stats.js` に委譲し、`stats.js` / `daily-goal-progress.js` が生成する目標状態と可視化結果をReactへ同期します。日付境界、別タブ同期、90日履歴の正規化、目標の保存形式はこの段階では変更しません。
-
-集中記録サマリーと同様に、既存スクリプトが初期化を終えた後でフォールバックDOMを `react-progress-details-root` へまとめてからReactをマウントします。これにより、既存ロジックが保持するDOM参照をそのまま利用しつつ表示だけをReactへ移せます。
-
-## バックアップ・データ削除の移行境界
-
-`BackupPanel` は、JSON書き出し、復元、復元の取り消し、端末内ONEデータの削除確認をReactで描画します。
-
-`react-backup-panel-bridge.js` は、Reactの操作を既存の `backup.js` / `privacy-reset.js` に委譲し、復元可否、Undoの表示状態、ステータスメッセージ、削除確認の表示状態をReactへ同期します。ファイル形式検証、100KB上限、復元前の1世代退避、別タブ調停、削除シグナルなどの安全性ロジックはこの段階では変更しません。
-
-旧バックアップ処理が現在タブのタイマー状態を判定するために使っていたタスク時代の関数名については、状態管理をReactへ統合するまでブリッジ境界で互換判定を提供します。UI側にはタスク入力を復活させません。
-
-Reactは `DOMContentLoaded` 後にマウントするため、既存スクリプトは先にフォールバックDOMを参照できます。Reactへ置き換えた後も各ブリッジは元DOMへの参照を保持し、既存ロジックを壊さずUIだけをReact化します。
-
-Viteを通さず `index.html` を開いた場合は従来のHTMLがそのまま残り、React用ブリッジは動作しません。
+テーマだけはすでにReact側で保存・同期を担当していますが、初回描画前に保存テーマを適用する `theme-bootstrap.js` はちらつき防止のため残します。
 
 ## Tailwind CSSについて
 
-Tailwindへの移行は行います。ただし、React移行とCSS基盤の置換を同じPRで進めると、DOM変更と見た目の差分が混ざって回帰原因を追いにくくなります。
+Tailwindへの移行は行います。ただし、状態管理の移行とCSS基盤の置換を同じPRで進めると、DOM・状態・見た目の差分が混ざります。
 
-そのため、まずReactへの責務移行を完了し、その後にTailwind専用の段階移行を行います。Tailwind導入後は新しいReactコンポーネントをutility class中心にし、旧CSSを機能単位で削減していきます。
+そのためStep 6を完了してからTailwind専用PRへ進みます。Tailwind導入後はReactコンポーネントをutility class中心へ移し、旧CSSを機能単位で削減します。
 
 ## 移行ルール
 
 - 1つのPRで責務を広げすぎない
-- 既存のDOM ID・アクセシビリティ・保存形式を必要以上に同時変更しない
-- タイマー状態や保存形式は、UI移行とは別に互換性を維持する
-- Reactへ移した領域でも `dangerouslySetInnerHTML` は使わない
-- 各段階で既存Quality checksとVite production buildを通す
-- npm依存関係はCIの `npm audit --audit-level=moderate` で継続監査する
+- 既存の保存形式と複数タブ排他をUI移行と同時に変更しない
+- DOMを状態ソースにする `MutationObserver` bridgeを段階的に減らす
+- Reactの外部状態購読は安定したsnapshotを返す
+- `dangerouslySetInnerHTML` は使わない
+- 各段階でQuality checks、`npm audit --audit-level=moderate`、Vite production buildを通す
+- Tailwind移行は状態管理のReact統合後に行う
 
-Reactへ移した領域も、Viteを通さない場合に最低限の表示が残るよう `index.html` にフォールバックHTMLを置きます。Vite経由では `createRoot()` が同じ領域をReact管理へ置き換えます。
+Viteを通さず `index.html` を開いた場合は従来のフォールバックHTMLと既存スクリプトを維持します。Vite経由ではReactが同じ領域を管理します。

@@ -6,6 +6,7 @@ const legacyScripts = [
   'theme-bootstrap.js',
   'timer-bootstrap.js',
   'app.js',
+  'react-timer-state-source.js',
   'react-timer-controls-bridge.js',
   'storage-status.js',
   'completion-sound.js',
@@ -20,7 +21,6 @@ const legacyScripts = [
   'backup.js',
   'custom-timer.js',
   'react-timer-settings-bridge.js',
-  'react-timer-display-bridge.js',
   'shortcuts.js',
   'privacy-reset.js',
   'react-backup-panel-bridge.js',
@@ -35,11 +35,11 @@ function injectReactEntry() {
         return html
           .replace(
             '<html lang="ja">',
-            '<html lang="ja" data-react-theme="1" data-react-timer-controls="1" data-react-timer-display="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">',
+            '<html lang="ja" data-react-theme="1" data-react-timer-state="1" data-react-timer-controls="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">',
           )
           .replace(
             '<script src="app.js" defer></script>',
-            '<script src="app.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
+            '<script src="app.js" defer></script>\n  <script src="react-timer-state-source.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
           )
           .replace(
             '<script src="daily-goal-progress.js" defer></script>',
@@ -55,7 +55,7 @@ function injectReactEntry() {
           )
           .replace(
             '<script src="custom-timer.js" defer></script>',
-            '<script src="custom-timer.js" defer></script>\n  <script src="react-timer-settings-bridge.js" defer></script>\n  <script src="react-timer-display-bridge.js" defer></script>',
+            '<script src="custom-timer.js" defer></script>\n  <script src="react-timer-settings-bridge.js" defer></script>',
           )
           .replace(
             '<script src="privacy-reset.js" defer></script>',

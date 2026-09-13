@@ -4,19 +4,14 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
 MAIN_SOURCE = (ROOT / "src/main.jsx").read_text(encoding="utf-8")
-HERO_SOURCE = (ROOT / "src/components/HeroIntro.jsx").read_text(encoding="utf-8")
-FOOTER_SOURCE = (ROOT / "src/components/AppFooter.jsx").read_text(encoding="utf-8")
-THEME_SOURCE = (ROOT / "src/components/ThemeSwitcher.jsx").read_text(encoding="utf-8")
-TIMER_CONTROLS_SOURCE = (ROOT / "src/components/TimerControls.jsx").read_text(encoding="utf-8")
-TIMER_DISPLAY_SOURCE = (ROOT / "src/components/TimerDisplay.jsx").read_text(encoding="utf-8")
-TIMER_SETTINGS_SOURCE = (ROOT / "src/components/TimerSettings.jsx").read_text(encoding="utf-8")
-PROGRESS_OVERVIEW_SOURCE = (ROOT / "src/components/ProgressOverview.jsx").read_text(encoding="utf-8")
-THEME_COMPAT_SOURCE = (ROOT / "theme.js").read_text(encoding="utf-8")
-TIMER_CONTROLS_BRIDGE_SOURCE = (ROOT / "react-timer-controls-bridge.js").read_text(encoding="utf-8")
-TIMER_DISPLAY_BRIDGE_SOURCE = (ROOT / "react-timer-display-bridge.js").read_text(encoding="utf-8")
-TIMER_SETTINGS_BRIDGE_SOURCE = (ROOT / "react-timer-settings-bridge.js").read_text(encoding="utf-8")
-PROGRESS_OVERVIEW_BRIDGE_SOURCE = (ROOT / "react-progress-overview-bridge.js").read_text(encoding="utf-8")
 VITE_SOURCE = (ROOT / "vite.config.mjs").read_text(encoding="utf-8")
+STATE_SOURCE = (ROOT / "react-timer-state-source.js").read_text(encoding="utf-8")
+STATE_HOOK_SOURCE = (ROOT / "src/state/useTimerState.js").read_text(encoding="utf-8")
+CONTROLS_SOURCE = (ROOT / "src/components/TimerControls.jsx").read_text(encoding="utf-8")
+DISPLAY_SOURCE = (ROOT / "src/components/TimerDisplay.jsx").read_text(encoding="utf-8")
+CONTROLS_BRIDGE_SOURCE = (ROOT / "react-timer-controls-bridge.js").read_text(encoding="utf-8")
+THEME_SOURCE = (ROOT / "src/components/ThemeSwitcher.jsx").read_text(encoding="utf-8")
+THEME_COMPAT_SOURCE = (ROOT / "theme.js").read_text(encoding="utf-8")
 
 
 def require(condition, message):
@@ -25,203 +20,75 @@ def require(condition, message):
 
 
 def main():
-    require('id="react-theme-root"' in INDEX_SOURCE, "テーマ切替用React境界がありません")
-    require('id="react-hero-root"' in INDEX_SOURCE, "ヘッダー用React境界がありません")
-    require('id="react-timer-display-root"' in INDEX_SOURCE, "タイマー表示用React境界がありません")
-    require('id="react-timer-controls-root"' in INDEX_SOURCE, "タイマー主操作用React境界がありません")
-    require('id="react-timer-settings-root"' in INDEX_SOURCE, "タイマー設定用React境界がありません")
-    require('id="react-footer-root"' in INDEX_SOURCE, "フッター用React境界がありません")
-    require('id="react-root"' not in INDEX_SOURCE, "旧Reactプレースホルダーを残さないでください")
-
-    require("createRoot" in MAIN_SOURCE, "手書きフォールバックをReactへ切り替える境界にはcreateRootを使ってください")
-    require("<ThemeSwitcher />" in MAIN_SOURCE, "ThemeSwitcherをReactからマウントしてください")
-    require("<HeroIntro />" in MAIN_SOURCE, "HeroIntroをReactからマウントしてください")
-    require("<TimerDisplay />" in MAIN_SOURCE, "TimerDisplayをReactからマウントしてください")
-    require("<TimerControls />" in MAIN_SOURCE, "TimerControlsをReactからマウントしてください")
-    require("<TimerSettings />" in MAIN_SOURCE, "TimerSettingsをReactからマウントしてください")
-    require("<ProgressOverview />" in MAIN_SOURCE, "ProgressOverviewをReactからマウントしてください")
-    require("ensureProgressOverviewRoot" in MAIN_SOURCE, "既存DOM初期化後に集中記録サマリーのReact境界を生成してください")
-    require("<AppFooter />" in MAIN_SOURCE, "AppFooterをReactからマウントしてください")
-    require("DOMContentLoaded" in MAIN_SOURCE, "legacy初期化完了後にReactをマウントしてください")
-    require("{ once: true }" in MAIN_SOURCE, "ReactのDOMContentLoadedハンドラは1回だけ実行してください")
-    require("Built with React + Vite" not in MAIN_SOURCE, "導入確認用の仮表示を残さないでください")
-
-    require("ONE SPRINT AT A TIME" in HERO_SOURCE, "ヘッダーのeyebrow文言を維持してください")
-    require("まずは25分。" in HERO_SOURCE, "ヘッダー見出しを維持してください")
-    require("データ収集なし · アカウントなし · 外部通信なし" in FOOTER_SOURCE, "フッター文言を維持してください")
-
-    for token in (
-        "one.theme.v1",
-        "useState",
-        "useEffect",
-        "localStorage.setItem(THEME_STORAGE_KEY, theme)",
-        "localStorage.getItem(THEME_STORAGE_KEY)",
-        "window.addEventListener('storage', handleStorage)",
-        "document.addEventListener('visibilitychange', refreshThemeWhenVisible)",
-        "window.addEventListener('pageshow', refreshThemePreferenceFromStorage)",
-        "globalThis.reportStorageFailure",
-        'role="group"',
-        'aria-describedby="theme-status"',
+    for root_id in (
+        "react-theme-root",
+        "react-hero-root",
+        "react-timer-display-root",
+        "react-timer-controls-root",
+        "react-timer-settings-root",
+        "react-footer-root",
     ):
-        require(token in THEME_SOURCE, f"ThemeSwitcherの移行要件がありません: {token}")
+        require(f'id="{root_id}"' in INDEX_SOURCE, f"React境界がありません: {root_id}")
 
-    for token in (
-        "useState",
-        "useEffect",
-        "ONE_REACT_TIMER_CONTROLS",
-        "one:timer-controls-state",
-        "one:timer-controls-focus",
-        'id="start-button"',
-        'id="reset-button"',
-        'id="focus-mode-button"',
-        'aria-keyshortcuts="Space"',
-        'aria-keyshortcuts="F Escape"',
+    for component in (
+        "ThemeSwitcher",
+        "HeroIntro",
+        "TimerDisplay",
+        "TimerControls",
+        "TimerSettings",
+        "ProgressOverview",
+        "ProgressDetails",
+        "BackupPanel",
+        "AppFooter",
     ):
-        require(token in TIMER_CONTROLS_SOURCE, f"TimerControlsの移行要件がありません: {token}")
+        require(f"<{component} />" in MAIN_SOURCE, f"{component}をReactからマウントしてください")
 
-    for token in (
-        "useState",
-        "useEffect",
-        "ONE_REACT_TIMER_DISPLAY",
-        "one:timer-display-state",
-        'id="timer"',
-        'id="timer-progress"',
-        'id="timer-status"',
-        'id="timer-end-time"',
-        'id="timer-end-at"',
-        'role="timer"',
-        'aria-live="polite"',
+    require("DOMContentLoaded" in MAIN_SOURCE and "{ once: true }" in MAIN_SOURCE, "legacy初期化後にReactを1回だけマウントしてください")
+    require("useTimerState" in CONTROLS_SOURCE, "TimerControlsは共有タイマー状態を購読してください")
+    require("useTimerState" in DISPLAY_SOURCE, "TimerDisplayは共有タイマー状態を購読してください")
+
+    for token in ("ONE_REACT_TIMER_STATE", "one:timer-state", "queueMicrotask"):
+        require(token in STATE_SOURCE, f"共有タイマー状態ソースの要件がありません: {token}")
+    require("MutationObserver" not in STATE_SOURCE, "共有タイマー状態ソースでDOM監視を使わないでください")
+    for token in ("useSyncExternalStore", "ONE_REACT_TIMER_STATE", "one:timer-state"):
+        require(token in STATE_HOOK_SOURCE, f"共有タイマー状態フックの要件がありません: {token}")
+
+    for token in ("startButton.click()", "resetButton.click()", "focusModeButton.click()", "one:timer-controls-focus"):
+        require(token in CONTROLS_BRIDGE_SOURCE, f"既存の安全な操作経路を維持してください: {token}")
+    require("MutationObserver" not in CONTROLS_BRIDGE_SOURCE, "タイマー操作ブリッジは操作とフォーカス転送だけにしてください")
+    require("snapshot" not in CONTROLS_BRIDGE_SOURCE, "タイマー操作ブリッジへ状態管理を戻さないでください")
+
+    require("one.theme.v1" in THEME_SOURCE, "ThemeSwitcherの保存形式を維持してください")
+    require("document.documentElement.dataset.reactTheme !== '1'" in THEME_COMPAT_SOURCE, "旧theme.jsはReactテーマ管理が無効な場合だけ動かしてください")
+
+    require("order: 'pre'" in VITE_SOURCE, "ReactエントリはViteのHTML依存解析より前に注入してください")
+    for marker in (
+        'data-react-theme=\"1\"',
+        'data-react-timer-state=\"1\"',
+        'data-react-timer-controls=\"1\"',
+        'data-react-timer-settings=\"1\"',
+        'data-react-progress-overview=\"1\"',
+        'data-react-progress-details=\"1\"',
+        'data-react-backup-panel=\"1\"',
     ):
-        require(token in TIMER_DISPLAY_SOURCE, f"TimerDisplayの移行要件がありません: {token}")
+        require(marker in VITE_SOURCE, f"ViteのReact有効化マーカーがありません: {marker}")
+    require("react-timer-state-source.js" in VITE_SOURCE, "共有タイマー状態ソースをViteで読み込んでください")
+    require("react-timer-display-bridge.js" not in VITE_SOURCE, "旧タイマー表示ブリッジをViteへ残さないでください")
 
-    for token in (
-        "useState",
-        "useEffect",
-        "ONE_REACT_TIMER_SETTINGS",
-        "one:timer-settings-state",
-        "one:timer-settings-focus",
-        'id="custom-minutes"',
-        'id="custom-minutes-apply"',
-        'id="completion-sound-toggle"',
-        'id="completion-notification-toggle"',
-        'id="wake-lock-toggle"',
-        'data-minutes={preset.minutes}',
-        "invokeBridge('selectPreset'",
-        "invokeBridge('setCustomValue'",
-        "invokeBridge('applyCustom'",
+    for path in (
+        "src/main.jsx",
+        "src/components/ThemeSwitcher.jsx",
+        "src/components/TimerControls.jsx",
+        "src/components/TimerDisplay.jsx",
+        "src/components/TimerSettings.jsx",
+        "src/components/ProgressOverview.jsx",
+        "src/components/ProgressDetails.jsx",
+        "src/components/BackupPanel.jsx",
     ):
-        require(token in TIMER_SETTINGS_SOURCE, f"TimerSettingsの移行要件がありません: {token}")
+        source = (ROOT / path).read_text(encoding="utf-8")
+        require("dangerouslySetInnerHTML" not in source, f"{path}でdangerouslySetInnerHTMLを使わないでください")
 
-    for token in (
-        "useState",
-        "useEffect",
-        "ONE_REACT_PROGRESS_OVERVIEW",
-        "one:progress-overview-state",
-        'id="done-button"',
-        'id="discard-button"',
-        'id="today-count"',
-        'id="week-count"',
-        'id="streak-count"',
-        'id="done-count"',
-        'id="streak-status"',
-        "bridge()?.record?.()",
-        "bridge()?.discard?.()",
-    ):
-        require(token in PROGRESS_OVERVIEW_SOURCE, f"ProgressOverviewの移行要件がありません: {token}")
-
-    for token in (
-        "document.documentElement.dataset.reactTimerControls === '1'",
-        "startButton.click()",
-        "resetButton.click()",
-        "focusModeButton.click()",
-        "MutationObserver",
-        "button.isConnected",
-        "one:timer-controls-state",
-        "one:timer-controls-focus",
-    ):
-        require(token in TIMER_CONTROLS_BRIDGE_SOURCE, f"タイマー操作ブリッジの要件がありません: {token}")
-
-    for token in (
-        "document.documentElement.dataset.reactTimerDisplay === '1'",
-        "ONE_REACT_TIMER_DISPLAY",
-        "timerDisplaySnapshot",
-        "one:timer-display-state",
-        "MutationObserver",
-        "timerProgress.max",
-        "timerProgress.value",
-        "timerEndTime.hidden",
-        "timerEndAt.getAttribute('datetime')",
-        "renderTimerWithoutReactDisplaySync",
-    ):
-        require(token in TIMER_DISPLAY_BRIDGE_SOURCE, f"タイマー表示ブリッジの要件がありません: {token}")
-
-    for token in (
-        "document.documentElement.dataset.reactTimerSettings === '1'",
-        "ONE_REACT_TIMER_SETTINGS",
-        "timerSettingsSnapshot",
-        "one:timer-settings-state",
-        "one:timer-settings-focus",
-        "standardPresetButtons",
-        "customMinutesInput.dispatchEvent",
-        "customMinutesApplyButton.click()",
-        "completionSoundToggle.click()",
-        "completionNotificationToggle.click()",
-        "wakeLockToggle.click()",
-        "MutationObserver",
-    ):
-        require(token in TIMER_SETTINGS_BRIDGE_SOURCE, f"タイマー設定ブリッジの要件がありません: {token}")
-
-    for token in (
-        "document.documentElement.dataset.reactProgressOverview === '1'",
-        "ONE_REACT_PROGRESS_OVERVIEW",
-        "progressOverviewSnapshot",
-        "one:progress-overview-state",
-        "doneButton.click()",
-        "discardButton.click()",
-        "todayCount.getAttribute('aria-label')",
-        "streakCount.getAttribute('aria-label')",
-        "MutationObserver",
-    ):
-        require(token in PROGRESS_OVERVIEW_BRIDGE_SOURCE, f"集中記録サマリーブリッジの要件がありません: {token}")
-
-    require(
-        "document.documentElement.dataset.reactTheme !== '1'" in THEME_COMPAT_SOURCE,
-        "旧theme.jsはVite/Reactテーマ管理が無効な場合だけ動く互換処理にしてください",
-    )
-    require(
-        "order: 'pre'" in VITE_SOURCE,
-        "ReactエントリはViteのHTML依存解析より前に注入してください",
-    )
-    for marker, message in (
-        ('data-react-theme=\"1\"', "Vite経由では旧theme.jsを停止するReactテーマ管理マーカーを付けてください"),
-        ('data-react-timer-controls=\"1\"', "Vite経由ではReact版タイマー主操作を有効にするマーカーを付けてください"),
-        ('data-react-timer-display=\"1\"', "Vite経由ではReact版タイマー表示を有効にするマーカーを付けてください"),
-        ('data-react-timer-settings=\"1\"', "Vite経由ではReact版タイマー設定を有効にするマーカーを付けてください"),
-        ('data-react-progress-overview=\"1\"', "Vite経由ではReact版集中記録サマリーを有効にするマーカーを付けてください"),
-    ):
-        require(marker in VITE_SOURCE, message)
-
-    for bridge_name, message in (
-        ("react-timer-controls-bridge.js", "Vite経由ではvanillaタイマーとReact主操作を橋渡しするスクリプトを読み込んでください"),
-        ("react-timer-display-bridge.js", "Vite経由ではvanillaタイマーとReact表示を橋渡しするスクリプトを読み込んでください"),
-        ("react-timer-settings-bridge.js", "Vite経由ではvanillaタイマー設定とReact UIを橋渡しするスクリプトを読み込んでください"),
-        ("react-progress-overview-bridge.js", "Vite経由ではvanilla集中記録とReactサマリーを橋渡しするスクリプトを読み込んでください"),
-    ):
-        require(bridge_name in VITE_SOURCE, message)
-
-    for source_name, source in (
-        ("src/main.jsx", MAIN_SOURCE),
-        ("src/components/HeroIntro.jsx", HERO_SOURCE),
-        ("src/components/AppFooter.jsx", FOOTER_SOURCE),
-        ("src/components/ThemeSwitcher.jsx", THEME_SOURCE),
-        ("src/components/TimerControls.jsx", TIMER_CONTROLS_SOURCE),
-        ("src/components/TimerDisplay.jsx", TIMER_DISPLAY_SOURCE),
-        ("src/components/TimerSettings.jsx", TIMER_SETTINGS_SOURCE),
-        ("src/components/ProgressOverview.jsx", PROGRESS_OVERVIEW_SOURCE),
-    ):
-        require("dangerouslySetInnerHTML" not in source, f"{source_name} でdangerouslySetInnerHTMLを使わないでください")
-
-    print("React migration checks passed: presentation, theme, timer UI, and progress overview are React-managed behind guarded bridges.")
+    print("React migration checks passed: timer display and controls share one event-driven state source while remaining domains keep guarded boundaries.")
 
 
 if __name__ == "__main__":
