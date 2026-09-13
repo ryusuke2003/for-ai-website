@@ -3,7 +3,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
-APP_SOURCE = (ROOT / "app.js").read_text(encoding="utf-8")
 REACT_APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 HOOK_SOURCE = (ROOT / "src" / "features" / "timer" / "useTimerShortcuts.js").read_text(encoding="utf-8")
 CONTROLS_SOURCE = (ROOT / "src" / "features" / "timer" / "TimerControls.jsx").read_text(encoding="utf-8")
@@ -17,8 +16,7 @@ def require(condition, message):
 def main():
     require('shortcuts.js' not in INDEX_SOURCE, "classic shortcuts.jsを読み込まないでください")
     require(not (ROOT / "shortcuts.js").exists(), "React移行後はshortcuts.jsを残さないでください")
-    require("document.addEventListener('keydown'" not in APP_SOURCE,
-            "キーボードショートカットをapp.jsへ戻さないでください")
+    require(not (ROOT / "app.js").exists(), "削除済みapp.jsへキーボードショートカットを戻さないでください")
 
     require("useTimerShortcuts" in REACT_APP_SOURCE, "TimerSectionからReactショートカットhookを利用してください")
     require("useTimerShortcuts(focusMode.active, focusMode.toggle);" in REACT_APP_SOURCE,
