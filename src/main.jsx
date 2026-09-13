@@ -2,6 +2,7 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppFooter } from './components/AppFooter.jsx';
 import { HeroIntro } from './components/HeroIntro.jsx';
+import { ProgressOverview } from './components/ProgressOverview.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { TimerControls } from './components/TimerControls.jsx';
 import { TimerDisplay } from './components/TimerDisplay.jsx';
@@ -19,6 +20,7 @@ function mountReactUi() {
   mountComponent('#react-timer-display-root', <TimerDisplay />);
   mountComponent('#react-timer-controls-root', <TimerControls />);
   mountComponent('#react-timer-settings-root', <TimerSettings />);
+  mountComponent('#react-progress-overview-root', <ProgressOverview />);
   mountComponent('#react-footer-root', <AppFooter />);
 }
 
