@@ -1,41 +1,11 @@
-import { useEffect, useState } from 'react';
-
-const DEFAULT_STATE = {
-  doneLabel: 'タイマー完了後に記録できます',
-  doneDisabled: true,
-  discardHidden: true,
-  todayCount: '0',
-  todayAriaLabel: '',
-  weekCount: '0',
-  streakCount: '0',
-  streakAriaLabel: '0日',
-  doneCount: '0',
-  streakStatus: '今日1回から連続記録を始められます。',
-};
+import { useProgressOverviewState } from '../state/useProgressOverviewState.js';
 
 function bridge() {
   return globalThis.ONE_REACT_PROGRESS_OVERVIEW;
 }
 
-function readBridgeState() {
-  return bridge()?.snapshot?.() ?? DEFAULT_STATE;
-}
-
 export function ProgressOverview() {
-  const [state, setState] = useState(readBridgeState);
-
-  useEffect(() => {
-    function handleState(event) {
-      setState(event.detail ?? readBridgeState());
-    }
-
-    window.addEventListener('one:progress-overview-state', handleState);
-    setState(readBridgeState());
-
-    return () => {
-      window.removeEventListener('one:progress-overview-state', handleState);
-    };
-  }, []);
+  const state = useProgressOverviewState();
 
   return (
     <>
