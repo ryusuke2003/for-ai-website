@@ -6,6 +6,8 @@ const STAT_CLASS = 'rounded-2xl bg-[var(--one-stat-bg)] px-4 py-[18px] text-cent
 const STAT_LABEL_CLASS = 'mt-2 block text-[0.72rem] font-bold text-[var(--one-subtle)]';
 
 export function ProgressOverview({ state, todayAriaLabel = '' }) {
+  const primaryAction = state.breakCompletion ? progressActions.discard : progressActions.record;
+
   return (
     <>
       <div className="flex flex-wrap justify-center gap-2.5">
@@ -15,7 +17,7 @@ export function ProgressOverview({ state, todayAriaLabel = '' }) {
           type="button"
           aria-describedby="done-hint"
           disabled={state.doneDisabled}
-          onClick={progressActions.record}
+          onClick={primaryAction}
         >
           {state.doneLabel}
         </button>
@@ -31,7 +33,9 @@ export function ProgressOverview({ state, todayAriaLabel = '' }) {
         </button>
       </div>
       <p className={HINT_CLASS} id="done-hint">
-        タイマーが0:00になった集中だけ、1回だけ記録できます。完了後は「記録する」か「記録せず破棄する」を選ぶまで次のタイマー操作をロックします。日付をまたいでも完了した日の回数に入ります。
+        {state.breakCompletion
+          ? '5分休憩は集中回数には加算しません。「休憩を終了する」で次の集中へ戻れます。'
+          : 'タイマーが0:00になった集中だけ、1回だけ記録できます。完了後は「記録する」か「記録せず破棄する」を選ぶまで次のタイマー操作をロックします。日付をまたいでも完了した日の回数に入ります。'}
       </p>
 
       <div className="mt-[18px] grid grid-cols-2 gap-2.5" aria-live="polite">
