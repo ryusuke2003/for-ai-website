@@ -38,7 +38,7 @@ def main():
     require(size_guard < number_parse and pattern_guard < number_parse, "累計回数は数値化する前にサイズと形式を検証してください")
     require("Number.isSafeInteger(count)" in parser, "累計回数はsafe integerだけを受け付けてください")
 
-    load_state = section(app, "function loadState()", "taskInput.addEventListener")
+    load_state = section(app, "function loadState()", "startButton.addEventListener")
     require("doneCount.textContent = String(readDoneCount());" in load_state, "初期表示は共通の累計値リーダーを使ってください")
 
     record_handler = section(app, "doneButton.addEventListener('click', () => {", "loadState();")
