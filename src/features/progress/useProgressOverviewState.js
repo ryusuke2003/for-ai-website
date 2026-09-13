@@ -9,6 +9,7 @@ const FALLBACK_STATE = Object.freeze({
   streakCount: '0',
   streakAriaLabel: '0日',
   doneCount: '0',
+  history: Object.freeze({}),
   streakStatus: '今日1回から連続記録を始められます。',
 });
 
