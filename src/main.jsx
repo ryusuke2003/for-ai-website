@@ -20,8 +20,8 @@ function mountReactUi() {
   mountComponent('#react-footer-root', <AppFooter />);
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', mountReactUi, { once: true });
-} else {
+if (document.readyState === 'complete') {
   mountReactUi();
+} else {
+  document.addEventListener('DOMContentLoaded', mountReactUi, { once: true });
 }
