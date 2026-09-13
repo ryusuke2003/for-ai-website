@@ -13,6 +13,8 @@ FOOTER = (ROOT / "src/components/AppFooter.jsx").read_text(encoding="utf-8")
 TIMER_CONTROLS = (ROOT / "src/features/timer/TimerControls.jsx").read_text(encoding="utf-8")
 TIMER_DISPLAY = (ROOT / "src/features/timer/TimerDisplay.jsx").read_text(encoding="utf-8")
 TIMER_SETTINGS = (ROOT / "src/features/timer/TimerSettings.jsx").read_text(encoding="utf-8")
+PROGRESS_OVERVIEW = (ROOT / "src/features/progress/ProgressOverview.jsx").read_text(encoding="utf-8")
+BACKUP_PANEL = (ROOT / "src/features/backup/BackupPanel.jsx").read_text(encoding="utf-8")
 
 
 def require(condition, message):
@@ -71,10 +73,24 @@ def main():
     ):
         require(token in TIMER_SETTINGS, f"TimerSettingsのTailwind移行要件がありません: {token}")
 
+    for token in (
+        "mt-[18px] grid grid-cols-2 gap-2.5",
+        "rounded-2xl bg-[rgba(29,29,31,.035)]",
+        "block text-[1.8rem] leading-none",
+    ):
+        require(token in PROGRESS_OVERVIEW, f"ProgressOverviewのTailwind移行要件がありません: {token}")
+
+    for token in (
+        "flex flex-wrap justify-center gap-2.5",
+        "mt-7 border-t border-[rgba(29,29,31,.1)] pt-6",
+        "min-h-12 rounded-full border border-[#1d1d1f]",
+    ):
+        require(token in BACKUP_PANEL, f"BackupPanelのTailwind移行要件がありません: {token}")
+
     require((ROOT / "styles.css").exists(), "段階移行中はlegacy CSSフォールバックを残してください")
     require((ROOT / "timer-progress.css").exists(), "タイマー進捗CSSは疑似要素の移行まで残してください")
 
-    print("Tailwind migration checks passed: core timer UI now uses utilities while progress pseudo-element CSS remains isolated.")
+    print("Tailwind migration checks passed: timer, progress summary, and backup controls use utilities while chart/progress pseudo-element CSS remains isolated.")
 
 
 if __name__ == "__main__":
