@@ -1,5 +1,9 @@
 #[cfg(target_os = "macos")]
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::{
+    env, fs,
+    path::PathBuf,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 #[cfg(target_os = "macos")]
 use tauri::{
@@ -21,10 +25,75 @@ const FULL_HEIGHT: f64 = 900.0;
 const FULL_HORIZONTAL_MARGIN: f64 = 48.0;
 #[cfg(target_os = "macos")]
 const FULL_VERTICAL_MARGIN: f64 = 64.0;
+#[cfg(target_os = "macos")]
+const LOGIN_AGENT_LABEL: &str = "com.ryusuke2003.one.autostart";
+#[cfg(target_os = "macos")]
+const LOGIN_AGENT_FILE: &str = "com.ryusuke2003.one.autostart.plist";
+#[cfg(target_os = "macos")]
+const APP_BUNDLE_IDENTIFIER: &str = "com.ryusuke2003.one";
+#[cfg(target_os = "macos")]
+const AUTOSTART_ARGUMENT: &str = "--autostart";
 
 #[cfg(target_os = "macos")]
 #[derive(Default)]
 struct TrayWindowState(AtomicBool);
+
+#[cfg(target_os = "macos")]
+fn login_agent_contents() -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>{LOGIN_AGENT_LABEL}</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/bin/open</string>
+    <string>-g</string>
+    <string>-j</string>
+    <string>-b</string>
+    <string>{APP_BUNDLE_IDENTIFIER}</string>
+    <string>--args</string>
+    <string>{AUTOSTART_ARGUMENT}</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+</dict>
+</plist>
+"#,
+    )
+}
+
+#[cfg(target_os = "macos")]
+fn login_agent_path() -> Result<PathBuf, String> {
+    let home = env::var_os("HOME").ok_or_else(|| "HOME is not available".to_string())?;
+    Ok(PathBuf::from(home)
+        .join("Library")
+        .join("LaunchAgents")
+        .join(LOGIN_AGENT_FILE))
+}
+
+#[cfg(target_os = "macos")]
+fn ensure_login_autostart() -> Result<(), String> {
+    let path = login_agent_path()?;
+    let contents = login_agent_contents();
+
+    if fs::read_to_string(&path).ok().as_deref() == Some(contents.as_str()) {
+        return Ok(());
+    }
+
+    let parent = path
+        .parent()
+        .ok_or_else(|| "LaunchAgents directory is not available".to_string())?;
+    fs::create_dir_all(parent).map_err(|error| error.to_string())?;
+    fs::write(path, contents).map_err(|error| error.to_string())
+}
+
+#[cfg(target_os = "macos")]
+fn launched_from_login() -> bool {
+    env::args_os().any(|argument| argument.to_string_lossy() == AUTOSTART_ARGUMENT)
+}
 
 #[cfg(target_os = "macos")]
 fn emit_navigation(app: &AppHandle, target: &str) {
@@ -159,7 +228,14 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![set_tray_title, open_full_window]);
 
     #[cfg(target_os = "macos")]
-    let builder = builder.setup(|app| {
+    let launched_from_login = launched_from_login();
+
+    #[cfg(target_os = "macos")]
+    let builder = builder.setup(move |app| {
+        if let Err(error) = ensure_login_autostart() {
+            eprintln!("failed to register login autostart: {error}");
+        }
+
         app.set_dock_visibility(false);
         app.manage(TrayWindowState::default());
 
@@ -213,6 +289,11 @@ pub fn run() {
                 }
                 _ => {}
             });
+
+            if !launched_from_login {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
         }
 
         Ok(())
