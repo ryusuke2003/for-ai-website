@@ -23,38 +23,6 @@ const legacyScripts = [
   'legacy/interop/progress-backup.js',
 ];
 
-function injectReactEntry() {
-  return {
-    name: 'inject-react-entry',
-    transformIndexHtml: {
-      order: 'pre',
-      handler(html) {
-        return html
-          .replace(
-            '<html lang="ja">',
-            '<html lang="ja" data-react-theme="1" data-react-timer-state="1" data-react-timer-controls="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">',
-          )
-          .replace(
-            '<script src="app.js" defer></script>',
-            '<script src="app.js" defer></script>\n  <script src="legacy/interop/timer.js" defer></script>',
-          )
-          .replace(
-            '<script src="custom-timer.js" defer></script>',
-            '<script src="custom-timer.js" defer></script>\n  <script src="legacy/interop/settings-progress.js" defer></script>',
-          )
-          .replace(
-            '<script src="privacy-reset.js" defer></script>',
-            '<script src="privacy-reset.js" defer></script>\n  <script src="legacy/interop/progress-backup.js" defer></script>',
-          )
-          .replace(
-            '<script type="module" data-vite-entry="/src/main.jsx"></script>',
-            '<script type="module" src="/src/main.jsx"></script>',
-          );
-      },
-    },
-  };
-}
-
 function copyLegacyScripts() {
   let root;
   let outDir;
@@ -81,7 +49,7 @@ function copyLegacyScripts() {
 
 export default defineConfig({
   base: './',
-  plugins: [tailwindcss(), injectReactEntry(), copyLegacyScripts()],
+  plugins: [tailwindcss(), copyLegacyScripts()],
   server: {
     host: '127.0.0.1',
   },
