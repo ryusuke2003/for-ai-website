@@ -16,6 +16,7 @@ const legacyScripts = [
   'react-progress-details-bridge.js',
   'tab-guard.js',
   'react-progress-overview-bridge.js',
+  'backup-timer-context-compat.js',
   'backup.js',
   'custom-timer.js',
   'react-timer-settings-bridge.js',
@@ -47,6 +48,10 @@ function injectReactEntry() {
           .replace(
             '<script src="tab-guard.js" defer></script>',
             '<script src="tab-guard.js" defer></script>\n  <script src="react-progress-overview-bridge.js" defer></script>',
+          )
+          .replace(
+            '<script src="backup.js" defer></script>',
+            '<script src="backup-timer-context-compat.js" defer></script>\n  <script src="backup.js" defer></script>',
           )
           .replace(
             '<script src="custom-timer.js" defer></script>',
