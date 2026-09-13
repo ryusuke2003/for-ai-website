@@ -10,6 +10,9 @@ TAILWIND = (ROOT / "src/tailwind.css").read_text(encoding="utf-8")
 HERO = (ROOT / "src/components/HeroIntro.jsx").read_text(encoding="utf-8")
 THEME = (ROOT / "src/components/ThemeSwitcher.jsx").read_text(encoding="utf-8")
 FOOTER = (ROOT / "src/components/AppFooter.jsx").read_text(encoding="utf-8")
+TIMER_CONTROLS = (ROOT / "src/features/timer/TimerControls.jsx").read_text(encoding="utf-8")
+TIMER_DISPLAY = (ROOT / "src/features/timer/TimerDisplay.jsx").read_text(encoding="utf-8")
+TIMER_SETTINGS = (ROOT / "src/features/timer/TimerSettings.jsx").read_text(encoding="utf-8")
 
 
 def require(condition, message):
@@ -47,10 +50,31 @@ def main():
 
     require("px-1 pb-0 pt-7 text-center text-[0.8rem]" in FOOTER, "FooterをTailwind utilityで表現してください")
 
-    require((ROOT / "styles.css").exists(), "段階移行中はlegacy CSSフォールバックを残してください")
-    require((ROOT / "timer-progress.css").exists(), "タイマー進捗CSSは後続PRまで残してください")
+    for token in (
+        "min-h-12 rounded-full border border-[#1d1d1f]",
+        "bg-[#1d1d1f] text-white",
+        "aria-pressed:bg-[#e3ded4]",
+    ):
+        require(token in TIMER_CONTROLS, f"TimerControlsのTailwind移行要件がありません: {token}")
 
-    print("Tailwind migration checks passed: Vite integration is active without Preflight and small React regions use utilities.")
+    for token in (
+        "text-[clamp(4.5rem,18vw,8.5rem)]",
+        "[font-variant-numeric:tabular-nums]",
+        "min-h-[1.4em] text-[0.88rem]",
+    ):
+        require(token in TIMER_DISPLAY, f"TimerDisplayのTailwind移行要件がありません: {token}")
+
+    for token in (
+        "mt-[18px] flex flex-wrap justify-center gap-2.5",
+        "rounded-full border-0 bg-transparent",
+        "aria-invalid:border-2 aria-invalid:border-current",
+    ):
+        require(token in TIMER_SETTINGS, f"TimerSettingsのTailwind移行要件がありません: {token}")
+
+    require((ROOT / "styles.css").exists(), "段階移行中はlegacy CSSフォールバックを残してください")
+    require((ROOT / "timer-progress.css").exists(), "タイマー進捗CSSは疑似要素の移行まで残してください")
+
+    print("Tailwind migration checks passed: core timer UI now uses utilities while progress pseudo-element CSS remains isolated.")
 
 
 if __name__ == "__main__":
