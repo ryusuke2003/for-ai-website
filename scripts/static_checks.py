@@ -23,7 +23,6 @@ REQUIRED_SCRIPT_ORDER = [
     "app.js",
     "legacy/interop/timer.js",
     "stats.js",
-    "daily-goal-progress.js",
     "tab-guard.js",
     "backup.js",
     "legacy/interop/settings-progress.js",
