@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-STATS_SOURCE = (ROOT / "stats.js").read_text(encoding="utf-8")
+APP_SOURCE = (ROOT / "app.js").read_text(encoding="utf-8")
 TAB_GUARD_SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
 
 
@@ -26,8 +26,10 @@ def section(source, start_marker, end_marker):
 
 
 def main():
+    require(not (ROOT / "stats.js").exists(), "進捗同期を移行後にstats.jsを残さないでください")
+
     history_parser = section(
-        STATS_SOURCE,
+        APP_SOURCE,
         "function parseHistoryStorageEvent(raw)",
         "function parseDoneCountStorageEvent(raw)",
     )
@@ -38,7 +40,7 @@ def main():
     require("normalizeHistory(value)" in history_parser, "別タブ履歴も既存の履歴正規化を通してください")
 
     count_parser = section(
-        STATS_SOURCE,
+        APP_SOURCE,
         "function parseDoneCountStorageEvent(raw)",
         "function syncProgressFromStorage(event)",
     )
@@ -48,7 +50,7 @@ def main():
     require("Number.isSafeInteger(value)" in count_parser, "別タブ累計は安全な整数だけ採用してください")
 
     sync = section(
-        STATS_SOURCE,
+        APP_SOURCE,
         "function syncProgressFromStorage(event)",
         "function refreshProgressFromStorage()",
     )
@@ -56,62 +58,44 @@ def main():
     require("event.key === STORAGE_KEYS.count" in sync, "累計キーのstorageイベントを処理してください")
     require("parseHistoryStorageEvent(event.newValue)" in sync, "履歴はevent.newValueを直接検証してください")
     require("parseDoneCountStorageEvent(event.newValue)" in sync, "累計はevent.newValueを直接検証してください")
-    require("focusHistory = nextHistory;" in sync and "renderHistory();" in sync, "履歴同期後は統計全体を再描画してください")
+    require("focusHistory = nextHistory;" in sync and "renderHistory();" in sync,
+            "履歴同期後はReact snapshot更新経路を通してください")
     require("doneCount.textContent = String(nextCount);" in sync, "累計表示を別タブへ同期してください")
-    require("safeWrite(" not in sync, "storage同期からsafeWriteしてイベントループを作らないでください")
-    require("localStorage.setItem(" not in sync, "storage同期からlocalStorageへ書き戻さないでください")
+    require("safeWrite(" not in sync and "localStorage.setItem(" not in sync,
+            "storage同期から保存値へ書き戻さないでください")
 
     refresh = section(
-        STATS_SOURCE,
+        APP_SOURCE,
         "function refreshProgressFromStorage()",
         "function refreshProgressWhenVisible()",
     )
-    require("if (storageAccessFailed) return;" in refresh, "保存障害中は端末再読込で救出用メモリを上書きしないでください")
-    require("readDoneCount()" in refresh, "前面復帰時に累計を再確認してください")
-    require("readHistory()" in refresh, "前面復帰時に履歴を再確認してください")
-    require(refresh.count("if (storageAccessFailed) return;") >= 3, "各保存読み取り後に保存障害を確認してください")
-    require("focusHistory = nextHistory;" in refresh and "renderHistory();" in refresh, "復帰時の履歴再読込後は統計全体を再描画してください")
+    require(refresh.count("if (storageAccessFailed) return;") >= 3,
+            "各保存読み取り後に保存障害を確認してください")
+    require("readDoneCount()" in refresh and "readHistory()" in refresh,
+            "前面復帰時に累計と履歴を再確認してください")
+    require("focusHistory = nextHistory;" in refresh and "renderHistory();" in refresh,
+            "復帰時の履歴再読込後はReact snapshot更新経路を通してください")
 
-    visible = section(
-        STATS_SOURCE,
-        "function refreshProgressWhenVisible()",
-        "function renderProgressInsights()",
-    )
+    visible = section(APP_SOURCE, "function refreshProgressWhenVisible()", "function formatTime")
     require("document.visibilityState === 'visible'" in visible, "前面へ戻ったときだけ保存状態を再確認してください")
-    require("refreshProgressFromStorage();" in visible, "前面復帰時に統計を再確認してください")
+    require("refreshProgressFromStorage();" in visible, "前面復帰時に進捗を再確認してください")
 
-    require("window.addEventListener('storage', syncProgressFromStorage);" in STATS_SOURCE, "集中記録のstorage同期を登録してください")
-    require("document.addEventListener('visibilitychange', refreshProgressWhenVisible);" in STATS_SOURCE, "タブ復帰時の再確認を登録してください")
-    require("window.addEventListener('pageshow', refreshProgressFromStorage);" in STATS_SOURCE, "BFCache復帰時にも統計を再確認してください")
+    require("window.addEventListener('storage', syncProgressFromStorage);" in APP_SOURCE,
+            "集中記録のstorage同期をapp runtimeで登録してください")
+    require("document.addEventListener('visibilitychange', refreshProgressWhenVisible);" in APP_SOURCE,
+            "タブ復帰時の再確認を登録してください")
+    require("window.addEventListener('pageshow', refreshProgressFromStorage);" in APP_SOURCE,
+            "BFCache復帰時にも進捗を再確認してください")
 
-    require(
-        "function refreshProgressFromStorage()" not in TAB_GUARD_SOURCE,
-        "stats.jsとtab-guard.jsで同名の統計再読込関数を定義しないでください",
-    )
-    require(
-        "function refreshGuardProgressFromStorage()" in TAB_GUARD_SOURCE,
-        "tab-guard側のclaim専用再読込は用途が分かる名前で維持してください",
-    )
-    guard_storage = section(
+    require("function refreshGuardProgressFromStorage()" in TAB_GUARD_SOURCE,
+            "tab-guard側のclaim専用再読込は維持してください")
+    require("refreshGuardProgressFromStorage()" in section(
         TAB_GUARD_SOURCE,
-        "window.addEventListener('storage', (event) => {",
-        "window.addEventListener('one:storage-error'",
-    )
-    require(
-        "event.key === STORAGE_KEYS.count" not in guard_storage
-        and "event.key === STORAGE_KEYS.history" not in guard_storage,
-        "通常の統計storage同期はstats.jsだけで処理してください",
-    )
-    require(
-        "refreshGuardProgressFromStorage()" in section(
-            TAB_GUARD_SOURCE,
-            "function claimPendingCompletion(event)",
-            "function verifyCompletionConsumedState()",
-        ),
-        "完了claim直後の最新統計再読込はtab-guard内に維持してください",
-    )
+        "function claimPendingCompletion(event)",
+        "function verifyCompletionConsumedState()",
+    ), "完了claim直後の最新進捗再読込を維持してください")
 
-    print("Cross-tab progress sync is owned by stats.js while tab-guard keeps only claim-specific refreshes.")
+    print("Cross-tab progress sync is owned by app.js while tab-guard keeps claim-specific refreshes.")
 
 
 if __name__ == "__main__":
