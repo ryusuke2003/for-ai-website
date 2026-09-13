@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">
+<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-progress-overview="1" data-react-backup-panel="1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -14,7 +14,6 @@
   <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
   <script src="legacy/interop/timer.js" defer></script>
-  <script src="stats.js" defer></script>
   <script src="tab-guard.js" defer></script>
   <script src="backup.js" defer></script>
   <script src="legacy/interop/settings-progress.js" defer></script>
@@ -46,15 +45,7 @@
       <button id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
       <button id="discard-button" type="button" aria-describedby="done-hint" hidden>記録せず破棄する</button>
       <p id="done-hint"></p>
-      <strong id="today-count">0</strong>
-      <strong id="week-count">0</strong>
-      <strong id="streak-count" aria-label="0日">0</strong>
       <strong id="done-count">0</strong>
-      <p id="streak-status">今日1回から連続記録を始められます。</p>
-
-      <div id="history-grid" role="list"></div>
-      <div id="activity-grid" role="list" aria-describedby="activity-summary"></div>
-      <p id="activity-summary">直近30日: 0回 · 0日活動</p>
 
       <button id="backup-export-button" type="button" aria-describedby="backup-hint">JSONを書き出す</button>
       <button id="backup-import-button" type="button" aria-describedby="backup-hint">JSONから復元</button>
