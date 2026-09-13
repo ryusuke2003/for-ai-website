@@ -21,7 +21,6 @@ export function BackupPanel() {
       const refs = {
         export: exportButtonRef,
         undo: undoButtonRef,
-        'reset-confirm': resetConfirmButtonRef,
       };
       refs[event.detail?.control]?.current?.focus();
     }
@@ -122,7 +121,7 @@ export function BackupPanel() {
               aria-describedby="data-reset-hint data-reset-status"
               disabled={reset.resetConfirmDisabled}
               ref={resetConfirmButtonRef}
-              onClick={() => bridge()?.confirmReset?.()}
+              onClick={reset.confirmReset}
             >
               本当にすべて削除
             </button>
