@@ -30,8 +30,8 @@ jobs:
         shell: bash
         run: |
           test -f dist/theme-bootstrap.js
-          test -f dist/timer-bootstrap.js
           for old in \
+            timer-bootstrap.js \
             tab-guard.js \
             app.js \
             react-timer-state-source.js \
