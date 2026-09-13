@@ -34,12 +34,12 @@ function focusTimerControl(control) {
   }));
 }
 
-export function useTimerShortcuts(focusModeActive) {
+export function useTimerShortcuts(focusModeActive, toggleFocusMode) {
   useEffect(() => {
     function handleKeyDown(event) {
       // Escape historically exits focus mode even when focus is inside a control.
       if (event.key === 'Escape' && focusModeActive) {
-        timerControls()?.toggleFocus?.();
+        toggleFocusMode();
         focusTimerControl('focus');
         return;
       }
@@ -62,7 +62,7 @@ export function useTimerShortcuts(focusModeActive) {
 
       if (event.key.toLowerCase() === 'f') {
         event.preventDefault();
-        timerControls()?.toggleFocus?.();
+        toggleFocusMode();
       }
     }
 
@@ -70,5 +70,5 @@ export function useTimerShortcuts(focusModeActive) {
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [focusModeActive]);
+  }, [focusModeActive, toggleFocusMode]);
 }

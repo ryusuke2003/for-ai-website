@@ -21,8 +21,8 @@ def main():
             "キーボードショートカットをapp.jsへ戻さないでください")
 
     require("useTimerShortcuts" in REACT_APP_SOURCE, "TimerSectionからReactショートカットhookを利用してください")
-    require("useTimerShortcuts(state.focusMode);" in REACT_APP_SOURCE,
-            "Escape判定へ現在の集中表示状態を渡してください")
+    require("useTimerShortcuts(focusMode.active, focusMode.toggle);" in REACT_APP_SOURCE,
+            "Escape/F判定へReact管理の集中表示状態と切替処理を渡してください")
 
     require("document.addEventListener('keydown', handleKeyDown);" in HOOK_SOURCE,
             "React hookでkeydownを購読してください")
@@ -47,8 +47,10 @@ def main():
         require(token in HOOK_SOURCE, f"誤操作防止条件がありません: {token}")
 
     require("timerControls()?.start?.();" in HOOK_SOURCE, "Spaceは既存timer adapter経由で開始/一時停止してください")
-    require(HOOK_SOURCE.count("timerControls()?.toggleFocus?.();") >= 2,
-            "FとEscapeは既存timer adapter経由で集中表示を切り替えてください")
+    require(HOOK_SOURCE.count("toggleFocusMode();") >= 2,
+            "FとEscapeはReact管理の集中表示処理を直接切り替えてください")
+    require("timerControls()?.toggleFocus?.();" not in HOOK_SOURCE,
+            "集中表示ショートカットをlegacy timer adapterへ戻さないでください")
     require("focusTimerControl('focus');" in HOOK_SOURCE,
             "Escape解除後は集中表示ボタンへフォーカスを戻してください")
 
@@ -56,8 +58,10 @@ def main():
             "開始ボタンのaria-keyshortcutsを維持してください")
     require('aria-keyshortcuts="F Escape"' in CONTROLS_SOURCE,
             "集中表示ボタンのaria-keyshortcutsを維持してください")
+    require("onClick={onToggleFocusMode}" in CONTROLS_SOURCE,
+            "集中表示ボタンはReact側の切替処理を直接呼んでください")
 
-    print("Timer keyboard shortcuts are React-owned and preserve input, IME, modifier, and focus safety.")
+    print("Timer keyboard shortcuts are React-owned and focus-mode shortcuts use React state directly.")
 
 
 if __name__ == "__main__":
