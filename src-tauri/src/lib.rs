@@ -47,6 +47,8 @@ pub fn run() {
 
     #[cfg(target_os = "macos")]
     let builder = builder.setup(|app| {
+        app.set_dock_visibility(false);
+
         let toggle_item = MenuItem::with_id(
             app,
             "toggle-window",
