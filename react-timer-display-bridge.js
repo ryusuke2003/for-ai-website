@@ -1,4 +1,6 @@
 if (document.documentElement.dataset.reactTimerDisplay === '1') {
+  let lastPublishedSnapshot = '';
+
   function finiteNumber(value, fallback) {
     const number = Number(value);
     return Number.isFinite(number) ? number : fallback;
@@ -25,9 +27,12 @@ if (document.documentElement.dataset.reactTimerDisplay === '1') {
   }
 
   function publishTimerDisplayState() {
-    window.dispatchEvent(new CustomEvent('one:timer-display-state', {
-      detail: timerDisplaySnapshot(),
-    }));
+    const detail = timerDisplaySnapshot();
+    const serialized = JSON.stringify(detail);
+    if (serialized === lastPublishedSnapshot) return;
+    lastPublishedSnapshot = serialized;
+
+    window.dispatchEvent(new CustomEvent('one:timer-display-state', { detail }));
   }
 
   const observer = new MutationObserver(publishTimerDisplayState);
