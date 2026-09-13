@@ -42,7 +42,7 @@ def main():
     count_parser = section(
         APP_SOURCE,
         "function parseDoneCountStorageEvent(raw)",
-        "function syncProgressFromStorage(event)",
+        "function renderHistory()",
     )
     require("if (raw === null) return 0;" in count_parser, "累計削除は0回として同期してください")
     require("raw.length > MAX_DONE_COUNT_BYTES" in count_parser, "別タブ累計にもサイズ上限を適用してください")
@@ -76,7 +76,7 @@ def main():
     require("focusHistory = nextHistory;" in refresh and "renderHistory();" in refresh,
             "復帰時の履歴再読込後はReact snapshot更新経路を通してください")
 
-    visible = section(APP_SOURCE, "function refreshProgressWhenVisible()", "function formatTime")
+    visible = section(APP_SOURCE, "function refreshProgressWhenVisible()", "function incrementFocusHistoryInMemory")
     require("document.visibilityState === 'visible'" in visible, "前面へ戻ったときだけ保存状態を再確認してください")
     require("refreshProgressFromStorage();" in visible, "前面復帰時に進捗を再確認してください")
 
@@ -91,11 +91,11 @@ def main():
             "tab-guard側のclaim専用再読込は維持してください")
     require("refreshGuardProgressFromStorage()" in section(
         TAB_GUARD_SOURCE,
-        "function claimPendingCompletion(event)",
+        "function claimPendingCompletion()",
         "function verifyCompletionConsumedState()",
     ), "完了claim直後の最新進捗再読込を維持してください")
 
-    print("Cross-tab progress sync is owned by app.js while tab-guard keeps claim-specific refreshes.")
+    print("Cross-tab progress sync remains in the small app progress runtime while tab-guard keeps claim refreshes.")
 
 
 if __name__ == "__main__":
