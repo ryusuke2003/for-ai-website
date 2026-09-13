@@ -1,4 +1,4 @@
-// Temporary compatibility layer for progress details and backup UI.
+// Temporary compatibility layer for progress read models and backup UI.
 if (
   document.documentElement.dataset.reactProgressDetails === '1'
   || document.documentElement.dataset.reactBackupPanel === '1'
@@ -16,34 +16,6 @@ if (
       if (classList.contains(`level-${level}`)) return level;
     }
     return 0;
-  }
-
-  function buildDailyGoalProgressSnapshot() {
-    if (
-      !Number.isInteger(dailyGoal)
-      || dailyGoal < MIN_DAILY_GOAL
-      || dailyGoal > MAX_DAILY_GOAL
-    ) {
-      return {
-        hidden: true,
-        max: 1,
-        value: 0,
-        ariaValueText: '',
-      };
-    }
-
-    const today = todayFocusCount();
-    const visibleValue = Math.min(today, dailyGoal);
-    const achieved = today >= dailyGoal;
-
-    return {
-      hidden: false,
-      max: dailyGoal,
-      value: visibleValue,
-      ariaValueText: achieved
-        ? `目標${dailyGoal}回を達成、現在${today}回`
-        : `目標${dailyGoal}回中${today}回`,
-    };
   }
 
   function buildProgressDetailsSnapshot() {
@@ -64,19 +36,8 @@ if (
       placeholder: item.classList.contains('is-placeholder'),
       level: levelFromClassList(item.classList),
     }));
-    const goalProgress = buildDailyGoalProgressSnapshot();
 
     return {
-      goalValue: dailyGoalInput.value,
-      goalInvalid: dailyGoalInput.getAttribute('aria-invalid') === 'true',
-      goalInputDisabled: dailyGoalInput.disabled,
-      goalApplyDisabled: dailyGoalApplyButton.disabled,
-      goalClearHidden: dailyGoalClearButton.hidden,
-      goalStatus: dailyGoalStatus.textContent ?? '',
-      goalProgressHidden: goalProgress.hidden,
-      goalProgressMax: goalProgress.max,
-      goalProgressValue: goalProgress.value,
-      goalProgressAriaValueText: goalProgress.ariaValueText,
       history,
       activity,
       activitySummary: activitySummary.textContent ?? '直近30日: 0回 · 0日活動',
@@ -172,7 +133,6 @@ if (
     'renderHistory',
     'renderActivityMap',
     'renderProgressInsights',
-    'renderDailyGoal',
     'markCurrentHistoryDay',
   ]) {
     wrapStateMutation(functionName, { progressDetails: true });
@@ -188,7 +148,6 @@ if (
     wrapStateMutation(functionName, { backupPanel: true });
   }
 
-  dailyGoalInput.addEventListener('input', () => refreshProgressDetails());
   window.addEventListener('one:progress-overview-state', () => {
     refreshProgressDetails();
     refreshBackupPanel();
@@ -220,28 +179,6 @@ if (
   });
 
   refreshAll({ force: true });
-}
-
-if (document.documentElement.dataset.reactProgressDetails === '1') {
-  function refreshProgressDetailsState() {
-    globalThis.ONE_REACT_REMAINING_STATE?.refreshProgressDetails?.();
-  }
-
-  globalThis.ONE_REACT_PROGRESS_DETAILS = Object.freeze({
-    setGoalValue(value) {
-      dailyGoalInput.value = String(value ?? '');
-      dailyGoalInput.dispatchEvent(new Event('input', { bubbles: true }));
-      refreshProgressDetailsState();
-    },
-    applyGoal() {
-      dailyGoalApplyButton.click();
-      refreshProgressDetailsState();
-    },
-    clearGoal() {
-      dailyGoalClearButton.click();
-      refreshProgressDetailsState();
-    },
-  });
 }
 
 if (document.documentElement.dataset.reactBackupPanel === '1') {
