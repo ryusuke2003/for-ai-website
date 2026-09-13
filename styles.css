@@ -391,39 +391,15 @@ body.focus-mode footer {
   display: none;
 }
 
-body.focus-mode .task-card,
 body.focus-mode .timer-card {
   margin: 0;
+  padding: 38px 28px 34px;
 }
 
-body.focus-mode .task-card {
-  padding: 24px 36px;
-  text-align: center;
-}
-
-body.focus-mode .task-card .section-heading,
-body.focus-mode .task-card .hint,
 body.focus-mode .timer-card .section-heading,
 body.focus-mode .timer-card .presets,
 body.focus-mode .timer-card .hint {
   display: none;
-}
-
-body.focus-mode .task-card #task-storage-status:not(:empty) {
-  display: block;
-  margin-top: 12px;
-  font-weight: 800;
-  line-height: 1.5;
-}
-
-body.focus-mode .task-card input {
-  padding-top: 8px;
-  text-align: center;
-  font-size: clamp(1.6rem, 5vw, 2.8rem);
-}
-
-body.focus-mode .timer-card {
-  padding: 38px 28px 34px;
 }
 
 body.focus-mode .timer {
@@ -472,7 +448,6 @@ button:focus-visible, input:focus-visible {
   .activity-grid { grid-template-rows: repeat(7, 12px); grid-auto-columns: 12px; gap: 4px; }
   .activity-day { width: 12px; height: 12px; border-radius: 3px; }
   body.focus-mode .shell { padding: 16px 0; }
-  body.focus-mode .task-card { padding: 20px; }
   body.focus-mode .timer-card { padding: 28px 18px; }
 }
 

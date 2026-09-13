@@ -4,10 +4,10 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta name="description" content="今日やる一つだけを決めて、短い時間だけ集中するための小さなWebアプリ。">
+  <meta name="description" content="集中時間を決めて、完了した集中を記録・可視化するための小さなWebアプリ。">
   <meta name="referrer" content="no-referrer">
   <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; script-src-attr 'none'; style-src 'self'; style-src-attr 'none'; img-src 'none'; connect-src 'none'; font-src 'none'; media-src 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; base-uri 'none'; form-action 'none'">
-  <title>ONE — 今日やる一つだけ</title>
+  <title>ONE — 集中タイマー</title>
   <script src="theme-bootstrap.js"></script>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="timer-progress.css">
@@ -36,26 +36,15 @@
         <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
       </div>
       <p id="theme-status" class="sr-only" role="status" aria-live="polite">表示テーマは自動です。</p>
-      <p class="eyebrow">ONE THING / ONE SPRINT</p>
-      <h1>今日やる一つだけ。</h1>
-      <p class="lead">やることを一つ決めて、まずは25分から始める。時間は、自分に合わせて変えられる。</p>
+      <p class="eyebrow">ONE SPRINT AT A TIME</p>
+      <h1>まずは25分。</h1>
+      <p class="lead">集中する時間を決めて始める。終わったら1回を記録して、続けた日や積み重ねを見返せる。</p>
       <p class="hint" id="storage-health-status" role="status" aria-live="polite">端末保存の利用状態を確認しています。</p>
     </header>
 
-    <section class="card task-card" aria-labelledby="task-title">
-      <div class="section-heading">
-        <span class="step">01</span>
-        <h2 id="task-title">いま一番進めたいこと</h2>
-      </div>
-      <label class="sr-only" for="task-input">今日やる一つ</label>
-      <input id="task-input" maxlength="120" autocomplete="off" aria-describedby="task-character-count" placeholder="例：レポートの導入を300字書く">
-      <p class="hint" id="task-character-count">あと120文字</p>
-      <p class="hint">この内容はこのブラウザだけに保存されます。翌日になると空欄へ切り替わりますが、進行中・一時停止中・未記録の集中がある間は、その1回が終わるまで保持します。サーバー送信はしません。</p>
-    </section>
-
     <section class="card timer-card" aria-labelledby="timer-title">
       <div class="section-heading">
-        <span class="step">02</span>
+        <span class="step">01</span>
         <h2 id="timer-title">時間を決めて集中する</h2>
       </div>
       <div class="timer" id="timer" role="timer" aria-label="残り時間">25:00</div>
@@ -63,11 +52,11 @@
       <p class="timer-status" id="timer-status" role="status" aria-live="polite">準備できたらスタート。</p>
       <p class="timer-status timer-end-time" id="timer-end-time" hidden>終了予定 <time id="timer-end-at"></time></p>
       <div class="controls">
-        <button class="primary" id="start-button" type="button" aria-keyshortcuts="Space Control+Enter Meta+Enter">スタート</button>
+        <button class="primary" id="start-button" type="button" aria-keyshortcuts="Space">スタート</button>
         <button class="secondary" id="reset-button" type="button">リセット</button>
         <button class="secondary" id="focus-mode-button" type="button" aria-pressed="false" aria-keyshortcuts="F Escape">集中表示</button>
       </div>
-      <p class="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除 · タスク入力中は⌘/Ctrl+Enterで開始/一時停止</p>
+      <p class="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
       <div class="presets" aria-label="タイマー時間と完了通知">
         <button type="button" data-minutes="10">10分</button>
         <button type="button" data-minutes="25" class="active" aria-pressed="true">25分</button>
@@ -92,8 +81,8 @@
 
     <section class="card progress-card" aria-labelledby="done-title">
       <div class="section-heading">
-        <span class="step">03</span>
-        <h2 id="done-title">完了した集中を記録する</h2>
+        <span class="step">02</span>
+        <h2 id="done-title">集中を記録して振り返る</h2>
       </div>
       <div class="controls">
         <button class="done-button" id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
@@ -154,7 +143,7 @@
 
     <section class="card backup-card" aria-labelledby="backup-title">
       <div class="section-heading">
-        <span class="step">04</span>
+        <span class="step">03</span>
         <h2 id="backup-title">記録をバックアップする</h2>
       </div>
       <div class="controls">
@@ -163,7 +152,7 @@
         <button class="secondary" id="backup-undo-button" type="button" aria-describedby="backup-hint" hidden>直前の復元を取り消す</button>
       </div>
       <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
-      <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。タスク本文、実行中タイマー、タブ間セッションIDは含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。</p>
+      <p class="hint" id="backup-hint">累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。実行中タイマー、タブ間セッションID、今日の目標、表示・通知などのUI設定は含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。</p>
       <p class="hint" id="backup-status" role="status" aria-live="polite"></p>
 
       <div class="history" aria-labelledby="data-reset-title">
@@ -171,7 +160,7 @@
           <h3 id="data-reset-title">この端末のONEデータ</h3>
           <span>プライバシー</span>
         </div>
-        <p class="hint" id="data-reset-hint">タスク、タイマー、集中記録、今日の目標、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
+        <p class="hint" id="data-reset-hint">タイマー、集中記録、今日の目標、復元用データ、表示テーマ、完了音、完了通知、画面維持など、ONEがこのブラウザに保存したデータを削除できます。すでにダウンロードしたJSONバックアップは端末上の別ファイルなので削除されません。</p>
         <div class="controls">
           <button class="secondary" id="data-reset-button" type="button" aria-describedby="data-reset-hint data-reset-status">この端末のデータを削除</button>
         </div>

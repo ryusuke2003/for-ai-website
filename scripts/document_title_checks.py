@@ -22,8 +22,8 @@ def main():
     source = CUSTOM_TIMER_PATH.read_text(encoding="utf-8")
 
     require(
-        "const DEFAULT_DOCUMENT_TITLE = 'ONE — 今日やる一つだけ';" in source,
-        "通常時のページタイトルを明示してください",
+        "const DEFAULT_DOCUMENT_TITLE = 'ONE — 集中タイマー';" in source,
+        "通常時のページタイトルをタイマー向けに明示してください",
     )
 
     title_renderer = section(
