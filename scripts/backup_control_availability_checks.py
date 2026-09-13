@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = (ROOT / "src" / "features" / "backup" / "useBackupControl.js").read_text(encoding="utf-8")
 TAB_GUARD_SOURCE = (ROOT / "src" / "features" / "timer" / "tabGuard.js").read_text(encoding="utf-8")
+TIMER_GUARD_SOURCE = (ROOT / "src" / "features" / "timer" / "timerStateGuard.js").read_text(encoding="utf-8")
 MAIN_SOURCE = (ROOT / "src" / "main.jsx").read_text(encoding="utf-8")
 
 
@@ -27,17 +28,33 @@ def require(condition, message):
 def main():
     require(not (ROOT / "backup.js").exists(), "復元可否判定をclassic backup.jsへ戻さないでください")
     require("function hasActiveTimerContext(state)" in SOURCE, "現在タブのタイマー状態判定をReact stateから行ってください")
+    require("import { tabCoordination } from '../timer/tabGuard.js';" in SOURCE,
+            "backup hookはtabCoordinationをmoduleから直接importしてください")
+    require("import { timerStateGuard } from '../timer/timerStateGuard.js';" in SOURCE,
+            "backup hookはtimerStateGuardをmoduleから直接importしてください")
+    require("import { progressActions } from '../progress/progressStore.js';" in SOURCE,
+            "backup hookはprogressActionsをmoduleから直接importしてください")
     require("export const tabCoordination = Object.freeze" in TAB_GUARD_SOURCE,
             "module tab guardの調停状態を小さな公開APIで提供してください")
-    require("globalThis.ONE_TAB_COORDINATION = tabCoordination;" in MAIN_SOURCE,
-            "既存バックアップ境界向けの互換APIはReact entryからmodule実装を公開してください")
+    require("export const timerStateGuard = Object.freeze" in TIMER_GUARD_SOURCE,
+            "timerStateGuardをmodule APIとして維持してください")
     require("hasActiveStoredTimer()" in TAB_GUARD_SOURCE,
             "別タブのアクティブタイマー判定をmodule tab guard側に維持してください")
+
+    for legacy_global in (
+        "ONE_TIMER_STATE_GUARD",
+        "ONE_TAB_COORDINATION",
+        "ONE_REACT_PROGRESS_OVERVIEW",
+    ):
+        require(legacy_global not in SOURCE,
+                f"backup hookから互換global {legacy_global} を再導入しないでください")
+        require(legacy_global not in MAIN_SOURCE,
+                f"React entryから互換global {legacy_global} を公開しないでください")
 
     can_restore = section("function canRestoreBackup()", "function refreshBackupControlAvailability")
     require("hasActiveTimerContext(timerStateRef.current)" in can_restore,
             "現在タブの進行中・一時停止中・完了待ち状態では復元を許可しないでください")
-    require("ONE_TAB_COORDINATION?.hasActiveStoredTimer?.()" in can_restore,
+    require("tabCoordination.hasActiveStoredTimer()" in can_restore,
             "別タブのアクティブタイマー状態も復元可否へ含めてください")
     require("tabCoordinationAvailable()" in can_restore,
             "保存障害やタブ間調停不可時は復元を許可しないでください")
@@ -73,6 +90,8 @@ def main():
             "ファイル読込・確認中に状態が変わった場合も復元を中止してください")
     require("restoreGuard !== currentRestoreGuard()" in import_body,
             "確認中の別タブ更新をguardで検出してください")
+    require("progressActions.restoreBackupData" in SOURCE,
+            "進捗復元はReact progress storeへ直接反映してください")
     require("timerActions.selectMinutes(restored.selectedMinutes)" in SOURCE,
             "タイマー時間の復元はReact timerStoreへ直接反映してください")
 
@@ -93,7 +112,7 @@ def main():
     require("refreshRecoveryAvailability();\n  }, [timerState, progressState, storageFailed]);" in SOURCE,
             "Reactのタイマー・進捗状態変更でも復元可否を追従させてください")
 
-    print("React backup restore controls follow timerStore, module tab coordination, and storage state while export remains available.")
+    print("React backup restore controls use direct module APIs while preserving timer and storage safety.")
 
 
 if __name__ == "__main__":
