@@ -5,11 +5,6 @@ const FALLBACK_STATE = Object.freeze({
   undoHidden: true,
   undoDisabled: false,
   backupStatus: '',
-  resetButtonHidden: false,
-  resetConfirmHidden: true,
-  resetConfirmDisabled: false,
-  resetCancelDisabled: false,
-  resetStatus: '',
 });
 
 function readSnapshot() {

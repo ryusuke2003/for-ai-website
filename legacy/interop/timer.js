@@ -73,6 +73,11 @@ if (document.documentElement.dataset.reactTimerState === '1') {
   refreshTimerState({ force: true });
 }
 
+window.addEventListener('one:privacy-reset-prepare', () => {
+  clearTimerInterval();
+  endAt = null;
+});
+
 if (document.documentElement.dataset.reactTimerControls === '1') {
   const legacyCustomPreset = presetButtons.find((button) => button.id === 'custom-preset') ?? null;
   const legacyQuickPresets = presetButtons.filter((button) => button.id !== 'custom-preset');

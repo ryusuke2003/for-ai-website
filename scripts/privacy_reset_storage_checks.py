@@ -2,7 +2,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-RESET_PATH = ROOT / "privacy-reset.js"
+RESET_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js"
+TIMER_INTEROP_PATH = ROOT / "legacy" / "interop" / "timer.js"
 
 
 def section(source, start_marker, end_marker):
@@ -22,13 +23,15 @@ def require(condition, message):
 
 def main():
     source = RESET_PATH.read_text(encoding="utf-8")
+    timer_interop = TIMER_INTEROP_PATH.read_text(encoding="utf-8")
 
     reporter = section(
         source,
         "function reportDataResetStorageFailure()",
         "function clearStoredOneData",
     )
-    require("reportStorageFailure();" in reporter, "データ削除の保存例外はアプリ全体へ通知してください")
+    require("window.dispatchEvent(new Event('one:storage-error'))" in reporter,
+            "データ削除の保存例外はアプリ全体へ通知してください")
     require("return false;" in reporter, "保存例外時は削除/通知処理を失敗として返してください")
 
     clear = section(source, "function clearStoredOneData", "function isValidResetSignalValue")
@@ -55,7 +58,7 @@ def main():
     require("resetSignalFallbackCounter" in signal_builder, "Web Crypto不可でも非秘密のローカル一意値へフォールバックしてください")
     require("Math.random" not in signal_builder, "別タブ通知値の生成でMath.random()へ依存しないでください")
 
-    broadcast = section(source, "function broadcastDataReset()", "function stopLocalTimerForReset()")
+    broadcast = section(source, "function broadcastDataReset()", "function reloadAfterReset()")
     set_pos = broadcast.find("localStorage.setItem(RESET_SIGNAL_KEY, signal)")
     verify_set_pos = broadcast.find("localStorage.getItem(RESET_SIGNAL_KEY) !== signal")
     remove_pos = broadcast.find("localStorage.removeItem(RESET_SIGNAL_KEY)")
@@ -67,7 +70,7 @@ def main():
         "別タブ通知APIの例外時も保存障害を全体へ通知してください",
     )
 
-    storage_handler = source.split("window.addEventListener('storage', (event) => {", 1)[-1]
+    storage_handler = section(source, "function handleStorage(event)", "window.addEventListener('storage', handleStorage)")
     signal_guard = storage_handler.find("event.key !== RESET_SIGNAL_KEY || !isValidResetSignalValue(event.newValue)")
     clear_position = storage_handler.find("clearStoredOneData({ preserveResetSignal: true })")
     require(signal_guard >= 0, "別タブ削除通知はキーと通知値の形式を検証してください")
@@ -77,10 +80,22 @@ def main():
         "受信タブは送信元の保存確認が終わるまで通知キーを残してください",
     )
 
+    reload = section(source, "function reloadAfterReset()", "export function usePrivacyResetControl")
+    prepare_pos = reload.find("window.dispatchEvent(new Event('one:privacy-reset-prepare'))")
+    reload_pos = reload.find("window.location.reload()")
+    require(prepare_pos >= 0 and reload_pos > prepare_pos,
+            "再読み込み前にclassic timerへ停止準備を通知してください")
+    require("window.addEventListener('one:privacy-reset-prepare'" in timer_interop,
+            "timer interopはprivacy reset準備eventを受け取ってください")
+    timer_prepare = timer_interop.split("window.addEventListener('one:privacy-reset-prepare'", 1)[-1]
+    require("clearTimerInterval();" in timer_prepare and "endAt = null;" in timer_prepare,
+            "reset前は保存し直さずtimer intervalと終了時刻だけ停止してください")
+
     require("localStorage.clear(" not in source, "他サイトデータを巻き込むlocalStorage.clear()は禁止です")
     require(source.count("reportDataResetStorageFailure();") == 2, "全体通知はlocalStorage例外の2経路だけに限定してください")
+    require(not (ROOT / "privacy-reset.js").exists(), "React移行後はprivacy-reset.jsを残さないでください")
 
-    print("Privacy reset validates cross-tab signals before scoped deletion and verifies its broadcast lifecycle.")
+    print("Privacy reset is React-owned, validates cross-tab signals, and stops the classic timer before reload.")
 
 
 if __name__ == "__main__":

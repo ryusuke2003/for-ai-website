@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useBackupPanelState } from './useBackupPanelState.js';
+import { usePrivacyResetControl } from './usePrivacyResetControl.js';
 
 function bridge() {
   return globalThis.ONE_REACT_BACKUP_PANEL;
@@ -7,6 +8,7 @@ function bridge() {
 
 export function BackupPanel() {
   const state = useBackupPanelState();
+  const reset = usePrivacyResetControl();
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
   const undoButtonRef = useRef(null);
@@ -19,9 +21,6 @@ export function BackupPanel() {
       const refs = {
         export: exportButtonRef,
         undo: undoButtonRef,
-        reset: resetButtonRef,
-        'reset-confirm': resetConfirmButtonRef,
-        'reset-cancel': resetCancelButtonRef,
       };
       refs[event.detail?.control]?.current?.focus();
     }
@@ -102,14 +101,17 @@ export function BackupPanel() {
             id="data-reset-button"
             type="button"
             aria-describedby="data-reset-hint data-reset-status"
-            hidden={state.resetButtonHidden}
+            hidden={reset.resetButtonHidden}
             ref={resetButtonRef}
-            onClick={() => bridge()?.openReset?.()}
+            onClick={() => {
+              reset.openReset();
+              queueMicrotask(() => resetConfirmButtonRef.current?.focus());
+            }}
           >
             この端末のデータを削除
           </button>
         </div>
-        <div id="data-reset-confirm" hidden={state.resetConfirmHidden}>
+        <div id="data-reset-confirm" hidden={reset.resetConfirmHidden}>
           <p className="hint">この操作は取り消せません。必要な記録がある場合は先にJSONを書き出してください。</p>
           <div className="controls">
             <button
@@ -117,9 +119,9 @@ export function BackupPanel() {
               id="data-reset-confirm-button"
               type="button"
               aria-describedby="data-reset-hint data-reset-status"
-              disabled={state.resetConfirmDisabled}
+              disabled={reset.resetConfirmDisabled}
               ref={resetConfirmButtonRef}
-              onClick={() => bridge()?.confirmReset?.()}
+              onClick={reset.confirmReset}
             >
               本当にすべて削除
             </button>
@@ -127,16 +129,19 @@ export function BackupPanel() {
               className="secondary"
               id="data-reset-cancel-button"
               type="button"
-              disabled={state.resetCancelDisabled}
+              disabled={reset.resetCancelDisabled}
               ref={resetCancelButtonRef}
-              onClick={() => bridge()?.cancelReset?.()}
+              onClick={() => {
+                reset.cancelReset();
+                queueMicrotask(() => resetButtonRef.current?.focus());
+              }}
             >
               キャンセル
             </button>
           </div>
         </div>
         <p className="hint" id="data-reset-status" role="status" aria-live="polite">
-          {state.resetStatus}
+          {reset.resetStatus}
         </p>
       </div>
     </>
