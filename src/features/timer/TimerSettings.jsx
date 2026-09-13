@@ -1,49 +1,45 @@
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useCompletionEffectsControl } from './useCompletionEffectsControl.js';
-import { useTimerSettingsState } from './useTimerSettingsState.js';
+import { useCustomTimerControl } from './useCustomTimerControl.js';
 import { useTimerState } from './useTimerState.js';
 import { useWakeLockControl } from './useWakeLockControl.js';
 
-function invokeBridge(action, ...args) {
-  globalThis.ONE_REACT_TIMER_SETTINGS?.[action]?.(...args);
-}
+const QUICK_PRESETS = Object.freeze([10, 25, 50]);
 
 export function TimerSettings() {
-  const state = useTimerSettingsState();
   const timerState = useTimerState();
+  const customTimer = useCustomTimerControl(
+    timerState.selectedMinutes,
+    timerState.completionReady,
+  );
   const completionEffects = useCompletionEffectsControl(timerState);
   const wakeLock = useWakeLockControl(timerState.running);
   const customMinutesRef = useRef(null);
 
-  useEffect(() => {
-    function handleFocus(event) {
-      if (event.detail?.control === 'custom-minutes') {
-        customMinutesRef.current?.focus();
-      }
-    }
-
-    window.addEventListener('one:timer-settings-focus', handleFocus);
-    return () => {
-      window.removeEventListener('one:timer-settings-focus', handleFocus);
-    };
-  }, []);
+  function applyCustomMinutes() {
+    const result = customTimer.apply();
+    if (result.focusInput) customMinutesRef.current?.focus();
+  }
 
   return (
     <>
       <div className="presets" aria-label="タイマー時間と完了通知">
-        {state.presets.map((preset) => (
-          <button
-            key={preset.minutes}
-            type="button"
-            data-minutes={preset.minutes}
-            className={preset.active ? 'active' : undefined}
-            aria-pressed={preset.pressed}
-            disabled={preset.disabled}
-            onClick={() => invokeBridge('selectPreset', preset.minutes)}
-          >
-            {preset.label}
-          </button>
-        ))}
+        {QUICK_PRESETS.map((minutes) => {
+          const active = timerState.selectedMinutes === minutes;
+          return (
+            <button
+              key={minutes}
+              type="button"
+              data-minutes={minutes}
+              className={active ? 'active' : undefined}
+              aria-pressed={active}
+              disabled={timerState.completionReady}
+              onClick={() => customTimer.selectPreset(minutes)}
+            >
+              {minutes}分
+            </button>
+          );
+        })}
 
         <span className="custom-time">
           <label htmlFor="custom-minutes">自由設定</label>
@@ -55,16 +51,16 @@ export function TimerSettings() {
             max="180"
             step="1"
             inputMode="numeric"
-            value={state.customValue}
+            value={customTimer.value}
             aria-describedby="custom-minutes-status"
-            aria-invalid={state.customInvalid}
-            disabled={state.customDisabled}
+            aria-invalid={customTimer.invalid}
+            disabled={customTimer.disabled}
             ref={customMinutesRef}
-            onChange={(event) => invokeBridge('setCustomValue', event.target.value)}
+            onChange={(event) => customTimer.change(event.target.value)}
             onKeyDown={(event) => {
               if (event.isComposing || event.key !== 'Enter') return;
               event.preventDefault();
-              invokeBridge('applyCustom');
+              applyCustomMinutes();
             }}
           />
           <span aria-hidden="true">分</span>
@@ -72,8 +68,8 @@ export function TimerSettings() {
             id="custom-minutes-apply"
             type="button"
             aria-describedby="custom-minutes-status"
-            disabled={state.customApplyDisabled}
-            onClick={() => invokeBridge('applyCustom')}
+            disabled={customTimer.disabled}
+            onClick={applyCustomMinutes}
           >
             設定
           </button>
@@ -115,7 +111,7 @@ export function TimerSettings() {
       </div>
 
       <p className="hint" id="custom-minutes-status" role="status" aria-live="polite">
-        {state.customStatus}
+        {customTimer.status}
       </p>
       <p className="hint" id="completion-sound-status" role="status" aria-live="polite">
         {completionEffects.sound.status}
