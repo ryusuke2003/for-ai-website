@@ -11,11 +11,12 @@ ONE は vanilla JavaScript から React へ段階移行しています。機能�
 - timer / progress / backup のReactコードは `src/features/*` に集約
 - Theme / 端末保存状態 / Wake Lock / 完了音・完了通知はReact化済み
 - 自由設定、タイマー進捗、終了予定時刻、ページタイトル、Space / F / EscapeはReact化済み
-- タイマー開始・一時停止・リセット・復元・tick・`one.timer.v1` 保存を `timerStore.js` へ移行済み
+- タイマー本体は `timerStore.js`、累計・履歴は `progressStore.js` が管理
 - 日次目標、今週回数、連続日、7日/30日集計はReact化済み
 - 端末データ削除、JSONバックアップ、復元、1世代UndoはReact化済み
-- `stats.js` / `privacy-reset.js` / `backup.js` / `shortcuts.js` / `legacy/interop/timer.js` は削除済み
-- 残るinteropは進捗用 `legacy/interop/settings-progress.js` のみ
+- `app.js` と `legacy/interop/*` は削除済み
+- hidden runtime scaffoldも撤去済み
+- classicで残る実行時ロジックは複数タブ調停の `tab-guard.js`。`theme-bootstrap.js` / `timer-bootstrap.js` は初期化用bootstrap
 
 ## 大掃除の進捗
 
@@ -29,8 +30,8 @@ ONE は vanilla JavaScript から React へ段階移行しています。機能�
    - Theme / 保存状態 / Wake Lock / 完了効果 / 自由設定 / ショートカット — 完了
    - 日次目標 / 集計 / 端末データ削除 / バックアップ — 完了
    - タイマー本体を `timerStore.js` へ移し `legacy/interop/timer.js` を削除 — 完了
-   - 次は進捗の保存・記録処理をReactへ移して `app.js` / `settings-progress.js` を削除する
-   - その後 `tab-guard.js` をmodule化し、legacy runtime scaffoldを完全撤去する
+   - 累計・履歴・別タブ進捗同期を `progressStore.js` へ移し `app.js` / `settings-progress.js` / hidden scaffoldを削除 — 完了
+   - 次は `tab-guard.js` のmodule化と残るclassic境界を整理する
 8. **Tailwind移行を再開**
    - 7B: タイマーUI
    - 7C: 集中記録・統計・バックアップUI
@@ -62,6 +63,7 @@ src/
 │   ├── progress/
 │   │   ├── ProgressOverview.jsx
 │   │   ├── ProgressDetails.jsx
+│   │   ├── progressStore.js
 │   │   ├── progressInsights.js
 │   │   ├── useDailyGoalControl.js
 │   │   └── useProgressOverviewState.js
@@ -74,50 +76,41 @@ src/
 
 ## タイマーの責務
 
-`timerStore.js` が次を担当します。
+`timerStore.js` は `one.timer.v1` の検証・読み書き、1〜180分の選択、開始・一時停止・リセット・再開、250ms tick、0秒完了、再読み込み復元、完了日の保持、別タブからのアイドル時間同期、端末データ削除直前のinterval停止を担当します。
 
-- `one.timer.v1` の読み書き
-- `ONE_TIMER_STATE_GUARD` を使った保存状態の検証
-- 1〜180分のタイマー時間
-- 開始・一時停止・リセット・再開
-- 250ms tickと0秒到達時の完了確定
-- 再読み込み後の実行中タイマー復元
-- 期限切れタイマーの未記録完了への復元
-- 完了日を保持した記録待ち状態
-- 別タブからの安全なアイドル時間同期
-- 端末データ削除直前のinterval停止
+`useTimerState()` は `useSyncExternalStore()` でstoreを直接購読します。TimerControls、自由設定、Spaceショートカット、バックアップのタイマー時間復元も `timerActions` を直接利用します。
 
-`useTimerState()` は `useSyncExternalStore()` でこのstoreを直接購読します。TimerControls、自由設定、Spaceショートカット、バックアップのタイマー時間復元も `timerActions` を直接利用するため、timer用DOM bridgeはありません。
+## 進捗の責務
+
+`progressStore.js` は次を担当します。
+
+- `one.doneCount` と `one.history.v1` の厳格な検証・読込
+- 最大90日の日次履歴と1日1000回上限
+- 累計32byte、履歴50KBの保存値上限
+- 通常のstorageイベントによる別タブ同期
+- BFCache / 前面復帰時の安全な再読込
+- 完了記録時に、保存より先に現在タブのメモリ状態を更新する救出経路
+- 累計・履歴の書込後読み戻し確認
+- バックアップ復元時の進捗反映
+
+`useProgressOverviewState()` は `useSyncExternalStore()` で `progressStore.js` を直接購読します。記録・破棄ボタンは `progressActions` から `ONE_TAB_GUARD` のclaim処理へ入るため、複数タブの二重記録防止を迂回しません。
 
 ## 複数タブ調停
 
 `tab-guard.js` は現時点ではclassic scriptのまま残します。暗号学的乱数によるタブ識別、別タブ所有タイマーの開始拒否、古いタブからの再開拒否、完了記録のclaim、記録/破棄時の保存確認を担当します。
 
-Reactタイマーとは一時的な小さい境界で接続します。
+React側とは小さいruntime境界で接続します。
 
-- `ONE_TAB_GUARD`: timerStoreから開始・リセット・時間変更前の調停を呼ぶ
+- `ONE_TAB_GUARD`: timer/progress storeから調停・完了処理を呼ぶ
 - `ONE_TIMER_RUNTIME`: tab guardからtimer snapshot、完了消費、feedback、アイドル同期を扱う
+- `ONE_PROGRESS_RUNTIME`: tab guardから進捗再読込、インメモリ加算、累計/履歴保存確認を扱う
 - `ONE_TAB_COORDINATION`: backupから安全な復元可否を問い合わせる
 
-この境界は複数タブ安全性を一度に書き換えないための移行用です。Cleanup 4Dの最後に `tab-guard.js` 自体をmodule化します。
-
-## 進捗runtimeと残るinterop
-
-現在 `app.js` はタイマー本体を持ちません。残っている責務は以下だけです。
-
-- `one.doneCount` / `one.history.v1` の検証・読込・保存補助
-- 通常のstorageイベントによる別タブ進捗同期
-- 完了記録時のインメモリ履歴更新
-
-`legacy/interop/settings-progress.js` は、Reactの進捗UIへ累計・履歴snapshotを公開し、記録/破棄を `ONE_TAB_GUARD` の安全なclaim経路へ渡し、バックアップ復元時の進捗反映を行う最小adapterです。
-
-次段でこの責務をReactのprogress storeへ移し、`app.js` と `settings-progress.js` を削除します。
+完了記録は **claim → タイマー完了消費 → タイマー保存値の読み戻し確認 → メモリ上の進捗更新 → 累計保存確認 → 履歴保存確認** の順を維持します。保存途中で失敗しても現在タブの進捗は残し、JSON救出へ案内します。
 
 ## legacy runtime scaffold
 
-`index.html` の `#legacy-runtime-scaffold` は `hidden` / `aria-hidden="true"` です。タイマー用DOMはすべて削除済みで、現在は残るclassic進捗adapterが初期化時に使う `#done-count` だけを保持します。
-
-進捗runtimeをReactへ移した後、このscaffold自体を削除します。
+削除済みです。`index.html` の `#root` は空で、ユーザー向けUIも実行時の状態DOMもReactが構築します。
 
 ## バックアップの責務
 
@@ -131,38 +124,35 @@ Reactタイマーとは一時的な小さい境界で接続します。
 - 復元後の保存値検証と失敗時ロールバック
 - 復元後の状態が変わっていない場合だけ利用できる1世代Undo
 
-進捗反映は残る `settings-progress.js` adapterを通し、タイマー時間は `timerActions.selectMinutes()` でReact storeへ直接反映します。
+進捗反映はReact progress store、タイマー時間は `timerActions.selectMinutes()` へ反映します。復元中は `ONE_TAB_COORDINATION` で別タブのアクティブタイマーも確認します。
 
 ## 端末データ削除
 
 `usePrivacyResetControl.js` はONEの既知localStorageキーだけを削除します。`localStorage.clear()` は使いません。別タブ通知値は形式・長さを検証し、Web Cryptoを優先します。
 
-reload直前の `one:privacy-reset-prepare` は `timerStore.js` が受け取り、保存し直さずintervalと実行中endAtを停止します。削除直後に古いタイマー保存値を復活させないための処理です。
+reload直前の `one:privacy-reset-prepare` は `timerStore.js` が受け取り、保存し直さずintervalと実行中endAtを停止します。
 
 ## `index.html` とVite
 
-`index.html` はCSP、基本meta、残るclassic scriptの読み込み順、`/src/main.jsx`、最小runtime scaffoldを定義します。
+`index.html` はCSP、基本meta、残るclassic scriptの読み込み順、`/src/main.jsx` を定義します。hidden scaffoldはありません。
 
-現在のclassic scriptは次のとおりです。
+現在のclassic scriptは次の3つです。
 
 ```text
 theme-bootstrap.js
 timer-bootstrap.js
-app.js
 tab-guard.js
-legacy/interop/settings-progress.js
 ```
 
-`theme-bootstrap.js` は初期描画前のテーマ適用、`timer-bootstrap.js` は保存形式の共通検証器です。後者3つはCleanup 4Dで順次module/React側へ吸収します。
+`theme-bootstrap.js` は初期描画前のテーマ適用、`timer-bootstrap.js` はタイマー保存形式の共通検証器です。`tab-guard.js` はCleanup 4Dの最後にmodule化します。
 
 ## CIで守るもの
-
-移行手順そのものではなく、次の振る舞いを検査します。
 
 - タイマー保存形式・復元・0秒境界
 - Space / F / Escapeの入力・IME・修飾キー・フォーカス安全性
 - 複数タブ所有権、暗号学的セッションID、二重記録防止
 - 完了消費 → 累計 → 履歴の保存順と読み戻し確認
+- 進捗保存値のサイズ・形式検証と別タブ同期
 - 日付境界、今週・連続日・7日/30日履歴
 - 日次目標の厳格検証・保存確認・別タブ同期
 - 端末データ削除の対象限定・削除確認・別タブ通知検証
@@ -173,4 +163,4 @@ legacy/interop/settings-progress.js
 
 ## 整理後の目標
 
-Cleanup 4D完了時には、`index.html` を通常のVite + React構成へ寄せ、ルート直下のclassic runtime、`legacy/interop/`、hidden runtime scaffoldを廃止します。その後 Tailwind Step 7B以降を再開します。
+Cleanup 4D完了時には `tab-guard.js` をmodule側へ吸収し、通常のVite + React構成へさらに寄せます。その後 Tailwind Step 7B以降を再開します。
