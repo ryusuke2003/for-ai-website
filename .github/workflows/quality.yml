@@ -52,6 +52,9 @@ jobs:
       - name: Check React migration boundaries
         run: python3 scripts/react_migration_checks.py
 
+      - name: Check Tailwind migration boundaries
+        run: python3 scripts/tailwind_migration_checks.py
+
       - name: Check React timer state integration
         run: python3 scripts/react_timer_state_checks.py
 

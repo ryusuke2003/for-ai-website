@@ -122,10 +122,16 @@ export function ThemeSwitcher() {
 
   return (
     <>
-      <div className="theme-switcher" role="group" aria-label="表示テーマ" aria-describedby="theme-status">
-        <span aria-hidden="true">表示</span>
+      <div
+        className="theme-switcher mb-6 flex items-center justify-end gap-1.5 text-[0.76rem] font-extrabold max-[560px]:mb-5 max-[560px]:justify-start"
+        role="group"
+        aria-label="表示テーマ"
+        aria-describedby="theme-status"
+      >
+        <span className="mr-0.5 tracking-[0.06em]" aria-hidden="true">表示</span>
         {THEME_OPTIONS.map((option) => (
           <button
+            className="rounded-full border-0 bg-transparent px-2.5 py-1.5 font-extrabold text-inherit"
             key={option.value}
             type="button"
             data-theme-choice={option.value}
