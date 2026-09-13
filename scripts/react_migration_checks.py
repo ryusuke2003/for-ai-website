@@ -8,8 +8,10 @@ HERO_SOURCE = (ROOT / "src/components/HeroIntro.jsx").read_text(encoding="utf-8"
 FOOTER_SOURCE = (ROOT / "src/components/AppFooter.jsx").read_text(encoding="utf-8")
 THEME_SOURCE = (ROOT / "src/components/ThemeSwitcher.jsx").read_text(encoding="utf-8")
 TIMER_CONTROLS_SOURCE = (ROOT / "src/components/TimerControls.jsx").read_text(encoding="utf-8")
+TIMER_DISPLAY_SOURCE = (ROOT / "src/components/TimerDisplay.jsx").read_text(encoding="utf-8")
 THEME_COMPAT_SOURCE = (ROOT / "theme.js").read_text(encoding="utf-8")
-TIMER_BRIDGE_SOURCE = (ROOT / "react-timer-controls-bridge.js").read_text(encoding="utf-8")
+TIMER_CONTROLS_BRIDGE_SOURCE = (ROOT / "react-timer-controls-bridge.js").read_text(encoding="utf-8")
+TIMER_DISPLAY_BRIDGE_SOURCE = (ROOT / "react-timer-display-bridge.js").read_text(encoding="utf-8")
 VITE_SOURCE = (ROOT / "vite.config.mjs").read_text(encoding="utf-8")
 
 
@@ -21,6 +23,7 @@ def require(condition, message):
 def main():
     require('id="react-theme-root"' in INDEX_SOURCE, "テーマ切替用React境界がありません")
     require('id="react-hero-root"' in INDEX_SOURCE, "ヘッダー用React境界がありません")
+    require('id="react-timer-display-root"' in INDEX_SOURCE, "タイマー表示用React境界がありません")
     require('id="react-timer-controls-root"' in INDEX_SOURCE, "タイマー主操作用React境界がありません")
     require('id="react-footer-root"' in INDEX_SOURCE, "フッター用React境界がありません")
     require('id="react-root"' not in INDEX_SOURCE, "旧Reactプレースホルダーを残さないでください")
@@ -28,8 +31,11 @@ def main():
     require("createRoot" in MAIN_SOURCE, "手書きフォールバックをReactへ切り替える境界にはcreateRootを使ってください")
     require("<ThemeSwitcher />" in MAIN_SOURCE, "ThemeSwitcherをReactからマウントしてください")
     require("<HeroIntro />" in MAIN_SOURCE, "HeroIntroをReactからマウントしてください")
+    require("<TimerDisplay />" in MAIN_SOURCE, "TimerDisplayをReactからマウントしてください")
     require("<TimerControls />" in MAIN_SOURCE, "TimerControlsをReactからマウントしてください")
     require("<AppFooter />" in MAIN_SOURCE, "AppFooterをReactからマウントしてください")
+    require("DOMContentLoaded" in MAIN_SOURCE, "legacy初期化完了後にReactをマウントしてください")
+    require("{ once: true }" in MAIN_SOURCE, "ReactのDOMContentLoadedハンドラは1回だけ実行してください")
     require("Built with React + Vite" not in MAIN_SOURCE, "導入確認用の仮表示を残さないでください")
 
     require("ONE SPRINT AT A TIME" in HERO_SOURCE, "ヘッダーのeyebrow文言を維持してください")
@@ -66,6 +72,21 @@ def main():
         require(token in TIMER_CONTROLS_SOURCE, f"TimerControlsの移行要件がありません: {token}")
 
     for token in (
+        "useState",
+        "useEffect",
+        "ONE_REACT_TIMER_DISPLAY",
+        "one:timer-display-state",
+        'id="timer"',
+        'id="timer-progress"',
+        'id="timer-status"',
+        'id="timer-end-time"',
+        'id="timer-end-at"',
+        'role="timer"',
+        'aria-live="polite"',
+    ):
+        require(token in TIMER_DISPLAY_SOURCE, f"TimerDisplayの移行要件がありません: {token}")
+
+    for token in (
         "document.documentElement.dataset.reactTimerControls === '1'",
         "startButton.click()",
         "resetButton.click()",
@@ -75,7 +96,21 @@ def main():
         "one:timer-controls-state",
         "one:timer-controls-focus",
     ):
-        require(token in TIMER_BRIDGE_SOURCE, f"タイマー操作ブリッジの要件がありません: {token}")
+        require(token in TIMER_CONTROLS_BRIDGE_SOURCE, f"タイマー操作ブリッジの要件がありません: {token}")
+
+    for token in (
+        "document.documentElement.dataset.reactTimerDisplay === '1'",
+        "ONE_REACT_TIMER_DISPLAY",
+        "timerDisplaySnapshot",
+        "one:timer-display-state",
+        "MutationObserver",
+        "timerProgress.max",
+        "timerProgress.value",
+        "timerEndTime.hidden",
+        "timerEndAt.getAttribute('datetime')",
+        "renderTimerWithoutReactDisplaySync",
+    ):
+        require(token in TIMER_DISPLAY_BRIDGE_SOURCE, f"タイマー表示ブリッジの要件がありません: {token}")
 
     require(
         "document.documentElement.dataset.reactTheme !== '1'" in THEME_COMPAT_SOURCE,
@@ -94,8 +129,16 @@ def main():
         "Vite経由ではReact版タイマー主操作を有効にするマーカーを付けてください",
     )
     require(
+        "data-react-timer-display=\"1\"" in VITE_SOURCE,
+        "Vite経由ではReact版タイマー表示を有効にするマーカーを付けてください",
+    )
+    require(
         "react-timer-controls-bridge.js" in VITE_SOURCE,
         "Vite経由ではvanillaタイマーとReact主操作を橋渡しするスクリプトを読み込んでください",
+    )
+    require(
+        "react-timer-display-bridge.js" in VITE_SOURCE,
+        "Vite経由ではvanillaタイマーとReact表示を橋渡しするスクリプトを読み込んでください",
     )
 
     for source_name, source in (
@@ -104,10 +147,11 @@ def main():
         ("src/components/AppFooter.jsx", FOOTER_SOURCE),
         ("src/components/ThemeSwitcher.jsx", THEME_SOURCE),
         ("src/components/TimerControls.jsx", TIMER_CONTROLS_SOURCE),
+        ("src/components/TimerDisplay.jsx", TIMER_DISPLAY_SOURCE),
     ):
         require("dangerouslySetInnerHTML" not in source, f"{source_name} でdangerouslySetInnerHTMLを使わないでください")
 
-    print("React migration checks passed: presentation, theme, and primary timer controls are React-managed with guarded legacy fallbacks.")
+    print("React migration checks passed: presentation, theme, timer display, and primary controls are React-managed behind guarded bridges.")
 
 
 if __name__ == "__main__":
