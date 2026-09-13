@@ -13,7 +13,8 @@ ONE は vanilla JavaScript から React へ段階移行してきたため、移�
 - `index.html` 自体がReact entryとclassic scriptの読み込み順を定義する
 - production向けclassic scriptは `index.html` から自動検出してVite/Rollupのassetとして出力する
 - Theme / 端末保存状態 / Wake Lock / 完了音・完了通知はReact側へ移行済み
-- 自由設定タイマー、タイマー進捗、終了予定時刻、ページタイトルもReact側へ移行中
+- 自由設定タイマー、タイマー進捗、終了予定時刻、ページタイトルもReact側へ移行済み
+- 日次目標の入力・保存・別タブ同期・進捗表示もReact側へ移行済み
 - Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
 - タイマー保存形式、複数タブ排他、通知権限、バックアップのロールバックなどの安全性ロジックは維持する
 
@@ -47,8 +48,9 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
    - 端末保存状態をReactへ移行済み
    - Wake LockをReactへ移行済み
    - 完了音・完了通知をReactへ移行済み
-   - 自由設定タイマーとタイマー表示の補助処理をReactへ移行中
-   - 次に progress / backup 系runtimeとinteropを整理する
+   - 自由設定タイマーとタイマー表示の補助処理をReactへ移行済み
+   - 日次目標の状態・保存・進捗をReactへ移行済み
+   - 次に週次・連続日・7日/30日集計とbackup系runtimeを整理する
 8. **Tailwind移行を再開**
    - 7B: タイマーUI
    - 7C: 集中記録・統計・バックアップUI
@@ -77,6 +79,7 @@ src/
 │   ├── progress/
 │   │   ├── ProgressOverview.jsx
 │   │   ├── ProgressDetails.jsx
+│   │   ├── useDailyGoalControl.js
 │   │   ├── useProgressOverviewState.js
 │   │   └── useProgressDetailsState.js
 │   └── backup/
@@ -86,6 +89,8 @@ src/
 ```
 
 画面全体は `src/main.jsx` で1回だけ `createRoot()` し、`App.jsx` 配下で管理します。`components/` はアプリ横断の小さな表示要素、`features/` は機能単位のUIとブラウザ機能制御を置く場所です。
+
+`ProgressSection` は集中記録概要のsnapshotを読み、今日の回数を `useDailyGoalControl()` へ渡します。同じ日次目標状態を `ProgressOverview` と `ProgressDetails` で共有するため、今日の回数の読み上げ・目標status・進捗バーが別々の状態源を持ちません。
 
 ## 一時的に残す互換レイヤー
 
@@ -98,13 +103,13 @@ legacy/interop/
 
 これらはclassic JavaScriptが保持する既存状態・イベント経路をReactへ公開するための一時的なアダプターです。複数タブ排他、完了記録、バックアップ検証などの既存の安全な処理を迂回しないために残しています。
 
-`timer.js` はタイマー本体への操作委譲と状態snapshot、`settings-progress.js` は主にProgressOverviewと自由設定バックアップ互換、`progress-backup.js` は記録詳細とバックアップUIの互換処理を担当します。機能本体をReactへ移すたびに責務を減らし、最終的に削除します。
+`timer.js` はタイマー本体への操作委譲と状態snapshot、`settings-progress.js` は主にProgressOverviewと自由設定バックアップ互換、`progress-backup.js` は7日/30日の記録詳細とバックアップUIの互換処理を担当します。日次目標はこれらのinteropから外れました。
 
 ## legacy runtime scaffold
 
 `index.html` の `#root` には画面の完成形を重複して書きません。残すのは、classic scriptが起動時に `querySelector()` で取得する要素と初期状態だけを持つ `#legacy-runtime-scaffold` です。
 
-scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。React移行済みの要素は順次scaffoldから削除しています。現在はタイマー本体・記録・バックアップなど、まだclassic runtimeが直接参照するDOMだけを残します。
+scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。React移行済みの要素は順次scaffoldから削除しています。日次目標input / button / statusは削除済みで、現在はタイマー本体・集中記録集計・バックアップなど、まだclassic runtimeが直接参照するDOMだけを残します。
 
 ## `index.html` とViteの役割
 
@@ -124,12 +129,13 @@ Vite側はTailwind pluginと、`index.html` に書かれたclassic scriptをprod
 - タイマー状態と復元
 - 複数タブの所有権・二重記録防止
 - 日付境界と履歴
+- 日次目標の厳格検証・保存確認・期限切れ掃除・別タブ同期
 - 完了音 / 通知 / Wake Lock
 - バックアップ検証、復元前退避、ロールバック
 - 保存障害時のフォールバック
 - CSP、フォーカス、秘密情報混入防止
 
-同じ振る舞いを複数ファイルで固定している検査は、React移行に合わせて統合します。今回、ページタイトル・終了予定・進捗の検査は `timer_state_checks.py` に集約します。
+同じ振る舞いを複数ファイルで固定している検査は、React移行に合わせて統合します。日次目標の旧React wrapper testも削除し、`daily_goal_checks.py` がReact featureを直接検査します。
 
 ## 整理後の目標
 

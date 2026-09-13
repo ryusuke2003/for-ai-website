@@ -1,24 +1,4 @@
-import { useProgressDetailsState } from './useProgressDetailsState.js';
-
-function bridge() {
-  return globalThis.ONE_REACT_PROGRESS_DETAILS;
-}
-
-function setGoalValue(value) {
-  bridge()?.setGoalValue?.(value);
-}
-
-function applyGoal() {
-  bridge()?.applyGoal?.();
-}
-
-function clearGoal() {
-  bridge()?.clearGoal?.();
-}
-
-export function ProgressDetails() {
-  const state = useProgressDetailsState();
-
+export function ProgressDetails({ state, dailyGoal }) {
   return (
     <>
       <div className="presets" aria-describedby="daily-goal-status">
@@ -33,15 +13,14 @@ export function ProgressDetails() {
             step="1"
             inputMode="numeric"
             placeholder="3"
-            value={state.goalValue}
+            value={dailyGoal.value}
             aria-describedby="daily-goal-status"
-            aria-invalid={state.goalInvalid}
-            disabled={state.goalInputDisabled}
-            onChange={(event) => setGoalValue(event.target.value)}
+            aria-invalid={dailyGoal.invalid}
+            onChange={(event) => dailyGoal.change(event.target.value)}
             onKeyDown={(event) => {
               if (event.isComposing || event.key !== 'Enter') return;
               event.preventDefault();
-              applyGoal();
+              dailyGoal.apply();
             }}
           />
           <span aria-hidden="true">回</span>
@@ -49,8 +28,7 @@ export function ProgressDetails() {
             id="daily-goal-apply"
             type="button"
             aria-describedby="daily-goal-status"
-            disabled={state.goalApplyDisabled}
-            onClick={applyGoal}
+            onClick={dailyGoal.apply}
           >
             設定
           </button>
@@ -59,22 +37,22 @@ export function ProgressDetails() {
           id="daily-goal-clear"
           type="button"
           aria-describedby="daily-goal-status"
-          hidden={state.goalClearHidden}
-          onClick={clearGoal}
+          hidden={dailyGoal.clearHidden}
+          onClick={dailyGoal.clear}
         >
           目標を解除
         </button>
       </div>
       <p className="hint" id="daily-goal-status" role="status" aria-live="polite">
-        {state.goalStatus}
+        {dailyGoal.status}
       </p>
       <progress
         className="daily-goal-progress"
-        max={state.goalProgressMax}
-        value={state.goalProgressValue}
-        hidden={state.goalProgressHidden}
+        max={dailyGoal.progressMax}
+        value={dailyGoal.progressValue}
+        hidden={dailyGoal.progressHidden}
         aria-label="今日の集中目標の進捗"
-        aria-valuetext={state.goalProgressAriaValueText || undefined}
+        aria-valuetext={dailyGoal.progressAriaValueText || undefined}
       />
 
       <div className="history" aria-labelledby="history-title">

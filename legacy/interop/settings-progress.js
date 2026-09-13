@@ -10,7 +10,6 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
       doneDisabled: doneButton.disabled,
       discardHidden: discardButton.hidden,
       todayCount: todayCount.textContent ?? '0',
-      todayAriaLabel: todayCount.getAttribute('aria-label') ?? '',
       weekCount: weekCount.textContent ?? '0',
       streakCount: streakCount.textContent ?? '0',
       streakAriaLabel: streakCount.getAttribute('aria-label') ?? '0日',

@@ -3,47 +3,66 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
+APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
+DETAILS_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressDetails.jsx").read_text(encoding="utf-8")
+OVERVIEW_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressOverview.jsx").read_text(encoding="utf-8")
+HOOK_SOURCE = (ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js").read_text(encoding="utf-8")
 STATS_SOURCE = (ROOT / "stats.js").read_text(encoding="utf-8")
 RESET_SOURCE = (ROOT / "privacy-reset.js").read_text(encoding="utf-8")
 
 
-def fail(message):
-    raise SystemExit(f"ERROR: {message}")
-
-
 def require(condition, message):
     if not condition:
-        fail(message)
+        raise SystemExit(f"ERROR: {message}")
 
 
 def section(source, start_marker, end_marker):
     start = source.find(start_marker)
     if start < 0:
-        fail(f"{start_marker} が見つかりません")
-    end = source.find(end_marker, start)
+        raise SystemExit(f"ERROR: {start_marker} が見つかりません")
+    end = source.find(end_marker, start + len(start_marker))
     if end < 0:
-        fail(f"{end_marker} が見つかりません")
+        raise SystemExit(f"ERROR: {end_marker} が見つかりません")
     return source[start:end]
 
 
 def main():
-    require('id="daily-goal-input"' in INDEX_SOURCE, "今日の目標入力欄を維持してください")
-    require('min="1" max="12" step="1"' in INDEX_SOURCE, "今日の目標は1〜12回の整数に制限してください")
-    require('id="daily-goal-apply"' in INDEX_SOURCE, "今日の目標設定ボタンを維持してください")
-    require('id="daily-goal-clear"' in INDEX_SOURCE and "hidden>目標を解除" in INDEX_SOURCE, "未設定時は目標解除ボタンを隠してください")
-    require(
-        'id="daily-goal-status" role="status" aria-live="polite"' in INDEX_SOURCE,
-        "今日の目標状態は支援技術へ穏やかに通知してください",
-    )
-    require("今日の目標は未設定です。1〜12回で設定できます。" in INDEX_SOURCE, "初期状態では目標を強制しないでください")
+    require('id="daily-goal-input"' not in INDEX_SOURCE, "日次目標UIをlegacy scaffoldへ戻さないでください")
+    require("DAILY_GOAL_STORAGE_KEY" not in STATS_SOURCE, "日次目標状態はstats.jsへ戻さないでください")
+    require("dailyGoal" not in STATS_SOURCE, "日次目標状態はReact feature側で管理してください")
 
-    require("const DAILY_GOAL_STORAGE_KEY = 'one.dailyGoal.v1';" in STATS_SOURCE, "今日の目標保存キーを変更しないでください")
-    require("const MIN_DAILY_GOAL = 1;" in STATS_SOURCE and "const MAX_DAILY_GOAL = 12;" in STATS_SOURCE, "今日の目標範囲を1〜12回に維持してください")
-
-    parser = section(STATS_SOURCE, "function parseDailyGoalState(raw)", "function removeStoredDailyGoal(expectedRaw)")
     for token in (
+        "useDailyGoalControl(overviewState.todayCount)",
+        "<ProgressOverview state={overviewState} todayAriaLabel={dailyGoal.todayAriaLabel}",
+        "<ProgressDetails state={detailsState} dailyGoal={dailyGoal}",
+    ):
+        require(token in APP_SOURCE, f"ProgressSectionの日次目標共有に必要です: {token}")
+
+    for token in (
+        'id="daily-goal-input"',
+        'min="1"',
+        'max="12"',
+        'step="1"',
+        'aria-describedby="daily-goal-status"',
+        'aria-invalid={dailyGoal.invalid}',
+        'onChange={(event) => dailyGoal.change(event.target.value)}',
+        "event.isComposing || event.key !== 'Enter'",
+        'dailyGoal.apply();',
+        'hidden={dailyGoal.clearHidden}',
+        'onClick={dailyGoal.clear}',
+        'id="daily-goal-status" role="status" aria-live="polite"',
+    ):
+        require(token in DETAILS_SOURCE, f"React日次目標UIに必要です: {token}")
+
+    require('aria-label={todayAriaLabel || undefined}' in OVERVIEW_SOURCE,
+            "今日の回数へ日次目標進捗の読み上げを反映してください")
+
+    for token in (
+        "const DAILY_GOAL_STORAGE_KEY = 'one.dailyGoal.v1';",
+        "const MIN_DAILY_GOAL = 1;",
+        "const MAX_DAILY_GOAL = 12;",
+        "const MAX_DAILY_GOAL_STATE_BYTES = 128;",
         "raw.length > MAX_DAILY_GOAL_STATE_BYTES",
-        "JSON.parse(raw)",
         "Object.keys(value).length !== 2",
         "Object.hasOwn(value, 'date')",
         "Object.hasOwn(value, 'goal')",
@@ -52,108 +71,52 @@ def main():
         "value.goal < MIN_DAILY_GOAL",
         "value.goal > MAX_DAILY_GOAL",
     ):
-        require(token in parser, f"保存済み目標の厳格検証に {token} が必要です")
+        require(token in HOOK_SOURCE, f"保存済み日次目標の厳格検証に必要です: {token}")
 
-    remover = section(STATS_SOURCE, "function removeStoredDailyGoal(expectedRaw)", "function loadDailyGoal()")
+    remover = section(HOOK_SOURCE, "function removeStoredDailyGoal(expectedRaw)", "function persistDailyGoal")
     current_read = remover.find("localStorage.getItem(DAILY_GOAL_STORAGE_KEY)")
     mismatch_guard = remover.find("expectedRaw !== undefined && current !== expectedRaw")
-    delete_position = remover.find("localStorage.removeItem(DAILY_GOAL_STORAGE_KEY);")
+    delete_position = remover.find("localStorage.removeItem(DAILY_GOAL_STORAGE_KEY)")
     verify_position = remover.rfind("localStorage.getItem(DAILY_GOAL_STORAGE_KEY) === null")
-    require(min(current_read, mismatch_guard, delete_position, verify_position) >= 0, "目標削除の競合保護・削除・確認を維持してください")
-    require(current_read < mismatch_guard < delete_position < verify_position, "目標削除前に現在値が想定値のままか確認してください")
-    require("if (expectedRaw !== undefined && current !== expectedRaw) return true;" in remover, "別タブが新しい目標へ更新済みなら古い値として削除しないでください")
-    require("reportStorageFailure();" in remover, "目標削除失敗はアプリ全体へ通知してください")
+    require(min(current_read, mismatch_guard, delete_position, verify_position) >= 0,
+            "目標削除の競合保護・削除・確認を維持してください")
+    require(current_read < mismatch_guard < delete_position < verify_position,
+            "目標削除前に保存値が想定値のままか確認してください")
 
-    loader = section(STATS_SOURCE, "function loadDailyGoal()", "function persistDailyGoal(goal)")
-    require("const raw = safeRead(DAILY_GOAL_STORAGE_KEY);" in loader, "保存値を一度読み取ってから検証してください")
-    require("if (storageAccessFailed || raw === '') return;" in loader, "保存失敗または未設定なら期限切れ掃除を行わないでください")
-    require("const state = parseDailyGoalState(raw);" in loader, "保存済み目標は共通検証後に読み込んでください")
-    require("if (!state || state.date !== dateKey())" in loader, "壊れた値や別日の目標を今日へ持ち越さないでください")
-    require("removeStoredDailyGoal(raw)" in loader, "期限切れまたは壊れた保存値は読んだ値と一致する場合だけ削除してください")
-    require("期限切れまたは不正な目標データを端末から削除できませんでした" in loader, "自動掃除に失敗した場合は利用者へ明示してください")
+    persist = section(HOOK_SOURCE, "function persistDailyGoal", "function parseDailyGoalInput")
+    set_position = persist.find("localStorage.setItem(DAILY_GOAL_STORAGE_KEY, payload)")
+    read_position = persist.find("localStorage.getItem(DAILY_GOAL_STORAGE_KEY) === payload")
+    require(min(set_position, read_position) >= 0 and set_position < read_position,
+            "目標保存後は読み戻して一致を確認してください")
+    require("JSON.stringify({ date: todayKey, goal })" in persist,
+            "目標には設定日を一緒に保存してください")
 
-    persist = section(STATS_SOURCE, "function persistDailyGoal(goal)", "function clearExpiredDailyGoal()")
-    write_position = persist.find("safeWrite(DAILY_GOAL_STORAGE_KEY, payload)")
-    read_position = persist.find("safeRead(DAILY_GOAL_STORAGE_KEY)")
-    mismatch_position = persist.find("reportStorageFailure();")
-    require(min(write_position, read_position, mismatch_position) >= 0, "目標保存の書き込み・読み戻し・失敗通知を維持してください")
-    require(write_position < read_position < mismatch_position, "目標は保存後に読み戻して一致確認してください")
-    require("JSON.stringify({ date: dateKey(), goal })" in persist, "目標には設定日を一緒に保存してください")
+    require("window.dispatchEvent(new Event('one:storage-error'))" in HOOK_SOURCE,
+            "日次目標の保存失敗をアプリ全体へ通知してください")
+    require("window.addEventListener('storage', handleStorage)" in HOOK_SOURCE,
+            "別タブの日次目標変更を同期してください")
+    require("window.addEventListener('pageshow', handlePageShow)" in HOOK_SOURCE,
+            "BFCache復帰時に日次目標を再同期してください")
+    require("document.visibilityState === 'visible'" in HOOK_SOURCE,
+            "前面復帰時だけ保存値を再確認してください")
+    require("removeStoredDailyGoal(raw)" in HOOK_SOURCE,
+            "期限切れまたは不正な保存値は競合保護付きで掃除してください")
 
-    expiry = section(STATS_SOURCE, "function clearExpiredDailyGoal()", "function todayFocusCount()")
-    require("dailyGoalDate === dateKey()" in expiry, "日付が変わるまでは当日の目標を維持してください")
-    require("dailyGoal = null;" in expiry and "dailyGoalDate = null;" in expiry, "日付変更時は前日のメモリ上の目標を解除してください")
-    require("dailyGoalInput.value = '';" in expiry, "日付変更時は目標入力欄も未設定へ戻してください")
-    require("loadDailyGoal();" in expiry, "日付変更後は保存値を再確認して期限切れデータを掃除し、別タブの今日の目標があれば採用してください")
-    require("removeStoredDailyGoal(" not in expiry, "日付変更時に保存値を確認せず直接削除しないでください")
+    require("Math.max(activeGoal - todayCount, 0)" in HOOK_SOURCE,
+            "目標までの残り回数を負数にしないでください")
+    require("Math.min(todayCount, activeGoal)" in HOOK_SOURCE,
+            "進捗値が目標値を超えないようにしてください")
+    require("今日の目標 ${activeGoal}回を達成しました" in HOOK_SOURCE,
+            "目標達成を明示してください")
+    require("あと${remaining}回" in HOOK_SOURCE,
+            "未達成時は残り回数を表示してください")
+    require("今日 ${todayCount}回、目標${activeGoal}回を達成" in HOOK_SOURCE,
+            "達成状態を今日の回数のaria-labelへ反映してください")
 
-    renderer = section(STATS_SOURCE, "function renderDailyGoal()", "function parseDailyGoalInput()")
-    require("Math.max(dailyGoal - today, 0)" in renderer, "目標までの残り回数を負数にしないでください")
-    require("今日の目標 ${dailyGoal}回を達成しました" in renderer, "目標達成を明示してください")
-    require("あと${remaining}回" in renderer, "未達成時は残り回数を表示してください")
-    require("todayCount.setAttribute(" in renderer and "aria-label" in renderer, "今日の回数へ目標進捗の読み上げを追加してください")
+    require("'one.dailyGoal.v1'" in RESET_SOURCE or '"one.dailyGoal.v1"' in RESET_SOURCE,
+            "日次目標保存キーを端末データ削除対象に含めてください")
 
-    input_parser = section(STATS_SOURCE, "function parseDailyGoalInput()", "function applyDailyGoal()")
-    require("Number.isInteger(value)" in input_parser, "小数の目標を受け付けないでください")
-    require("value >= MIN_DAILY_GOAL" in input_parser and "value <= MAX_DAILY_GOAL" in input_parser, "入力値も1〜12回に制限してください")
-
-    apply = section(STATS_SOURCE, "function applyDailyGoal()", "function clearDailyGoal()")
-    require("dailyGoalInput.setAttribute('aria-invalid', 'true');" in apply, "不正な目標入力をaria-invalidで示してください")
-    require("dailyGoalDate = dateKey();" in apply, "設定した目標へ今日の日付を紐付けてください")
-    require("persistDailyGoal(nextGoal)" in apply, "目標設定を端末へ保存してください")
-    require("端末へ保存できませんでした" in apply, "保存失敗時は現在タブだけの設定だと説明してください")
-
-    input_events = section(
-        STATS_SOURCE,
-        "dailyGoalApplyButton.addEventListener('click', applyDailyGoal);",
-        "dailyGoalClearButton.addEventListener('click', clearDailyGoal);",
-    )
-    require("dailyGoalInput.addEventListener('input', () => {" in input_events, "目標入力を直し始めたら前回の入力エラー状態を解除してください")
-    require("dailyGoalInput.removeAttribute('aria-invalid');" in input_events, "編集時は古いaria-invalidを残さないでください")
-    require("dailyGoalInput.addEventListener('keydown', (event) => {" in input_events, "目標入力欄でEnter操作を処理してください")
-    guard_position = input_events.find("event.isComposing || event.key !== 'Enter'")
-    prevent_position = input_events.find("event.preventDefault();")
-    apply_position = input_events.find("applyDailyGoal();")
-    require(min(guard_position, prevent_position, apply_position) >= 0, "Enter設定のIME保護・既定動作抑止・設定処理を維持してください")
-    require(guard_position < prevent_position < apply_position, "IME変換中を除外してからEnterを抑止し、既存の設定処理へ渡してください")
-    require("safeWrite(" not in input_events and "localStorage" not in input_events, "Enter操作から保存処理を重複実装せずapplyDailyGoal()へ集約してください")
-
-    clear = section(STATS_SOURCE, "function clearDailyGoal()", "function syncDailyGoalFromStorage(event)")
-    require("removeStoredDailyGoal()" in clear, "利用者が目標解除を選んだ場合は現在の保存値を削除してください")
-
-    sync = section(STATS_SOURCE, "function syncDailyGoalFromStorage(event)", "function refreshDailyGoalFromStorage()")
-    require("event.key !== DAILY_GOAL_STORAGE_KEY" in sync, "目標キー以外のstorageイベントを無視してください")
-    require("event.newValue === null" in sync, "別タブからの目標解除を同期してください")
-    require("parseDailyGoalState(event.newValue)" in sync, "別タブの目標も厳格検証してください")
-    require("state.date !== dateKey()" in sync, "別日の目標を別タブ同期で持ち越さないでください")
-    require("safeWrite(" not in sync and "localStorage.setItem(" not in sync and "removeStoredDailyGoal(" not in sync, "storage同期から保存を書き換えてイベントループを作らないでください")
-
-    resume = section(STATS_SOURCE, "function refreshDailyGoalFromStorage()", "function parseHistoryStorageEvent(raw)")
-    read_position = resume.find("const raw = safeRead(DAILY_GOAL_STORAGE_KEY);")
-    post_read_guard = resume.find("if (storageAccessFailed) return;", read_position)
-    first_state_write = resume.find("dailyGoal = null;", post_read_guard)
-    require(min(read_position, post_read_guard, first_state_write) >= 0, "復帰時の目標再読込で保存障害確認と状態反映を確認できません")
-    require(read_position < post_read_guard < first_state_write, "復帰時は保存値を読み切って障害確認してから現在タブの目標を上書きしてください")
-    require("if (raw === '')" in resume, "復帰時に別タブで解除済みの目標を未設定へ戻してください")
-    require("const state = parseDailyGoalState(raw);" in resume, "復帰時の保存目標も共通パーサで厳格検証してください")
-    require("if (!state || state.date !== dateKey())" in resume, "復帰時も壊れた値や別日の目標を持ち越さないでください")
-    require("removeStoredDailyGoal(raw)" in resume, "復帰時に期限切れまたは壊れた保存値を安全に掃除してください")
-    require("dailyGoal = state.goal;" in resume and "dailyGoalDate = state.date;" in resume, "復帰時に今日の保存目標を現在タブへ反映してください")
-    require("renderDailyGoal();" in resume, "復帰時の目標再読込後は進捗表示を更新してください")
-    require("safeWrite(" not in resume and "localStorage.setItem(" not in resume, "復帰時の再同期から新しい保存値を書き込まないでください")
-
-    visible_refresh = section(STATS_SOURCE, "function refreshDailyGoalWhenVisible()", "function parseHistoryStorageEvent(raw)")
-    require("document.visibilityState === 'visible'" in visible_refresh, "背景へ移るだけでは日次目標を再読込しないでください")
-    require("refreshDailyGoalFromStorage();" in visible_refresh, "前面復帰時に日次目標を再確認してください")
-
-    require("window.addEventListener('storage', syncDailyGoalFromStorage);" in STATS_SOURCE, "今日の目標を別タブへ同期してください")
-    require("document.addEventListener('visibilitychange', refreshDailyGoalWhenVisible);" in STATS_SOURCE, "前面復帰時に今日の目標を保存値から再同期してください")
-    require("window.addEventListener('pageshow', refreshDailyGoalFromStorage);" in STATS_SOURCE, "BFCacheなどから復元された場合も今日の目標を再同期してください")
-    require("renderDailyGoal();" in section(STATS_SOURCE, "function renderProgressInsights()", "loadDailyGoal();"), "集中記録更新時に目標進捗も再描画してください")
-    require("'one.dailyGoal.v1'," in RESET_SOURCE, "プライバシーリセットで今日の目標も削除してください")
-    require("今日の目標" in INDEX_SOURCE.split('id="data-reset-hint"', 1)[-1], "端末データ削除の説明に今日の目標を含めてください")
-
-    print("Daily focus goal checks passed, including Enter submit, safe expiry cleanup, resume refresh, and cross-tab race protection.")
+    print("Daily goal state is React-owned with strict storage validation, cross-tab sync, and safe cleanup.")
 
 
 if __name__ == "__main__":
