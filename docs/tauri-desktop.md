@@ -30,11 +30,12 @@ npm run dev
 
 ## macOSメニューバー常駐
 
-デスクトップ版はメニューバーにONEを常駐させます。
+デスクトップ版はメニューバーにONEを常駐させます。macOSではDockアイコンを表示せず、メニューバーをアプリの主な入口にします。
 
 - 左クリック: メインウィンドウを表示 / 非表示
 - 右クリック: 「ONEを表示 / 隠す」「ONEを終了」
 - ウィンドウの閉じるボタン: アプリを終了せず、ウィンドウを非表示
+- Dock: ONEのアイコンは表示しない
 
 メニューバーのtitleはタイマー状態と同期します。
 
@@ -47,7 +48,7 @@ npm run dev
 
 `src/desktop/trayTimerSync.js` が `timerStore` を購読し、Tauri実行時だけ `set_tray_title` commandを呼びます。ブラウザ版ではTauri APIを呼びません。
 
-Rust側のTray生成、ウィンドウ常駐、終了処理、title反映は `src-tauri/src/lib.rs` が担当します。
+Rust側のTray生成、Dock非表示、ウィンドウ常駐、終了処理、title反映は `src-tauri/src/lib.rs` が担当します。
 
 ## lockfile準拠のビルド
 
@@ -122,4 +123,3 @@ ONEは、macOSへのログイン時やMac起動時に自動起動する機能を
 - DMG配布
 - Apple Developer証明書によるコード署名
 - notarization
-- Dockアイコン非表示
