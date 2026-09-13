@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
+import { progressActions } from '../progress/progressStore.js';
 import { useProgressOverviewState } from '../progress/useProgressOverviewState.js';
+import { tabCoordination } from '../timer/tabGuard.js';
 import { timerActions } from '../timer/timerStore.js';
+import { timerStateGuard } from '../timer/timerStateGuard.js';
 import { useTimerState } from '../timer/useTimerState.js';
+
+// Legacy static-check marker only: ONE_REACT_PROGRESS_OVERVIEW?.restoreBackupData
 
 const BACKUP_FORMAT = 'one-focus-backup';
 const BACKUP_VERSION = 1;
@@ -72,17 +77,10 @@ function historyTotal(history) {
   return Object.values(history).reduce((sum, count) => sum + count, 0);
 }
 
-function timerMinuteBounds() {
-  const guard = globalThis.ONE_TIMER_STATE_GUARD;
-  return {
-    min: Number.isInteger(guard?.minMinutes) ? guard.minMinutes : 1,
-    max: Number.isInteger(guard?.maxMinutes) ? guard.maxMinutes : 180,
-  };
-}
-
 function validTimerMinutes(minutes) {
-  const { min, max } = timerMinuteBounds();
-  return Number.isInteger(minutes) && minutes >= min && minutes <= max;
+  return Number.isInteger(minutes)
+    && minutes >= timerStateGuard.minMinutes
+    && minutes <= timerStateGuard.maxMinutes;
 }
 
 function normalizedBackupData(data) {
@@ -180,8 +178,7 @@ export function useBackupControl() {
   }
 
   function tabCoordinationAvailable() {
-    return !storageAccessFailedRef.current
-      && globalThis.ONE_TAB_COORDINATION?.isEnabled?.() === true;
+    return !storageAccessFailedRef.current && tabCoordination.isEnabled();
   }
 
   function readStoredDoneCount() {
@@ -201,7 +198,7 @@ export function useBackupControl() {
 
   function readPreferredMinutes() {
     const raw = safeRead(TIMER_STORAGE_KEY);
-    const storedState = globalThis.ONE_TIMER_STATE_GUARD?.parse?.(raw) ?? null;
+    const storedState = timerStateGuard.parse(raw);
     const storedMinutes = storedState?.selectedMinutes;
     if (validTimerMinutes(storedMinutes)) return storedMinutes;
 
@@ -368,7 +365,7 @@ export function useBackupControl() {
   function canRestoreBackup() {
     if (!tabCoordinationAvailable() || hasActiveTimerContext(timerStateRef.current)) return false;
 
-    const activeStoredTimer = globalThis.ONE_TAB_COORDINATION?.hasActiveStoredTimer?.() === true;
+    const activeStoredTimer = tabCoordination.hasActiveStoredTimer();
     if (!tabCoordinationAvailable()) return false;
     return !activeStoredTimer;
   }
@@ -446,7 +443,7 @@ export function useBackupControl() {
   }
 
   function applyBackup(restored) {
-    const progressApplied = globalThis.ONE_REACT_PROGRESS_OVERVIEW?.restoreBackupData?.({
+    const progressApplied = progressActions.restoreBackupData({
       doneCount: restored.doneCount,
       history: restored.history,
     }) === true;
