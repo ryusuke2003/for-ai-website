@@ -63,7 +63,12 @@ function installNotification({ permission = 'granted' } = {}) {
     configurable: true,
     value: FakeNotification,
   });
-  globalThis.Notification = FakeNotification;
+  if (globalThis !== window) {
+    Object.defineProperty(globalThis, 'Notification', {
+      configurable: true,
+      value: FakeNotification,
+    });
+  }
   return { FakeNotification, instances };
 }
 
