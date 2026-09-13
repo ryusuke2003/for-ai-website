@@ -136,7 +136,7 @@ export function App() {
   }
 
   const shellWidthClass = page === 'todo'
-    ? 'w-[min(1080px,calc(100%_-_32px))]'
+    ? 'w-[min(1240px,calc(100%_-_32px))]'
     : 'w-[min(760px,calc(100%_-_32px))]';
 
   return (

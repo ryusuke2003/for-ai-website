@@ -14,13 +14,14 @@
       {
         "label": "main",
         "title": "タイマー",
-        "width": 820,
+        "width": 1180,
         "height": 900,
         "minWidth": 380,
         "minHeight": 640,
         "center": true,
         "resizable": true,
-        "fullscreen": false
+        "fullscreen": false,
+        "dragDropEnabled": false
       }
     ],
     "security": {
