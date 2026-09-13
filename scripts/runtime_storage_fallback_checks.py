@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
-APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
+STORAGE_COMPONENT_SOURCE = (ROOT / "src" / "components" / "StorageHealthStatus.jsx").read_text(encoding="utf-8")
 
 
 def function_body(name, next_name):
@@ -57,7 +57,7 @@ def main():
         "タブ間保存プローブの書込不一致・削除不一致・API例外は全体の保存障害へ通知してください",
     )
 
-    health_probe = section(APP_SOURCE, "function probeLocalStorage()", "function removeLegacyTaskData()")
+    health_probe = section(STORAGE_COMPONENT_SOURCE, "function probeLocalStorage()", "function removeLegacyTaskData()")
     write_pos = health_probe.find("localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token)")
     verify_write_pos = health_probe.find("const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token")
     reject_write_pos = health_probe.find("if (!persisted)", verify_write_pos)
@@ -72,13 +72,13 @@ def main():
         "React端末保存プローブは書込→読戻し→不一致拒否→削除→削除確認の順にしてください",
     )
 
-    legacy_cleanup = section(APP_SOURCE, "function removeLegacyTaskData()", "function reportStorageHealthFailure()")
+    legacy_cleanup = section(STORAGE_COMPONENT_SOURCE, "function removeLegacyTaskData()", "function reportStorageHealthFailure()")
     require("LEGACY_TASK_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));" in legacy_cleanup,
             "旧タスク保存値を既知キー単位で削除してください")
     require("LEGACY_TASK_STORAGE_KEYS.every((key) => localStorage.getItem(key) === null)" in legacy_cleanup,
             "旧タスク保存値の削除後は読み戻して確認してください")
 
-    health_status = section(APP_SOURCE, "function StorageHealthStatus()", "function TimerSection()")
+    health_status = STORAGE_COMPONENT_SOURCE.split("export function StorageHealthStatus()", 1)[-1]
     require("window.addEventListener('one:storage-error', handleStorageError);" in health_status,
             "React端末保存表示は実行中の保存障害を購読してください")
     require("probeLocalStorage();" in health_status, "React初期化時に端末保存を確認してください")
