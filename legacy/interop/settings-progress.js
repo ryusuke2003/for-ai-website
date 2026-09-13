@@ -1,4 +1,4 @@
-// Temporary compatibility layer for progress overview.
+// Temporary compatibility layer for progress overview and custom-duration backup restore.
 if (document.documentElement.dataset.reactProgressOverview === '1') {
   let progressSnapshot = null;
   let progressSerialized = '';
@@ -95,4 +95,27 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
   });
 
   refreshProgress({ force: true });
+}
+
+const customDurationPreset = document.querySelector('#custom-preset');
+const customDurationGuard = globalThis.ONE_TIMER_STATE_GUARD;
+if (customDurationPreset && customDurationGuard) {
+  availablePresetMinutes = function availableCustomTimerMinutesForBackup() {
+    return Array.from(
+      { length: customDurationGuard.maxMinutes - customDurationGuard.minMinutes + 1 },
+      (_, index) => index + customDurationGuard.minMinutes,
+    );
+  };
+
+  const applyBackupWithoutCustomDurationSync = applyBackup;
+  applyBackup = function applyBackupWithCustomDurationSync(restored) {
+    if (
+      Number.isInteger(restored?.selectedMinutes)
+      && restored.selectedMinutes >= customDurationGuard.minMinutes
+      && restored.selectedMinutes <= customDurationGuard.maxMinutes
+    ) {
+      customDurationPreset.dataset.minutes = String(restored.selectedMinutes);
+    }
+    applyBackupWithoutCustomDurationSync(restored);
+  };
 }
