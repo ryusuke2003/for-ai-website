@@ -5,6 +5,7 @@ import { HeroIntro } from './components/HeroIntro.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { TimerControls } from './components/TimerControls.jsx';
 import { TimerDisplay } from './components/TimerDisplay.jsx';
+import { TimerSettings } from './components/TimerSettings.jsx';
 
 function mountComponent(selector, component) {
   const root = document.querySelector(selector);
@@ -17,6 +18,7 @@ function mountReactUi() {
   mountComponent('#react-hero-root', <HeroIntro />);
   mountComponent('#react-timer-display-root', <TimerDisplay />);
   mountComponent('#react-timer-controls-root', <TimerControls />);
+  mountComponent('#react-timer-settings-root', <TimerSettings />);
   mountComponent('#react-footer-root', <AppFooter />);
 }
 
