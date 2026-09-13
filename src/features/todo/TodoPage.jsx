@@ -145,10 +145,18 @@ function dayLabel() {
 }
 
 function dragPayload(event, payload) {
+  const dataTransfer = event.dataTransfer;
+  if (!dataTransfer) return;
+
   const serialized = JSON.stringify(payload);
-  event.dataTransfer.effectAllowed = payload.kind === 'task' ? 'move' : 'copy';
-  event.dataTransfer.setData(DRAG_MIME, serialized);
-  event.dataTransfer.setData('text/plain', serialized);
+  dataTransfer.effectAllowed = payload.kind === 'task' ? 'move' : 'copy';
+  dataTransfer.setData('text/plain', serialized);
+
+  try {
+    dataTransfer.setData(DRAG_MIME, serialized);
+  } catch {
+    // text/plain is intentionally kept as the cross-browser fallback.
+  }
 }
 
 function parseDragPayload(dataTransfer) {
@@ -364,13 +372,30 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
             className="group flex cursor-grab items-center gap-2 rounded-2xl border border-[var(--one-border)] bg-[var(--one-card)] p-3 active:cursor-grabbing"
             key={template.id}
             draggable
+            aria-label={`${template.text}テンプレートをドラッグ`}
             onDragStart={(event) => dragPayload(event, { kind: 'template', id: template.id })}
           >
-            <button className="min-w-0 flex-1 border-0 bg-transparent p-0 text-left text-[var(--one-fg)]" type="button" onClick={() => onUseTemplate(template)}>
+            <div className="min-w-0 flex-1 select-none">
               <strong className="block truncate text-[0.86rem]">{template.text}</strong>
-              <span className="mt-0.5 block text-[0.72rem] font-bold text-[var(--one-muted)]">{template.duration}分 · クリックで入力欄へ</span>
+              <span className="mt-0.5 block text-[0.72rem] font-bold text-[var(--one-muted)]">{template.duration}分 · ドラッグして時間割へ</span>
+            </div>
+            <span className="shrink-0 select-none text-[0.72rem] font-bold text-[var(--one-muted)]" aria-hidden="true">⋮⋮</span>
+            <button
+              className="shrink-0 rounded-full border border-[var(--one-border)] bg-transparent px-2 py-1 text-[0.7rem] font-extrabold text-[var(--one-muted)] hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
+              type="button"
+              aria-label={`${template.text}を入力欄で使う`}
+              draggable={false}
+              onClick={() => onUseTemplate(template)}
+            >
+              使う
             </button>
-            <button className="rounded-full border-0 bg-transparent px-2 py-1 text-[0.7rem] font-extrabold text-[var(--one-muted)] opacity-60 hover:text-[var(--one-fg)] group-hover:opacity-100" type="button" aria-label={`${template.text}テンプレートを削除`} onClick={() => removeTemplate(template.id)}>
+            <button
+              className="shrink-0 rounded-full border-0 bg-transparent px-2 py-1 text-[0.7rem] font-extrabold text-[var(--one-muted)] opacity-60 hover:text-[var(--one-fg)] group-hover:opacity-100"
+              type="button"
+              aria-label={`${template.text}テンプレートを削除`}
+              draggable={false}
+              onClick={() => removeTemplate(template.id)}
+            >
               削除
             </button>
           </div>
@@ -483,7 +508,7 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
           data-testid="todo-timeline"
           onDragOver={(event) => {
             event.preventDefault();
-            event.dataTransfer.dropEffect = 'copy';
+            event.dataTransfer.dropEffect = event.dataTransfer.effectAllowed === 'move' ? 'move' : 'copy';
           }}
           onDrop={handleDrop}
         >
