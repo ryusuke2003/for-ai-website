@@ -1,5 +1,6 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import './tailwind.css';
 import { AppFooter } from './components/AppFooter.jsx';
 import { BackupPanel } from './components/BackupPanel.jsx';
 import { HeroIntro } from './components/HeroIntro.jsx';
