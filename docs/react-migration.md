@@ -7,7 +7,7 @@ ONE は既存のタイマー・記録機能を壊さないことを優先し、�
 - React 19.3.0 / React DOM 19.3.0
 - Vite 8.3.0
 - `src/main.jsx` を React エントリーポイントとして使用
-- Hero / Footer / ThemeSwitcher / タイマー主操作に加えて、残り時間・進捗・状態・終了予定時刻の表示を React 管理へ移行
+- Hero / Footer / ThemeSwitcher / タイマー主操作 / タイマー表示に加えて、時間プリセット・自由設定・完了音・完了通知・画面維持の設定UIを React 管理へ移行
 - 初回描画のちらつきを防ぐ `theme-bootstrap.js` はCSSより前に残す
 - タイマーの状態管理・保存・タブ間調停はまだ既存の vanilla JavaScript を正とし、React UI とは一時的なブリッジで接続する
 - React のマウントは `DOMContentLoaded` 後に行い、既存スクリプトがフォールバックDOMを初期化し終えてから置き換える
@@ -18,8 +18,8 @@ ONE は既存のタイマー・記録機能を壊さないことを優先し、�
 2. **表示テーマ** — ThemeSwitcher と保存・別タブ同期（完了）
 3. **タイマーUI**
    - 3A: 開始・一時停止 / リセット / 集中表示（完了）
-   - 3B: 残り時間 / 進捗 / 状態 / 終了予定時刻（この段階）
-   - 3C: 時間プリセット / 自由設定 / 完了音・通知・画面維持
+   - 3B: 残り時間 / 進捗 / 状態 / 終了予定時刻（完了）
+   - 3C: 時間プリセット / 自由設定 / 完了音・通知・画面維持（この段階）
 4. **集中記録・統計UI** — 回数、目標、7日/30日の可視化
 5. **バックアップ・データ削除UI**
 6. **状態管理のReact統合** — 残ったvanilla JavaScriptの状態管理をReact側へ統合する
@@ -43,7 +43,15 @@ Vite経由では `react-timer-controls-bridge.js` が、Reactの操作を既存�
 
 Vite経由では `react-timer-display-bridge.js` が、既存の `app.js` / `custom-timer.js` が更新するフォールバックDOMを監視し、その状態だけをReactへ渡します。タイマー計算・保存形式・document title更新はまだ既存実装を維持します。
 
-Reactは `DOMContentLoaded` 後にマウントするため、既存スクリプトは先にフォールバックDOMを参照できます。Reactへ置き換えた後もブリッジは元DOMへの参照を保持し、既存ロジックを壊さず表示だけをReact化します。
+## タイマー設定の移行境界
+
+`TimerSettings` は、10/25/50分のプリセット、1〜180分の自由設定、完了音、完了通知、画面維持の操作と状態表示をReactで描画します。
+
+Vite経由では `react-timer-settings-bridge.js` が、Reactの操作を既存の `app.js` / `custom-timer.js` / `completion-sound.js` / `wake-lock.js` に委譲します。既存側が更新した `disabled`、`aria-pressed`、ステータスメッセージ、別タブ同期結果をReactへ戻すため、保存形式・通知権限・Wake Lock制御・完了音の重複防止ロジックはこの段階では変更しません。
+
+自由設定の入力値もブリッジを通して既存入力へ同期し、既存の入力検証をそのまま利用します。無効値で既存コードが入力欄へフォーカスを戻す場合は、ブリッジがReact側の入力へフォーカスを転送します。
+
+Reactは `DOMContentLoaded` 後にマウントするため、既存スクリプトは先にフォールバックDOMを参照できます。Reactへ置き換えた後もブリッジは元DOMへの参照を保持し、既存ロジックを壊さずUIだけをReact化します。
 
 Viteを通さず `index.html` を開いた場合は従来のHTMLがそのまま残り、React用ブリッジは動作しません。
 
