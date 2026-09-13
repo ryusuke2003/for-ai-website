@@ -10,7 +10,7 @@ function formatClock(totalSeconds) {
 
 export function formatTrayTimerTitle(state) {
   if (state?.completionReady === true || state?.remainingSeconds === 0) {
-    return '00:00';
+    return '✓ 00:00';
   }
 
   if (state?.running === true) {
