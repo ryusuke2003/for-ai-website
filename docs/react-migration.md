@@ -7,9 +7,9 @@ ONE は既存のタイマー・記録機能を壊さないことを優先し、�
 - React 19.3.0 / React DOM 19.3.0
 - Vite 8.3.0
 - `src/main.jsx` を React エントリーポイントとして使用
-- Hero / Footer / ThemeSwitcher / タイマーUIに加えて、集中記録サマリー、今日の目標、直近7日 / 30日の可視化を React 管理へ移行
+- Hero / Footer / ThemeSwitcher / タイマーUI / 集中記録・統計UIに加えて、バックアップ・端末データ削除UIを React 管理へ移行
 - 初回描画のちらつきを防ぐ `theme-bootstrap.js` はCSSより前に残す
-- タイマー・集中記録の状態管理、保存、タブ間調停はまだ既存の vanilla JavaScript を正とし、React UI とは一時的なブリッジで接続する
+- タイマー・集中記録・バックアップの状態管理、保存、タブ間調停はまだ既存の vanilla JavaScript を正とし、React UI とは一時的なブリッジで接続する
 - React のマウントは `DOMContentLoaded` 後に行い、既存スクリプトがフォールバックDOMを初期化し終えてから置き換える
 
 ## 移行順
@@ -22,8 +22,8 @@ ONE は既存のタイマー・記録機能を壊さないことを優先し、�
    - 3C: 時間プリセット / 自由設定 / 完了音・通知・画面維持（完了）
 4. **集中記録・統計UI**
    - 4A: 記録 / 破棄、今日 / 今週 / 連続日 / 累計（完了）
-   - 4B: 今日の目標、直近7日 / 30日の可視化（この段階）
-5. **バックアップ・データ削除UI**
+   - 4B: 今日の目標、直近7日 / 30日の可視化（完了）
+5. **バックアップ・データ削除UI** — JSON書き出し / 復元 / Undo / 端末データ削除（この段階）
 6. **状態管理のReact統合** — 残ったvanilla JavaScriptの状態管理をReact側へ統合する
 7. **Tailwind CSS移行** — React移行完了後に、`styles.css` / `timer-progress.css` をReactコンポーネントのTailwind utilityへ段階移行し、最終的に旧CSSを削除する
 
@@ -66,6 +66,14 @@ Vite経由では `react-timer-settings-bridge.js` が、Reactの操作を既存�
 `react-progress-details-bridge.js` は、目標入力を既存の `stats.js` に委譲し、`stats.js` / `daily-goal-progress.js` が生成する目標状態と可視化結果をReactへ同期します。日付境界、別タブ同期、90日履歴の正規化、目標の保存形式はこの段階では変更しません。
 
 集中記録サマリーと同様に、既存スクリプトが初期化を終えた後でフォールバックDOMを `react-progress-details-root` へまとめてからReactをマウントします。これにより、既存ロジックが保持するDOM参照をそのまま利用しつつ表示だけをReactへ移せます。
+
+## バックアップ・データ削除の移行境界
+
+`BackupPanel` は、JSON書き出し、復元、復元の取り消し、端末内ONEデータの削除確認をReactで描画します。
+
+`react-backup-panel-bridge.js` は、Reactの操作を既存の `backup.js` / `privacy-reset.js` に委譲し、復元可否、Undoの表示状態、ステータスメッセージ、削除確認の表示状態をReactへ同期します。ファイル形式検証、100KB上限、復元前の1世代退避、別タブ調停、削除シグナルなどの安全性ロジックはこの段階では変更しません。
+
+旧バックアップ処理が現在タブのタイマー状態を判定するために使っていたタスク時代の関数名については、状態管理をReactへ統合するまでブリッジ境界で互換判定を提供します。UI側にはタスク入力を復活させません。
 
 Reactは `DOMContentLoaded` 後にマウントするため、既存スクリプトは先にフォールバックDOMを参照できます。Reactへ置き換えた後も各ブリッジは元DOMへの参照を保持し、既存ロジックを壊さずUIだけをReact化します。
 
