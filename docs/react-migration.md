@@ -1,172 +1,206 @@
-# React / Tailwind 構成整理方針
+# React / Tailwind 移行の完了状態
 
-ONE は vanilla JavaScript から React / Vite へ段階移行してきました。機能・保存形式・複数タブ安全性を維持しながら classic runtime と移行用adapterを外し、現在は React module を正本とする構成まで整理できています。
+ONE は vanilla JavaScript から React / Vite / Tailwind CSS へ段階移行し、現在は React module を正本とする構成です。
 
-## 現在の構成
+この文書は移行手順ではなく、**移行後に守る境界と現在の責務**を記録します。
 
-- React 19.3.0 / React DOM 19.3.0
+## 完了したもの
+
+- 単一 `#root` + `src/main.jsx` からReactをmount
+- timer / progress / backupを `src/features/*` へ分離
+- `app.js`、`timer-bootstrap.js`、`stats.js`、`shortcuts.js` 等のclassic runtimeを削除
+- `legacy/interop/*` とglobal互換APIを削除
+- タイマー保存値検証を `timerStateGuard.js` へmodule化
+- 複数タブ調停を `tabGuard.js` へmodule化
+- 累計・履歴を `progressStore.js` へ集約
+- Tailwind CSS 4へUIを移行
+- `styles.css` / `timer-progress.css` を削除
+- テーマ変数、進捗バー、focus-visible、集中表示CSSを `src/tailwind.css` へ統合
+- `theme-bootstrap.js` を `public/` へ移し、Vite標準のpublic assetコピーを利用
+- classic scriptを手動emitする独自Vite pluginを削除
+
+## 現在の技術構成
+
+- React 19.3.0
+- React DOM 19.3.0
 - Vite 8.3.0
-- Tailwind CSS 4.3.3 / `@tailwindcss/vite` 4.3.3
-- `src/App.jsx` + 単一 `#root`
-- timer / progress / backup は `src/features/*` に集約
-- タイマー本体は `timerStore.js`
-- タイマー保存値の検証は `timerStateGuard.js`
-- 複数タブ調停は `tabGuard.js`
-- 累計・履歴は `progressStore.js`
-- backupは各module APIを直接import
-- `app.js` / `timer-bootstrap.js` / `tab-guard.js` / `legacy/interop/*` は削除済み
-- hidden runtime scaffoldも撤去済み
-- classic scriptとして意図的に残すのは初期描画前の `theme-bootstrap.js` のみ
+- Tailwind CSS 4.3.3
+- Tauri v2
+- Vitest + React Testing Library
+- localStorage
 
-`theme-bootstrap.js` はCSS適用前に保存テーマを反映してテーマのちらつきを防ぐため、React mountより前に同期実行します。通常のアプリロジックをclassic scriptへ戻す意図はありません。
+バックエンド、アカウント、外部API、解析SDKはありません。
 
-## Cleanupの進捗
-
-1. **Cleanup 1: 移行用の足場を削除** — 完了
-2. **Cleanup 2: `App.jsx` + 単一React root** — 完了
-3. **Cleanup 3: feature / interop 単位へ整理** — 完了
-4. **Cleanup 4A: `index.html` をViteの正本にする** — 完了
-5. **Cleanup 4B: classic script出力を `index.html` 基準にする** — 完了
-6. **Cleanup 4C: フォールバックDOMをruntime scaffoldへ縮小** — 完了
-7. **Cleanup 4D: classic runtime / interopを機能単位で廃止** — 完了
-   - Theme UI / 保存状態 / Wake Lock / 完了効果 / 自由設定 / ショートカット — React化済み
-   - 日次目標 / 集計 / 端末データ削除 / バックアップ — React化済み
-   - タイマー本体 — `timerStore.js` へ移行済み
-   - 累計・履歴・別タブ進捗同期 — `progressStore.js` へ移行済み
-   - タイマー保存値検証 — `timerStateGuard.js` へmodule化済み
-   - 複数タブ調停 — `tabGuard.js` へmodule化済み
-   - backup向け互換global — direct importへ移行済み
-8. **次: Tailwind移行を再開**
-   - 7B: タイマーUI
-   - 7C: 集中記録・統計・バックアップUI
-   - 7D: テーマ色・フォーカス・レスポンシブと旧CSS整理
-
-## React構成
+## ディレクトリ
 
 ```text
 src/
 ├── App.jsx
 ├── main.jsx
+├── tailwind.css
+├── test/
+│   └── setup.js
 ├── components/
 │   ├── AppFooter.jsx
 │   ├── HeroIntro.jsx
 │   ├── StorageHealthStatus.jsx
 │   └── ThemeSwitcher.jsx
-├── features/
-│   ├── timer/
-│   │   ├── TimerControls.jsx
-│   │   ├── TimerDisplay.jsx
-│   │   ├── TimerSettings.jsx
-│   │   ├── tabGuard.js
-│   │   ├── timerStateGuard.js
-│   │   ├── timerStore.js
-│   │   ├── useTimerState.js
-│   │   ├── useTimerShortcuts.js
-│   │   ├── useFocusModeControl.js
-│   │   ├── useCustomTimerControl.js
-│   │   ├── useCompletionEffectsControl.js
-│   │   └── useWakeLockControl.js
-│   ├── progress/
-│   │   ├── ProgressOverview.jsx
-│   │   ├── ProgressDetails.jsx
-│   │   ├── progressStore.js
-│   │   ├── progressInsights.js
-│   │   ├── useDailyGoalControl.js
-│   │   └── useProgressOverviewState.js
-│   └── backup/
-│       ├── BackupPanel.jsx
-│       ├── useBackupControl.js
-│       └── usePrivacyResetControl.js
-└── tailwind.css
+└── features/
+    ├── timer/
+    │   ├── TimerControls.jsx
+    │   ├── TimerDisplay.jsx
+    │   ├── TimerSettings.jsx
+    │   ├── timerStore.js
+    │   ├── timerStateGuard.js
+    │   ├── tabGuard.js
+    │   ├── useTimerState.js
+    │   ├── useTimerShortcuts.js
+    │   ├── useFocusModeControl.js
+    │   ├── useCustomTimerControl.js
+    │   ├── useCompletionEffectsControl.js
+    │   └── useWakeLockControl.js
+    ├── progress/
+    │   ├── ProgressOverview.jsx
+    │   ├── ProgressDetails.jsx
+    │   ├── progressStore.js
+    │   ├── progressInsights.js
+    │   ├── useDailyGoalControl.js
+    │   └── useProgressOverviewState.js
+    └── backup/
+        ├── BackupPanel.jsx
+        ├── useBackupControl.js
+        └── usePrivacyResetControl.js
+
+public/
+└── theme-bootstrap.js
+
+src-tauri/
+└── Tauri desktop shell / config
 ```
 
-## タイマーの責務
+## タイマー境界
 
-`timerStateGuard.js` は `one.timer.v1` の保存形式を検証します。10KB上限、1〜180分、`remainingSeconds`、`running` / `endAt`、未記録完了状態、完了日を検証し、旧形式の完了状態も読み取れる互換性を維持します。
+### `timerStateGuard.js`
 
-`timerStore.js` は保存値の読み書き、開始・一時停止・リセット・再開、250ms tick、0秒完了、再読み込み復元、完了日の保持、別タブからのアイドル時間同期、端末データ削除直前のinterval停止を担当します。
+`one.timer.v1` の保存形式を検証します。
 
-`useTimerState()` は `useSyncExternalStore()` でstoreを直接購読します。TimerControls、自由設定、Spaceショートカット、バックアップのタイマー時間復元は `timerActions` を直接利用します。
+- 最大10KB
+- 1〜180分
+- `remainingSeconds`
+- `running` / `endAt`
+- 未記録完了状態
+- 完了日の整合性
+- 旧形式の完了状態との互換読込
 
-## 進捗の責務
+### `timerStore.js`
 
-`progressStore.js` は次を担当します。
+- 保存値の読込 / 保存
+- 開始 / 一時停止 / リセット / 再開
+- tickと0秒完了
+- 再読み込み復元
+- 完了日の保持
+- 別タブからのアイドル時間同期
+- 端末データ削除前のinterval停止
 
-- `one.doneCount` と `one.history.v1` の厳格な検証・読込
-- 最大90日の日次履歴と1日1000回上限
-- 累計32byte、履歴50KBの保存値上限
-- storageイベントによる別タブ同期
-- BFCache / 前面復帰時の再読込
-- 完了記録時のインメモリ更新
-- 累計・履歴の書込後読み戻し確認
-- バックアップ復元時の進捗反映
-
-`useProgressOverviewState()` は `useSyncExternalStore()` で `progressStore.js` を直接購読します。記録・破棄は `progressActions` からmoduleの `tabGuardActions` へ入り、複数タブのclaim処理を迂回しません。
+React UIは `useTimerState()` でstoreを購読し、操作は `timerActions` を直接利用します。
 
 ## 複数タブ調停
 
-`tabGuard.js` はES moduleとして次を担当します。
+`tabGuard.js` は次を担当します。
 
-- Web CryptoによるタブセッションID生成
-- 別タブが所有するアクティブタイマーの開始拒否
+- Web CryptoによるタブセッションID
+- 別タブ所有中のタイマー開始拒否
 - 古いタブからの再開拒否
-- アイドル状態のタイマー時間同期
 - 未記録完了のclaim
-- 別タブで処理済みの完了の検出
-- 記録・破棄時の保存確認
+- 二重記録 / 二重破棄の防止
+- 完了消費と保存結果の照合
 - localStorage障害時の単一タブフォールバック
 
-`timerStore.js` と `progressStore.js` はruntimeを `registerTimerRuntime()` / `registerProgressRuntime()` で明示登録します。backupは `tabCoordination` をmoduleから直接importし、復元前に別タブのアクティブタイマーも確認します。
+通常のlocalStorage照合は完全なトランザクションではないため、必要な箇所では保存後の読み戻しやWeb Locksの利用可否確認を組み合わせます。
 
-完了記録は **claim → タイマー完了消費 → タイマー保存値の読み戻し確認 → メモリ上の進捗更新 → 累計保存確認 → 履歴保存確認** の順を維持します。保存途中で失敗しても現在タブの進捗は残し、JSON救出へ案内します。
+## 進捗
 
-## バックアップの責務
+`progressStore.js` は `one.doneCount` と `one.history.v1` を管理します。
 
-`useBackupControl.js` は次を維持します。
+- 最大90日の履歴
+- 保存値の型・サイズ検証
+- 別タブstorageイベント同期
+- BFCache / 前面復帰時の再読込
+- 集中完了後のメモリ更新
+- 累計 / 履歴の保存後読み戻し
 
-- `one-focus-backup` version 1のJSON検証と100KB上限
-- 累計・最大90日の日次履歴・1〜180分のタイマー時間だけを書き出す
-- 保存障害時のReactメモリ状態からの救出用JSON
-- 復元前に `one.restoreRecovery.v1` へ1世代退避
-- 復元確認中の別タブ更新・タイマー状態変化の再確認
-- 復元後の保存値検証と失敗時ロールバック
-- 復元後の状態が変わっていない場合だけ利用できる1世代Undo
+`progressInsights.js` は今週、連続日、7日グラフ、30日アクティビティなどの派生値を計算します。
 
-依存はglobal互換APIではなくmoduleの `progressActions` / `timerActions` / `timerStateGuard` / `tabCoordination` を直接importします。
+## バックアップ
 
-## 端末データ削除
+`useBackupControl.js` は次を担当します。
 
-`usePrivacyResetControl.js` はONEの既知localStorageキーだけを削除します。`localStorage.clear()` は使いません。別タブ通知値は形式・長さを検証し、Web Cryptoを優先します。
+- version 1 JSONの検証
+- 100KB上限
+- 累計、最大90日の日次履歴、タイマー時間の書き出し
+- 保存障害時の救出用JSON
+- 復元前の1世代退避
+- 復元中の競合再確認
+- 保存失敗時ロールバック
+- 条件付き1世代Undo
 
-reload直前の `one:privacy-reset-prepare` は `timerStore.js` が受け取り、保存し直さずintervalと実行中endAtを停止します。
+backupからは `progressActions` / `timerActions` / `timerStateGuard` / `tabCoordination` をmodule importします。
 
-## `index.html` とVite
+## テーマとCSS
 
-`index.html` はCSP、基本meta、描画前テーマbootstrap、`/src/main.jsx` を定義します。hidden scaffoldはありません。
+React UIのテーマ変更は `ThemeSwitcher.jsx` が担当します。
 
-現在のclassic scriptは1つだけです。
+`public/theme-bootstrap.js` はReact mount前に保存済みテーマだけを同期適用し、初期描画のテーマちらつきを防ぎます。通常のアプリロジックをclassic scriptへ戻すためのものではありません。
 
-```text
-theme-bootstrap.js
-```
+`src/tailwind.css` は以下を一元管理します。
 
-それ以外のアプリロジックはViteのmodule graphへ含めます。
+- Tailwind theme / utilities
+- ライト / ダーク共通CSS変数
+- OS設定へ追従する自動ダークテーマ
+- focus-visible
+- reduced-motion
+- progress要素の共通表示
+- 集中表示で必要なbody状態依存CSS
 
-## CIで守るもの
+## テスト方針
 
-- タイマー保存形式・復元・0秒境界
-- Space / F / Escapeの入力・IME・修飾キー・フォーカス安全性
-- 複数タブ所有権、暗号学的セッションID、二重記録防止
-- 完了消費 → 累計 → 履歴の保存順と読み戻し確認
-- 進捗保存値のサイズ・形式検証と別タブ同期
-- 日付境界、今週・連続日・7日/30日履歴
-- 日次目標の厳格検証・保存確認・別タブ同期
-- 端末データ削除の対象限定・削除確認・別タブ通知検証
-- 完了音 / 通知 / Wake Lock
-- バックアップ形式検証、救出用書き出し、復元前退避、ロールバック、1世代Undo
-- 保存障害時のフォールバック
-- CSP、フォーカス、秘密情報混入防止
+### Vitest + React Testing Library
 
-## 次の整理
+React UIやhookは、ソースコードの文字列ではなく**利用者から見た振る舞い**を優先して検証します。
 
-classic runtimeのReact移行は完了扱いとし、次はTailwind Step 7B以降を進めます。`theme-bootstrap.js` は通常runtimeではなく初期描画前テーマ適用という明確な役割があるため、無理にReactへ移してFOUCを起こさないことを優先します。
+例:
+
+- テーマボタンを押すとDOMとlocalStorageが変わる
+- 別タブのstorageイベントでテーマ表示が追従する
+- Space / F / Escapeのショートカットが期待通り動く
+- 入力欄、IME、修飾キー、キーリピートでは誤発火しない
+- TimerControlsのラベル、disabled状態、操作先が正しい
+
+### Python / Nodeの静的検査
+
+Python検査は今後、次のような**静的境界に向くもの**へ絞ります。
+
+- CSP
+- 保存形式 / サイズ上限
+- 保存順序
+- 複数タブの安全条件
+- バックアップ形式
+- セキュリティ上消してはいけないガード
+- 秘密情報混入防止
+
+「特定class文字列がある」「関数呼び出しがソース上でこの順番にある」といったUI実装詳細の検査は、可能な範囲でVitest / React Testing Libraryへ移します。
+
+## CI
+
+- `Quality checks`: Python / Nodeの静的・境界検査
+- `Frontend build`: dependencies → Vitest / RTL → audit → Vite build
+- `Tauri build`: macOS向けdesktop build
+
+## 今後の整理候補
+
+React / Tailwind移行そのものは完了扱いです。以降は移行ではなく保守性改善として進めます。
+
+1. 残るPython文字列検査を、挙動テストへ向くものから順に移行
+2. `useBackupControl.js` と `useCompletionEffectsControl.js` の責務分割
+3. package-lockとCI install方針を `npm ci` ベースへ統一
+4. Tauriのアイコン / bundle metadata / 配布署名の整備
