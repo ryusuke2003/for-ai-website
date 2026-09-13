@@ -36,11 +36,14 @@ jobs:
           workspaces: "./src-tauri -> target"
           cache-on-failure: true
 
-      - name: Install frontend dependencies
-        run: npm install --no-audit --no-fund
+      - name: Install frontend dependencies from lockfile
+        run: npm ci --no-audit --no-fund
 
-      - name: Build Tauri app bundle for macOS
-        run: npm run tauri -- build --bundles app --no-sign
+      - name: Verify Cargo.lock is synchronized
+        run: cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
+
+      - name: Build Tauri app bundle for macOS with locked dependencies
+        run: npm run tauri -- build --bundles app --no-sign -- --locked
 
       - name: Archive macOS app bundle
         shell: bash
