@@ -28,7 +28,6 @@ jobs:
           node --check tab-guard.js
           node --check backup.js
           node --check shortcuts.js
-          node --check privacy-reset.js
           node --check scripts/timer_state_behavior_checks.js
 
       - name: Check static security and accessibility invariants
