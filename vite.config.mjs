@@ -22,6 +22,7 @@ const legacyScripts = [
   'react-timer-display-bridge.js',
   'shortcuts.js',
   'privacy-reset.js',
+  'react-backup-panel-bridge.js',
 ];
 
 function injectReactEntry() {
@@ -33,7 +34,7 @@ function injectReactEntry() {
         return html
           .replace(
             '<html lang="ja">',
-            '<html lang="ja" data-react-theme="1" data-react-timer-controls="1" data-react-timer-display="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1">',
+            '<html lang="ja" data-react-theme="1" data-react-timer-controls="1" data-react-timer-display="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">',
           )
           .replace(
             '<script src="app.js" defer></script>',
@@ -50,6 +51,10 @@ function injectReactEntry() {
           .replace(
             '<script src="custom-timer.js" defer></script>',
             '<script src="custom-timer.js" defer></script>\n  <script src="react-timer-settings-bridge.js" defer></script>\n  <script src="react-timer-display-bridge.js" defer></script>',
+          )
+          .replace(
+            '<script src="privacy-reset.js" defer></script>',
+            '<script src="privacy-reset.js" defer></script>\n  <script src="react-backup-panel-bridge.js" defer></script>',
           )
           .replace(
             '<script type="module" data-vite-entry="/src/main.jsx"></script>',
