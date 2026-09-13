@@ -8,6 +8,7 @@ HERO_SOURCE = (ROOT / "src/components/HeroIntro.jsx").read_text(encoding="utf-8"
 FOOTER_SOURCE = (ROOT / "src/components/AppFooter.jsx").read_text(encoding="utf-8")
 THEME_SOURCE = (ROOT / "src/components/ThemeSwitcher.jsx").read_text(encoding="utf-8")
 THEME_COMPAT_SOURCE = (ROOT / "theme.js").read_text(encoding="utf-8")
+VITE_SOURCE = (ROOT / "vite.config.mjs").read_text(encoding="utf-8")
 
 
 def require(condition, message):
@@ -47,8 +48,12 @@ def main():
         require(token in THEME_SOURCE, f"ThemeSwitcherの移行要件がありません: {token}")
 
     require(
-        "if (!document.querySelector('#react-theme-root'))" in THEME_COMPAT_SOURCE,
-        "旧theme.jsはReactテーマUIがない場合だけ動く互換処理にしてください",
+        "document.documentElement.dataset.reactTheme !== '1'" in THEME_COMPAT_SOURCE,
+        "旧theme.jsはVite/Reactテーマ管理が無効な場合だけ動く互換処理にしてください",
+    )
+    require(
+        "data-react-theme=\"1\"" in VITE_SOURCE,
+        "Vite経由では旧theme.jsを停止するReactテーマ管理マーカーを付けてください",
     )
 
     for source_name, source in (
