@@ -20,7 +20,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check theme-bootstrap.js
-          node --check timer-bootstrap.js
+          node --check src/features/timer/timerStateGuard.js
           node --check src/features/timer/tabGuard.js
           node --check scripts/timer_state_behavior_checks.js
 
