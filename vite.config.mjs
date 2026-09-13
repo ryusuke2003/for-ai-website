@@ -24,10 +24,12 @@ function injectReactEntry() {
     name: 'inject-react-entry',
     enforce: 'pre',
     transformIndexHtml(html) {
-      return html.replace(
-        '<script type="module" data-vite-entry="/src/main.jsx"></script>',
-        '<script type="module" src="/src/main.jsx"></script>',
-      );
+      return html
+        .replace('<html lang="ja">', '<html lang="ja" data-react-theme="1">')
+        .replace(
+          '<script type="module" data-vite-entry="/src/main.jsx"></script>',
+          '<script type="module" src="/src/main.jsx"></script>',
+        );
     },
   };
 }
