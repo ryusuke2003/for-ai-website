@@ -15,11 +15,10 @@ import { TimerSettings } from './features/timer/TimerSettings.jsx';
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
+import { resetTodoSchedule } from './features/todo/resetTodoSchedule.js';
 import { TodoPage } from './features/todo/TodoPage.jsx';
 
 const BREAK_MINUTES = 5;
-const TODO_STORAGE_KEY = 'one.todos.v2';
-const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
@@ -113,6 +112,7 @@ export function App() {
   const focusMode = useFocusModeControl(timerState.completionReady);
   const [page, setPage] = useState(pageFromHash);
   const [todoResetVersion, setTodoResetVersion] = useState(0);
+  const [todoResetStatus, setTodoResetStatus] = useState('');
 
   useEffect(() => {
     function handleHashChange() {
@@ -139,11 +139,14 @@ export function App() {
   }
 
   function resetTodaySchedule() {
-    if (!window.confirm('今日の予定をすべて削除しますか？テンプレートは残ります。')) return;
+    const resetSucceeded = resetTodoSchedule();
+    if (!resetSucceeded) {
+      setTodoResetStatus('予定をリセットできませんでした。');
+      return;
+    }
 
-    localStorage.removeItem(TODO_STORAGE_KEY);
-    localStorage.removeItem(LEGACY_TODO_STORAGE_KEY);
     setTodoResetVersion((current) => current + 1);
+    setTodoResetStatus('今日の予定をリセットしました。');
   }
 
   const shellWidthClass = page === 'todo'
@@ -171,6 +174,7 @@ export function App() {
               今日の予定をリセット
             </button>
           </div>
+          <p className="sr-only" aria-live="polite">{todoResetStatus}</p>
           <TodoPage key={todoResetVersion} />
         </>
       ) : (
