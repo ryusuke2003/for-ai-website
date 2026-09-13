@@ -7,7 +7,7 @@ ONE は既存のタイマー・記録機能を壊さないことを優先し、�
 - React 19.3.0 / React DOM 19.3.0
 - Vite 8.3.0
 - `src/main.jsx` を React エントリーポイントとして使用
-- 既存の静的HTMLを残し、移行済みの表示専用領域は `hydrateRoot()` で段階的にReact管理へ移す
+- 既存の静的HTMLをフォールバックとして残し、移行済みの表示専用領域は `createRoot()` でReact管理へ切り替える
 
 ## 移行順
 
@@ -27,4 +27,4 @@ ONE は既存のタイマー・記録機能を壊さないことを優先し、�
 - 各段階で既存Quality checksとVite production buildを通す
 - npm依存関係はCIの `npm audit --audit-level=moderate` で継続監査する
 
-表示専用領域は、JavaScriptが無効またはViteを通さない場合にも最低限のHTMLが残るよう、`index.html` のフォールバックHTMLとReactコンポーネントを一致させてハイドレーションします。
+表示専用領域は、JavaScriptが無効またはViteを通さない場合にも最低限のHTMLが残るよう `index.html` に同等のフォールバックを置きます。手書きHTMLをReactのSSR出力として誤ってハイドレーションせず、Vite経由では `createRoot()` が同じ表示へ置き換えます。
