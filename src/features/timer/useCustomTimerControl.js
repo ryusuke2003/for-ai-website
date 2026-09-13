@@ -21,8 +21,8 @@ function parseMinutes(raw) {
     : null;
 }
 
-function selectMinutes(minutes) {
-  globalThis.ONE_REACT_TIMER_CONTROLS?.selectMinutes?.(minutes);
+function invokeTimerControl(action, ...args) {
+  return globalThis.ONE_REACT_TIMER_CONTROLS?.[action]?.(...args);
 }
 
 export function useCustomTimerControl(selectedMinutes, locked) {
@@ -58,7 +58,7 @@ export function useCustomTimerControl(selectedMinutes, locked) {
 
   const selectPreset = useCallback((minutes) => {
     if (locked) return false;
-    selectMinutes(minutes);
+    invokeTimerControl('selectMinutes', minutes);
     setStatus(DEFAULT_STATUS);
     return true;
   }, [locked]);
@@ -76,7 +76,7 @@ export function useCustomTimerControl(selectedMinutes, locked) {
       return { ok: false, focusInput: true };
     }
 
-    selectMinutes(minutes);
+    invokeTimerControl('applyCustomMinutes', minutes);
     setInvalid(false);
     setStatus(`${minutes}分に設定しました。`);
     return { ok: true, focusInput: false };
