@@ -18,7 +18,6 @@
   <script src="backup.js" defer></script>
   <script src="legacy/interop/settings-progress.js" defer></script>
   <script src="shortcuts.js" defer></script>
-  <script src="privacy-reset.js" defer></script>
   <script src="legacy/interop/progress-backup.js" defer></script>
   <script type="module" src="/src/main.jsx"></script>
 </head>
@@ -54,13 +53,6 @@
       <p id="backup-hint"></p>
       <p id="backup-status" role="status" aria-live="polite"></p>
 
-      <p id="data-reset-hint"></p>
-      <button id="data-reset-button" type="button" aria-describedby="data-reset-hint data-reset-status">この端末のデータを削除</button>
-      <div id="data-reset-confirm" hidden>
-        <button id="data-reset-confirm-button" type="button" aria-describedby="data-reset-hint data-reset-status">本当にすべて削除</button>
-        <button id="data-reset-cancel-button" type="button">キャンセル</button>
-      </div>
-      <p id="data-reset-status" role="status" aria-live="polite"></p>
       <p id="focus-mode-status" aria-live="polite"></p>
     </div>
   </div>
