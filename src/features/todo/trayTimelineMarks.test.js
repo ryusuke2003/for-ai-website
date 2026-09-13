@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildTrayTimelineMarks } from './trayTimelineMarks.js';
+import { buildTrayTimelineMarks, shouldHideTrayTimelineMarkLabel } from './trayTimelineMarks.js';
 
 describe('buildTrayTimelineMarks', () => {
   it('最初と最後の時刻に加えて、十分離れた30分刻みを返す', () => {
@@ -20,5 +20,21 @@ describe('buildTrayTimelineMarks', () => {
 
   it('30分未満の範囲では最初と最後だけ返す', () => {
     expect(buildTrayTimelineMarks(90, 110)).toEqual([90, 110]);
+  });
+});
+
+describe('shouldHideTrayTimelineMarkLabel', () => {
+  it('現在時刻ラベルと描画上で重なる30分目盛りを隠す', () => {
+    expect(shouldHideTrayTimelineMarkLabel(150, 152, 4)).toBe(true);
+    expect(shouldHideTrayTimelineMarkLabel(150, 154, 4)).toBe(true);
+  });
+
+  it('十分離れた30分目盛りは表示する', () => {
+    expect(shouldHideTrayTimelineMarkLabel(150, 155, 4)).toBe(false);
+    expect(shouldHideTrayTimelineMarkLabel(150, 144, 4)).toBe(false);
+  });
+
+  it('不正な縮尺では既存ラベルを消さない', () => {
+    expect(shouldHideTrayTimelineMarkLabel(150, 152, 0)).toBe(false);
   });
 });
