@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-react-progress-overview="1">
+<html lang="ja">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -12,17 +12,10 @@
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="timer-progress.css">
   <script src="timer-bootstrap.js" defer></script>
-  <script src="app.js" defer></script>
   <script src="tab-guard.js" defer></script>
-  <script src="legacy/interop/settings-progress.js" defer></script>
   <script type="module" src="/src/main.jsx"></script>
 </head>
 <body>
-  <div id="root">
-    <!-- Temporary hidden runtime state for the remaining classic progress adapter. -->
-    <div id="legacy-runtime-scaffold" hidden aria-hidden="true">
-      <strong id="done-count">0</strong>
-    </div>
-  </div>
+  <div id="root"></div>
 </body>
 </html>
