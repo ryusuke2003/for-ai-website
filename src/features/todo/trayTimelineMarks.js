@@ -1,4 +1,5 @@
 const ENDPOINT_PRIORITY_GAP_MINUTES = 15;
+const CURRENT_TIME_LABEL_CLEARANCE_PX = 18;
 
 export function buildTrayTimelineMarks(firstMinute, lastMinute) {
   const first = Math.max(0, Number(firstMinute) || 0);
@@ -15,4 +16,15 @@ export function buildTrayTimelineMarks(firstMinute, lastMinute) {
 
   if (last !== first) marks.push(last);
   return marks;
+}
+
+export function shouldHideTrayTimelineMarkLabel(markMinute, currentMinute, pixelsPerMinute) {
+  const mark = Number(markMinute);
+  const current = Number(currentMinute);
+  const scale = Number(pixelsPerMinute);
+  if (!Number.isFinite(mark) || !Number.isFinite(current) || !Number.isFinite(scale) || scale <= 0) {
+    return false;
+  }
+
+  return Math.abs(mark - current) * scale <= CURRENT_TIME_LABEL_CLEARANCE_PX;
 }
