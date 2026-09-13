@@ -9,11 +9,6 @@ if (document.documentElement.dataset.reactBackupPanel === '1') {
       undoHidden: backupUndoButton.hidden,
       undoDisabled: backupUndoButton.disabled,
       backupStatus: backupStatus.textContent ?? '',
-      resetButtonHidden: dataResetButton.hidden,
-      resetConfirmHidden: dataResetConfirm.hidden,
-      resetConfirmDisabled: dataResetConfirmButton.disabled,
-      resetCancelDisabled: dataResetCancelButton.disabled,
-      resetStatus: dataResetStatus.textContent ?? '',
     };
   }
 
@@ -49,8 +44,6 @@ if (document.documentElement.dataset.reactBackupPanel === '1') {
     'setBackupStatus',
     'refreshBackupControlAvailability',
     'refreshRecoveryAvailability',
-    'setDataResetStatus',
-    'setDataResetConfirmationVisible',
   ]) {
     wrapBackupMutation(functionName);
   }
@@ -86,9 +79,6 @@ if (document.documentElement.dataset.reactBackupPanel === '1') {
 
   forwardDetachedFocus(backupExportButton, 'export');
   forwardDetachedFocus(backupUndoButton, 'undo');
-  forwardDetachedFocus(dataResetButton, 'reset');
-  forwardDetachedFocus(dataResetConfirmButton, 'reset-confirm');
-  forwardDetachedFocus(dataResetCancelButton, 'reset-cancel');
 
   globalThis.ONE_REACT_BACKUP_PANEL = Object.freeze({
     exportBackup() {
@@ -101,18 +91,6 @@ if (document.documentElement.dataset.reactBackupPanel === '1') {
     },
     undoRestore() {
       backupUndoButton.click();
-      refreshBackupPanel();
-    },
-    openReset() {
-      dataResetButton.click();
-      refreshBackupPanel();
-    },
-    confirmReset() {
-      dataResetConfirmButton.click();
-      refreshBackupPanel();
-    },
-    cancelReset() {
-      dataResetCancelButton.click();
       refreshBackupPanel();
     },
   });
