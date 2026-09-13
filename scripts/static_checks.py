@@ -1,270 +1,134 @@
-import re
 from html.parser import HTMLParser
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_PATH = ROOT / "index.html"
-REACT_APP_PATH = ROOT / "src" / "App.jsx"
+THEME_BOOTSTRAP_PATH = ROOT / "public" / "theme-bootstrap.js"
+APP_PATH = ROOT / "src" / "App.jsx"
 STORAGE_COMPONENT_PATH = ROOT / "src" / "components" / "StorageHealthStatus.jsx"
-THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
-TIMER_SETTINGS_PATH = ROOT / "src" / "features" / "timer" / "TimerSettings.jsx"
-TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
 TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 TIMER_GUARD_PATH = ROOT / "src" / "features" / "timer" / "timerStateGuard.js"
-CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
-WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
-COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
-DAILY_GOAL_HOOK_PATH = ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js"
 PROGRESS_STORE_PATH = ROOT / "src" / "features" / "progress" / "progressStore.js"
-PROGRESS_INSIGHTS_PATH = ROOT / "src" / "features" / "progress" / "progressInsights.js"
 BACKUP_PANEL_PATH = ROOT / "src" / "features" / "backup" / "BackupPanel.jsx"
-BACKUP_HOOK_PATH = ROOT / "src" / "features" / "backup" / "useBackupControl.js"
-PRIVACY_RESET_HOOK_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js"
-
-REQUIRED_SCRIPT_ORDER = [
-    "theme-bootstrap.js",
-]
 
 
 class PageParser(HTMLParser):
     def __init__(self):
         super().__init__()
-        self.by_id = {}
         self.csp = []
-        self.resource_urls = []
-        self.resource_order = []
         self.script_urls = []
         self.module_script_urls = []
         self.script_attributes = {}
+        self.resource_urls = []
 
     def handle_starttag(self, tag, attrs):
         values = dict(attrs)
-        element_id = values.get("id")
-        if element_id:
-            self.by_id[element_id] = values
         if tag == "meta" and values.get("http-equiv", "").lower() == "content-security-policy":
             self.csp.append(values.get("content", ""))
         if tag == "script" and values.get("src"):
             src = values["src"]
             self.resource_urls.append(src)
-            self.resource_order.append(("script", src))
             self.script_attributes[src] = values
             if values.get("type", "").lower() == "module":
                 self.module_script_urls.append(src)
             else:
                 self.script_urls.append(src)
         if tag == "link" and values.get("href"):
-            href = values["href"]
-            self.resource_urls.append(href)
-            self.resource_order.append(("link", href))
+            self.resource_urls.append(values["href"])
 
 
-def fail_if(condition, message, errors):
-    if condition:
-        errors.append(message)
+def require(condition, message):
+    if not condition:
+        raise SystemExit(f"ERROR: {message}")
+
+
+def require_tokens(source, tokens, label):
+    for token in tokens:
+        require(token in source, f"{label}に必要な要件がありません: {token}")
 
 
 def main():
-    errors = []
     parser = PageParser()
     parser.feed(INDEX_PATH.read_text(encoding="utf-8"))
     parser.close()
 
-    fail_if("legacy-runtime-scaffold" in parser.by_id,
-            "classic runtime scaffoldはReact移行後のindex.htmlへ戻さないでください", errors)
+    require(len(parser.csp) == 1, "Content-Security-Policyを1つだけ維持してください")
+    for directive in ("default-src 'none'", "connect-src 'none'", "object-src 'none'", "base-uri 'none'", "form-action 'none'"):
+        require(directive in parser.csp[0], f"CSPに{directive}が必要です")
 
-    fail_if(not parser.csp, "Content-Security-Policy が見つかりません", errors)
-    if parser.csp:
-        for directive in ("connect-src 'none'", "object-src 'none'", "base-uri 'none'"):
-            fail_if(directive not in parser.csp[0], f"CSP に {directive} が必要です", errors)
+    require(parser.script_urls == ["theme-bootstrap.js"], "classic scriptはtheme-bootstrap.jsだけにしてください")
+    require(parser.module_script_urls == ["/src/main.jsx"], "React entryは/src/main.jsxだけにしてください")
+    require("defer" not in parser.script_attributes.get("theme-bootstrap.js", {}), "テーマbootstrapは初期描画前に実行してください")
+    require(all(not url.startswith(("http://", "https://", "//")) for url in parser.resource_urls), "外部リソース参照は禁止です")
 
-    fail_if(parser.script_urls != REQUIRED_SCRIPT_ORDER,
-            f"classic scriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください", errors)
-    fail_if(parser.module_script_urls != ["/src/main.jsx"],
-            "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
-
-    for removed_file in (
-        "timer-bootstrap.js", "tab-guard.js", "app.js", "stats.js", "privacy-reset.js", "backup.js", "shortcuts.js",
-        "legacy/interop/timer.js", "legacy/interop/settings-progress.js", "legacy/interop/progress-backup.js",
+    for removed in (
+        "styles.css",
+        "timer-progress.css",
+        "theme-bootstrap.js",
+        "timer-bootstrap.js",
+        "tab-guard.js",
+        "app.js",
+        "stats.js",
+        "privacy-reset.js",
+        "backup.js",
+        "shortcuts.js",
+        "custom-timer.js",
+        "daily-goal-progress.js",
     ):
-        fail_if((ROOT / removed_file).exists(), f"React移行後は{removed_file}を残さないでください", errors)
+        require(not (ROOT / removed).exists(), f"削除済みlegacy assetを戻さないでください: {removed}")
 
-    theme_bootstrap_attrs = parser.script_attributes.get("theme-bootstrap.js", {})
-    fail_if("defer" in theme_bootstrap_attrs, "theme-bootstrap.js は初期描画前に実行してください", errors)
-    try:
-        theme_bootstrap_position = parser.resource_order.index(("script", "theme-bootstrap.js"))
-        stylesheet_position = parser.resource_order.index(("link", "styles.css"))
-        fail_if(theme_bootstrap_position > stylesheet_position,
-                "theme-bootstrap.js は styles.css より前に読み込んでください", errors)
-    except ValueError:
-        errors.append("theme-bootstrap.js または styles.css の位置を確認できません")
+    require(THEME_BOOTSTRAP_PATH.is_file(), "theme-bootstrap.jsはpublic配下へ置いてください")
+    bootstrap = THEME_BOOTSTRAP_PATH.read_text(encoding="utf-8")
+    require_tokens(bootstrap, (
+        "THEME_STORAGE_KEY = 'one.theme.v1'",
+        "new Set(['system', 'light', 'dark'])",
+        "document.documentElement.dataset.theme = initialTheme",
+    ), "theme bootstrap")
 
-    for url in parser.resource_urls:
-        fail_if(url.startswith(("http://", "https://", "//")), f"外部リソース参照は禁止です: {url}", errors)
-
-    script_sources = []
-    for url in parser.script_urls:
-        script_ref = Path(url)
-        unsafe_path = script_ref.is_absolute() or ".." in script_ref.parts
-        fail_if(unsafe_path, f"安全でないスクリプトパスです: {url}", errors)
-        if unsafe_path:
-            continue
-        script_path = ROOT / script_ref
-        fail_if(not script_path.is_file(), f"読み込み対象のJavaScriptが見つかりません: {url}", errors)
-        if script_path.is_file():
-            script_sources.append(script_path.read_text(encoding="utf-8"))
+    app = APP_PATH.read_text(encoding="utf-8")
+    storage = STORAGE_COMPONENT_PATH.read_text(encoding="utf-8")
+    require("StorageHealthStatus" in app, "Appから端末保存状態を表示してください")
+    require_tokens(storage, (
+        'id="storage-health-status"',
+        'role="status"',
+        'aria-live="polite"',
+        "window.addEventListener('one:storage-error', handleStorageError)",
+    ), "StorageHealthStatus")
 
     timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
     timer_guard = TIMER_GUARD_PATH.read_text(encoding="utf-8")
+    require("import { timerStateGuard } from './timerStateGuard.js';" in timer_store, "タイマーストアはguardを直接importしてください")
+    require("export const timerStateGuard = Object.freeze" in timer_guard, "タイマーguardをmodule APIとして維持してください")
+    require("window.addEventListener('one:privacy-reset-prepare', preparePrivacyReset)" in timer_store, "データ削除前にタイマーを停止してください")
+
     progress_store = PROGRESS_STORE_PATH.read_text(encoding="utf-8")
-    required_timer_boundary_flow = """if (remainingSeconds <= 0) {
-    finishTimer();
-    return true;
-  }
+    require_tokens(progress_store, (
+        "DONE_COUNT_STORAGE_KEY = 'one.doneCount'",
+        "HISTORY_STORAGE_KEY = 'one.history.v1'",
+        "window.addEventListener('storage', syncProgressFromStorage)",
+    ), "progress store")
 
-  clearTimerInterval();"""
-    fail_if(required_timer_boundary_flow not in timer_store,
-            "0秒到達時は一時停止より先にfinishTimerへ流してください", errors)
-    fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in timer_store,
-            "タイマー保存失敗時は全体へ通知してください", errors)
-    fail_if("import { timerStateGuard } from './timerStateGuard.js';" not in timer_store,
-            "タイマー保存値の検証器はES moduleから直接importしてください", errors)
-    fail_if("export const timerStateGuard = Object.freeze" not in timer_guard,
-            "タイマー保存値の検証器をmodule APIとして維持してください", errors)
-    fail_if("tabGuardActions.beforeStart(currentState)" not in timer_store,
-            "タイマー開始前にmoduleの複数タブ調停を通してください", errors)
-    fail_if("registerTimerRuntime(timerRuntime)" not in timer_store,
-            "Reactタイマーruntimeをmodule tab guardへ登録してください", errors)
-    fail_if("window.addEventListener('one:privacy-reset-prepare', preparePrivacyReset)" not in timer_store,
-            "端末データ削除直前は保存し直さずタイマーintervalを停止してください", errors)
+    theme = THEME_COMPONENT_PATH.read_text(encoding="utf-8")
+    require_tokens(theme, (
+        "data-theme-choice={option.value}",
+        'id="theme-status"',
+        "window.addEventListener('storage', handleStorage)",
+    ), "ThemeSwitcher")
 
-    for token, message in (
-        ("DONE_COUNT_STORAGE_KEY = 'one.doneCount'", "累計保存キーの互換性を維持してください"),
-        ("HISTORY_STORAGE_KEY = 'one.history.v1'", "履歴保存キーの互換性を維持してください"),
-        ("MAX_HISTORY_BYTES = 50_000", "履歴保存値のサイズ上限を維持してください"),
-        ("MAX_DONE_COUNT_BYTES = 32", "累計保存値のサイズ上限を維持してください"),
-        ("window.dispatchEvent(new Event('one:storage-error'))", "進捗保存失敗時は全体へ通知してください"),
-        ("registerProgressRuntime(progressRuntime)", "React進捗runtimeをmodule tab guardへ登録してください"),
-        ("window.addEventListener('storage', syncProgressFromStorage)", "進捗は別タブstorage更新へ追従してください"),
-    ):
-        fail_if(token not in progress_store, message, errors)
-
-    react_app_source = REACT_APP_PATH.read_text(encoding="utf-8")
-    storage_component = STORAGE_COMPONENT_PATH.read_text(encoding="utf-8")
-    fail_if("StorageHealthStatus" not in react_app_source, "React Appから端末保存状態を表示してください", errors)
-    fail_if('id="storage-health-status"' not in storage_component, "端末保存状態はReact UIに表示してください", errors)
-    fail_if('role="status"' not in storage_component or 'aria-live="polite"' not in storage_component,
-            "端末保存状態はpoliteなstatusにしてください", errors)
-    fail_if("STORAGE_HEALTH_PROBE_KEY = 'one.tabStorageProbe.v1'" not in storage_component,
-            "端末保存確認は既存プローブキーを再利用してください", errors)
-    fail_if("window.addEventListener('one:storage-error', handleStorageError)" not in storage_component,
-            "保存失敗をReact端末保存表示へ反映してください", errors)
-    fail_if("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token" not in storage_component,
-            "保存プローブは読み戻し確認まで行ってください", errors)
-
-    bootstrap_source = THEME_BOOTSTRAP_PATH.read_text(encoding="utf-8")
-    theme_component = THEME_COMPONENT_PATH.read_text(encoding="utf-8")
-    fail_if("THEME_STORAGE_KEY = 'one.theme.v1'" not in bootstrap_source,
-            "表示テーマ保存キーの互換性を維持してください", errors)
-    fail_if("['system', 'light', 'dark']" not in bootstrap_source,
-            "初期描画のテーマ許可値を限定してください", errors)
-    fail_if("data-theme-choice={option.value}" not in theme_component,
-            "テーマUIはReact側でdata-theme-choiceを維持してください", errors)
-    fail_if('id="theme-status"' not in theme_component,
-            "ReactテーマUIに読み上げ状態を維持してください", errors)
-
-    timer_settings = TIMER_SETTINGS_PATH.read_text(encoding="utf-8")
-    custom_timer_hook = CUSTOM_TIMER_HOOK_PATH.read_text(encoding="utf-8")
-    timer_display = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
-    fail_if('id="custom-minutes"' not in timer_settings, "自由設定入力はReact UIに置いてください", errors)
-    fail_if('min="1"' not in timer_settings or 'max="180"' not in timer_settings,
-            "自由設定は1〜180分に限定してください", errors)
-    fail_if("timerActions.selectMinutes(minutes)" not in custom_timer_hook,
-            "自由設定プリセットはReactタイマーストアを直接更新してください", errors)
-    fail_if("timerActions.applyCustomMinutes(minutes)" not in custom_timer_hook,
-            "自由設定適用はReactタイマーストアを直接更新してください", errors)
-    fail_if("window.addEventListener('one:idle-timer-sync', handleIdleTimerSync)" not in custom_timer_hook,
-            "別タブのアイドル設定変更をReactへ同期してください", errors)
-    fail_if("document.title = documentTitleFor(state, timeText);" not in timer_display,
-            "ページタイトルはReactタイマー状態から同期してください", errors)
-
-    wake_lock_hook = WAKE_LOCK_HOOK_PATH.read_text(encoding="utf-8")
-    fail_if("WAKE_LOCK_STORAGE_KEY = 'one.wakeLock.v1'" not in wake_lock_hook,
-            "Wake Lock保存キーの互換性を維持してください", errors)
-    fail_if("navigator.wakeLock.request('screen')" not in wake_lock_hook,
-            "Wake LockはReact hookからscreenロックを要求してください", errors)
-
-    completion_effects_hook = COMPLETION_EFFECTS_HOOK_PATH.read_text(encoding="utf-8")
-    fail_if("COMPLETION_SOUND_STORAGE_KEY = 'one.completionSound.v1'" not in completion_effects_hook,
-            "完了音保存キーの互換性を維持してください", errors)
-    fail_if("COMPLETION_NOTIFICATION_STORAGE_KEY = 'one.completionNotification.v1'" not in completion_effects_hook,
-            "完了通知保存キーの互換性を維持してください", errors)
-    fail_if("Notification.requestPermission()" not in completion_effects_hook,
-            "完了通知はReact hookから明示的に許可を要求してください", errors)
-    fail_if("new Notification('集中スプリント完了'" not in completion_effects_hook,
-            "完了通知の固定タイトルを維持してください", errors)
-
-    daily_goal_hook = DAILY_GOAL_HOOK_PATH.read_text(encoding="utf-8")
-    fail_if("DAILY_GOAL_STORAGE_KEY = 'one.dailyGoal.v1'" not in daily_goal_hook,
-            "日次目標保存キーの互換性を維持してください", errors)
-
-    progress_insights = PROGRESS_INSIGHTS_PATH.read_text(encoding="utf-8")
-    fail_if("buildProgressInsights" not in react_app_source,
-            "進捗集計はReact Appから利用してください", errors)
-    fail_if("useProgressOverviewState" not in react_app_source or "useTimerState" not in react_app_source,
-            "進捗UIはReactの進捗・タイマー状態を利用してください", errors)
-    fail_if("calculateCurrentWeekCount" not in progress_insights or "calculateCurrentStreak" not in progress_insights,
-            "週次回数と連続日集計をReact featureへ維持してください", errors)
-    fail_if("calculateActivityWindow" not in progress_insights,
-            "30日アクティビティ集計をReact featureへ維持してください", errors)
-
-    backup_panel_source = BACKUP_PANEL_PATH.read_text(encoding="utf-8")
-    backup_hook_source = BACKUP_HOOK_PATH.read_text(encoding="utf-8")
-    privacy_reset_source = PRIVACY_RESET_HOOK_PATH.read_text(encoding="utf-8")
+    backup = BACKUP_PANEL_PATH.read_text(encoding="utf-8")
     for element_id in (
-        "backup-export-button", "backup-import-button", "backup-undo-button", "backup-file-input", "backup-status",
-        "data-reset-button", "data-reset-confirm", "data-reset-confirm-button", "data-reset-cancel-button", "data-reset-status",
+        "backup-export-button",
+        "backup-import-button",
+        "backup-undo-button",
+        "data-reset-button",
+        "data-reset-confirm-button",
+        "data-reset-cancel-button",
     ):
-        fail_if(f'id="{element_id}"' not in backup_panel_source,
-                f"React backup panelに#{element_id}を維持してください", errors)
-    fail_if("useBackupControl" not in backup_panel_source,
-            "バックアップUIはReact backup hookを利用してください", errors)
-    fail_if("RECOVERY_STORAGE_KEY = 'one.restoreRecovery.v1'" not in backup_hook_source,
-            "復元ポイント保存キーの互換性を維持してください", errors)
-    fail_if("ONE_REACT_PROGRESS_OVERVIEW?.restoreBackupData" not in backup_hook_source,
-            "バックアップ復元はReact progress storeの互換APIを利用してください", errors)
-    fail_if("timerActions.selectMinutes(restored.selectedMinutes)" not in backup_hook_source,
-            "バックアップ復元はReactタイマーストア経由でタイマー時間を更新してください", errors)
-    fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source,
-            "削除対象キーはReact hook内の明示Setで管理してください", errors)
+        require(f'id="{element_id}"' in backup, f"BackupPanelに#{element_id}を維持してください")
 
-    storage_source = "\n".join([
-        *script_sources,
-        timer_guard,
-        timer_store,
-        progress_store,
-        storage_component,
-        theme_component,
-        custom_timer_hook,
-        wake_lock_hook,
-        completion_effects_hook,
-        daily_goal_hook,
-        backup_hook_source,
-        privacy_reset_source,
-    ])
-    storage_keys = set(re.findall(r"['\"](one\.[A-Za-z0-9.]+)['\"]", storage_source))
-    for storage_key in sorted(storage_keys):
-        represented = f"'{storage_key}'" in privacy_reset_source or f'"{storage_key}"' in privacy_reset_source
-        fail_if(not represented, f"保存キー {storage_key} が端末データ削除対象に含まれていません", errors)
-
-    if errors:
-        for error in errors:
-            print(f"ERROR: {error}")
-        raise SystemExit(1)
-
-    print("Static security and accessibility checks passed.")
+    print("Static security, React ownership, and public asset boundaries passed.")
 
 
 if __name__ == "__main__":

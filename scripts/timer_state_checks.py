@@ -7,7 +7,7 @@ TIMER_GUARD_PATH = ROOT / "src" / "features" / "timer" / "timerStateGuard.js"
 TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 TIMER_STATE_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useTimerState.js"
 TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
-PROGRESS_STYLE_PATH = ROOT / "timer-progress.css"
+PROGRESS_STYLE_PATH = ROOT / "src" / "tailwind.css"
 EXPECTED_LIMIT = 10_000
 
 
@@ -36,6 +36,7 @@ def main():
     timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
     timer_state_hook = TIMER_STATE_HOOK_PATH.read_text(encoding="utf-8")
     timer_display = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
+    progress_styles = PROGRESS_STYLE_PATH.read_text(encoding="utf-8")
 
     require(not (ROOT / "timer-bootstrap.js").exists(),
             "タイマー保存値の検証器をclassic timer-bootstrap.jsへ戻さないでください")
@@ -88,7 +89,9 @@ def main():
 
     require("aria-live" not in source_range(timer_display, '<progress', '/>'),
             "#timer-progress に aria-live を付けないでください")
-    require(PROGRESS_STYLE_PATH.is_file(), "timer-progress.css が見つかりません")
+    require(PROGRESS_STYLE_PATH.is_file(), "src/tailwind.css が見つかりません")
+    require(".timer-progress {" in progress_styles, "タイマー進捗スタイルをsrc/tailwind.cssに維持してください")
+    require(not (ROOT / "timer-progress.css").exists(), "タイマー進捗CSSを独立ファイルへ戻さないでください")
 
     end_time = source_range(timer_display, "function endTimePresentation(state)", "function documentTitleFor")
     for token in (
@@ -119,7 +122,7 @@ def main():
     require(not (ROOT / "custom-timer.js").exists(),
             "React移行後はclassic custom-timer.jsを残さないでください")
 
-    print("Timer storage validation is module-owned while restore, controls, progress, end time, and title stay React-store owned.")
+    print("Timer storage validation is module-owned while progress styling stays in the Tailwind CSS entry.")
 
 
 if __name__ == "__main__":

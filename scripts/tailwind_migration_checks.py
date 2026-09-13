@@ -7,7 +7,6 @@ PACKAGE = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
 VITE = (ROOT / "vite.config.mjs").read_text(encoding="utf-8")
 MAIN = (ROOT / "src/main.jsx").read_text(encoding="utf-8")
 TAILWIND = (ROOT / "src/tailwind.css").read_text(encoding="utf-8")
-STYLES_SHIM = ROOT / "styles.css"
 
 
 def require(condition, message):
@@ -21,6 +20,7 @@ def main():
     require(dev_dependencies.get("@tailwindcss/vite") == "4.3.3", "Tailwind Vite plugin 4.3.3を固定してください")
     require("import tailwindcss from '@tailwindcss/vite';" in VITE, "ViteでTailwind pluginを読み込んでください")
     require("tailwindcss()" in VITE, "Vite pluginsにTailwindを登録してください")
+    require("emitClassicScriptsFromIndex" not in VITE, "public assetへ移したclassic scriptの独自emit処理を戻さないでください")
     require("import './tailwind.css';" in MAIN, "ReactエントリからTailwind CSSを読み込んでください")
 
     for token in (
@@ -37,13 +37,12 @@ def main():
         require(token in TAILWIND, f"src/tailwind.cssの共通スタイルが不足しています: {token}")
 
     require('tailwindcss/preflight.css' not in TAILWIND, "Preflightを意図せず有効化しないでください")
-    require(STYLES_SHIM.exists(), "初期描画順の互換styles.cssを維持してください")
-    shim = STYLES_SHIM.read_text(encoding="utf-8")
-    require("Compatibility shim" in shim, "styles.cssは互換shimであることを明示してください")
-    require(STYLES_SHIM.stat().st_size < 160, "styles.cssへ実スタイルを戻さないでください")
-    require((ROOT / "timer-progress.css").exists(), "進捗CSSの完全撤去は後続ステップまで分離してください")
+    require(not (ROOT / "styles.css").exists(), "legacy styles.cssを復活させないでください")
+    require(not (ROOT / "timer-progress.css").exists(), "timer-progress.cssを復活させないでください")
+    require((ROOT / "public" / "theme-bootstrap.js").exists(), "theme bootstrapはpublic assetとして維持してください")
+    require(not (ROOT / "theme-bootstrap.js").exists(), "theme bootstrapをrootへ戻さないでください")
 
-    print("Tailwind migration checks passed: runtime theme/focus styles are centralized in src/tailwind.css.")
+    print("Tailwind migration checks passed: runtime styles use src/tailwind.css and the theme bootstrap is a Vite public asset.")
 
 
 if __name__ == "__main__":
