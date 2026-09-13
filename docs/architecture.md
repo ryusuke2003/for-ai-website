@@ -29,12 +29,13 @@ src/
 │   ├── trayTimerSync.js
 │   ├── trayTimerSync.test.js
 │   └── trayWindow.js
+├── storage/
+│   └── useStorageHealthProbe.js
 ├── test/
 │   └── setup.js
 ├── components/
 │   ├── AppFooter.jsx
 │   ├── AppNavigation.jsx
-│   ├── StorageHealthStatus.jsx
 │   └── ThemeSwitcher.jsx
 └── features/
     ├── timer/
@@ -58,7 +59,8 @@ src/
     │   ├── todoSchedule.js
     │   ├── todoLiveDragPreview.js
     │   ├── resetTodoSchedule.js
-    │   └── trayTimelineMarks.js
+    │   ├── trayTimelineMarks.js
+    │   └── useCurrentMinute.js
     └── backup/
         ├── BackupPanel.jsx
         ├── useBackupControl.js
@@ -104,8 +106,15 @@ Todoは `TodoPage.jsx` を中心に、時間割・テンプレート・ドラッ
 - `todoLiveDragPreview.js`: ドラッグ中の押し出しプレビュー
 - `resetTodoSchedule.js`: 今日の予定のリセットと1世代復元
 - `trayTimelineMarks.js`: Tray Todo用の時刻目盛り計算
+- `useCurrentMinute.js`: Tray Todoを開きっぱなしにしても分境界ごとに現在時刻を更新
 
 Todoとテンプレートは `localStorage` に保存し、TrayのコンパクトTodoも同じ保存領域を参照します。
+
+## 保存領域の初期確認
+
+`src/storage/useStorageHealthProbe.js` はアプリ起動時に `localStorage` の読み書き可否を確認し、旧タスクキー `one.task` / `one.taskDate.v1` を掃除します。
+
+この処理はUIを描画しません。保存状態の説明文や `aria-live` は持たず、利用不可またはlegacy cleanup失敗時だけ `one:storage-error` イベントを通知します。
 
 ## 複数タブ調停
 
@@ -145,6 +154,10 @@ Todoとテンプレートは `localStorage` に保存し、Trayのコンパク�
 `src/desktop/trayNavigation.js` は `#tray-timer` / `#tray-todo` の切り替えを担当します。Trayを隠しただけなら同じWebViewが生き続けるため、再表示時は直前のコンパクト画面を維持します。直前のTray画面がない場合はTodoを初期表示します。
 
 `src/desktop/trayWindow.js` はコンパクト表示から通常ウィンドウへ戻るための `open_full_window` command呼び出しを担当します。
+
+## リリース版数
+
+Tauriアプリの版数は `src-tauri/tauri.conf.json` を正本とします。patch版更新は `npm run version:patch` で行い、`tauri.conf.json`、`Cargo.toml`、`Cargo.lock` を一括同期します。詳細は [`release-versioning.md`](release-versioning.md) を参照してください。
 
 ## セキュリティ境界
 
