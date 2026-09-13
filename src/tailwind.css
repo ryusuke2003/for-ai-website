@@ -168,10 +168,17 @@
   }
 
   [aria-label="保存したテンプレート"] {
+    display: flex;
+    flex-direction: column-reverse;
+    gap: .625rem;
     max-height: 320px;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-right: 4px;
+  }
+
+  [aria-label="保存したテンプレート"] > * {
+    margin-block: 0 !important;
   }
 
   body.focus-mode .shell {
