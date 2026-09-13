@@ -9,17 +9,18 @@ ONE は vanilla JavaScript から React へ段階移行してきたため、移�
 - Tailwind CSS 4.3.3 / `@tailwindcss/vite` 4.3.3
 - `src/App.jsx` + 単一 `#root` へ統合済み
 - timer / progress / backup のReactコードは `src/features/*` に集約
-- Reactとclassic JavaScriptの互換処理は `legacy/interop/` に集約
-- `index.html` 自体がReact entryとclassic scriptの読み込み順を定義する
+- `index.html` 自体がReact entryと残存classic scriptの読み込み順を定義する
 - production向けclassic scriptは `index.html` から自動検出してVite/Rollupのassetとして出力する
 - Theme / 端末保存状態 / Wake Lock / 完了音・完了通知はReact側へ移行済み
 - 自由設定タイマー、タイマー進捗、終了予定時刻、ページタイトルもReact側へ移行済み
 - 日次目標の入力・保存・別タブ同期・進捗表示もReact側へ移行済み
 - 今週回数・連続日・直近7日・直近30日の集計と表示もReact側へ移行済み
 - 端末データ削除の状態・確認UI・別タブ通知もReact側へ移行済み
-- `stats.js` / `privacy-reset.js` は削除済み
+- JSONバックアップの書き出し・復元・1世代UndoもReact側へ移行済み
+- `stats.js` / `privacy-reset.js` / `backup.js` は削除済み
+- `legacy/interop/progress-backup.js` も削除済み
 - Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
-- タイマー保存形式、複数タブ排他、通知権限、バックアップのロールバックなどの安全性ロジックは維持する
+- タイマー保存形式、複数タブ排他、バックアップの復元前退避・ロールバックなどの安全性ロジックは維持する
 
 ## いったん止めるもの
 
@@ -35,7 +36,7 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
    - React管理UIを1つのコンポーネントツリーへ統合
 3. **Cleanup 3: feature / interop 単位へ整理**（完了）
    - timer / progress / backup のコンポーネントと購読hookを `src/features/*` へ移動
-   - ルート直下に散らばっていた8個の `react-*-bridge.js` / `react-*-state-source.js` を3個の `legacy/interop/*.js` へ集約
+   - ルート直下に散らばっていた8個の `react-*-bridge.js` / `react-*-state-source.js` を一時interopへ集約
 4. **Cleanup 4A: `index.html` をViteの正本にする**（完了）
    - `injectReactEntry()` を削除
    - React entry、interop、React有効化用data属性を `index.html` に直接記述
@@ -55,7 +56,8 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
    - 日次目標の状態・保存・進捗をReactへ移行済み
    - 今週回数・連続日・7日/30日集計をReactへ移行し、`stats.js` を削除済み
    - 端末データ削除をReactへ移行し、`privacy-reset.js` を削除済み
-   - 次にbackup書き出し・復元runtime / interopを整理する
+   - バックアップ書き出し・復元・UndoをReactへ移行し、`backup.js` / `progress-backup.js` を削除済み
+   - 次にtimer / progress本体のclassic runtimeと残りinteropを整理する
 8. **Tailwind移行を再開**
    - 7B: タイマーUI
    - 7C: 集中記録・統計・バックアップUI
@@ -89,7 +91,7 @@ src/
 │   │   └── useProgressOverviewState.js
 │   └── backup/
 │       ├── BackupPanel.jsx
-│       ├── useBackupPanelState.js
+│       ├── useBackupControl.js
 │       └── usePrivacyResetControl.js
 └── tailwind.css
 ```
@@ -103,19 +105,32 @@ src/
 ```text
 legacy/interop/
 ├── timer.js
-├── settings-progress.js
-└── progress-backup.js
+└── settings-progress.js
 ```
 
-これらはclassic JavaScriptが保持する既存状態・イベント経路をReactへ公開するための一時的なアダプターです。複数タブ排他、完了記録、バックアップ検証などの既存の安全な処理を迂回しないために残しています。
+これらはclassic JavaScriptが保持するタイマー本体・記録処理をReactへ公開するための一時的なアダプターです。複数タブ排他や完了記録の安全な処理を迂回しないために残しています。
 
-`timer.js` はタイマー本体への操作委譲と状態snapshotに加え、端末データ削除直前に保存し直さずtimer intervalだけを停止する準備eventを受け取ります。`settings-progress.js` は記録/破棄アクション、累計・履歴snapshot、自由設定バックアップ互換を担当します。`progress-backup.js` はバックアップ書き出し・復元・取り消しだけの互換レイヤーまで縮小しました。
+`timer.js` はタイマー本体への操作委譲と状態snapshotに加え、端末データ削除直前に保存し直さずtimer intervalだけを停止する準備eventを受け取ります。`settings-progress.js` は記録/破棄アクション、累計・履歴snapshot、バックアップ復元時の進捗適用、tab guardの復元可否判定に必要な最小状態だけを公開します。
 
 ## legacy runtime scaffold
 
 `index.html` の `#root` には画面の完成形を重複して書きません。残すのは、classic scriptが起動時に `querySelector()` で取得する要素と初期状態だけを持つ `#legacy-runtime-scaffold` です。
 
-scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。React移行済みの要素は順次scaffoldから削除しています。日次目標・集計表示に加えて端末データ削除用DOMも削除済みです。現在はタイマー本体、記録/破棄と累計、バックアップ書き出し・復元に必要な要素だけを残します。
+scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。日次目標・集計表示・端末データ削除・バックアップ用DOMは削除済みです。現在はタイマー本体、記録/破棄、累計など、まだclassic runtimeが直接参照する要素だけを残します。
+
+## バックアップの責務
+
+`useBackupControl.js` が次を担当します。
+
+- `one-focus-backup` version 1のJSON検証と100KB上限
+- 累計・最大90日の日次履歴・1〜180分のタイマー時間だけを書き出す
+- 端末保存を利用できない場合の、Reactが保持する現在状態からの救出用JSON
+- 復元前に`one.restoreRecovery.v1`へ1世代だけ退避
+- 復元確認中の別タブ更新・タイマー状態変化の再確認
+- 復元後の保存値検証と失敗時ロールバック
+- 復元後の状態が変わっていない場合だけ利用できる1世代Undo
+
+実際の進捗状態反映は `settings-progress.js` の最小adapter、タイマー時間反映は `timer.js` の既存操作adapterを通します。別タブのアクティブタイマー有無は既存 `tab-guard.js` の判定を再利用し、React側で排他ロジックを二重実装しません。
 
 ## 端末データ削除の責務
 
@@ -144,7 +159,7 @@ Vite側はTailwind pluginと、`index.html` に書かれたclassic scriptをprod
 - 日次目標の厳格検証・保存確認・期限切れ掃除・別タブ同期
 - 端末データ削除の対象限定・削除確認・別タブ通知検証
 - 完了音 / 通知 / Wake Lock
-- バックアップ検証、復元前退避、ロールバック
+- バックアップ形式検証、救出用書き出し、復元前退避、ロールバック、1世代Undo
 - 保存障害時のフォールバック
 - CSP、フォーカス、秘密情報混入防止
 
