@@ -84,3 +84,6 @@ export const timerStateGuard = Object.freeze({
   normalize: normalizeTimerState,
   parse: parseTimerState,
 });
+
+// backup hookの直接import移行が完了するまでの最後の互換境界。
+globalThis.ONE_TIMER_STATE_GUARD = timerStateGuard;
