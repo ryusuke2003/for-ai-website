@@ -1,4 +1,4 @@
-if (!document.querySelector('#react-theme-root')) {
+if (document.documentElement.dataset.reactTheme !== '1') {
   const themeButtons = [...document.querySelectorAll('[data-theme-choice]')];
   const themeStatus = document.querySelector('#theme-status');
 
