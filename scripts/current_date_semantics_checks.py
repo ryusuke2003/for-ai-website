@@ -16,7 +16,7 @@ def main():
     require("const current = key === todayKey;" in INSIGHTS, "日付キーから今日を判定してください")
     require("weekday: current ? '今日'" in INSIGHTS, "7日履歴で今日を明示してください")
     require("aria-current={day.current ? 'date' : undefined}" in DETAILS, "7日履歴の今日をaria-currentで示してください")
-    require("cell.current ? 'is-today' : ''" in DETAILS, "30日マップの今日を見た目でも区別してください")
+    require("cell.current ? 'outline outline-2 outline-offset-1 outline-current' : ''" in DETAILS, "30日マップの今日を見た目でも区別してください")
     require("aria-current={cell.current ? 'date' : undefined}" in DETAILS, "30日マップの今日をaria-currentで示してください")
     print("Current date semantics checks passed.")
 
