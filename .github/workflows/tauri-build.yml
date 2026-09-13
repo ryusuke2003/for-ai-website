@@ -67,13 +67,13 @@ jobs:
             echo "macOS .app bundle was not generated" >&2
             exit 1
           fi
-          ditto -c -k --sequesterRsrc --keepParent "$app_path" ONE-macos.zip
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" timer-macos.zip
 
       - name: Upload macOS app artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: ONE-macos-app
-          path: ONE-macos.zip
+          name: timer-macos-app
+          path: timer-macos.zip
           if-no-files-found: error
           retention-days: 7
 
@@ -87,7 +87,7 @@ jobs:
       - name: Download macOS app artifact
         uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          name: ONE-macos-app
+          name: timer-macos-app
 
       - name: Create or update GitHub Release
         shell: bash
@@ -96,10 +96,10 @@ jobs:
         run: |
           set -euo pipefail
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" ONE-macos.zip --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$GITHUB_REF_NAME" timer-macos.zip --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$GITHUB_REF_NAME" ONE-macos.zip \
+            gh release create "$GITHUB_REF_NAME" timer-macos.zip \
               --repo "$GITHUB_REPOSITORY" \
-              --title "ONE $GITHUB_REF_NAME" \
+              --title "タイマー $GITHUB_REF_NAME" \
               --generate-notes
           fi
