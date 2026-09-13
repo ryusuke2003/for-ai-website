@@ -1,3 +1,5 @@
+use tauri_plugin_notification::NotificationExt;
+
 #[cfg(target_os = "macos")]
 use std::{
     env, fs,
@@ -222,10 +224,58 @@ fn set_tray_title(_app: tauri::AppHandle, _title: String) -> Result<(), String> 
     Ok(())
 }
 
+fn notification_permission_name(state: tauri::plugin::PermissionState) -> &'static str {
+    match state {
+        tauri::plugin::PermissionState::Granted => "granted",
+        tauri::plugin::PermissionState::Denied => "denied",
+        tauri::plugin::PermissionState::Prompt => "default",
+        tauri::plugin::PermissionState::PromptWithRationale => "default",
+    }
+}
+
+#[tauri::command]
+fn notification_permission_state(app: tauri::AppHandle) -> Result<String, String> {
+    let state = app
+        .notification()
+        .permission_state()
+        .map_err(|error| error.to_string())?;
+    Ok(notification_permission_name(state).to_string())
+}
+
+#[tauri::command]
+fn request_notification_permission(app: tauri::AppHandle) -> Result<String, String> {
+    let state = app
+        .notification()
+        .request_permission()
+        .map_err(|error| error.to_string())?;
+    Ok(notification_permission_name(state).to_string())
+}
+
+#[tauri::command]
+fn show_native_notification(
+    app: tauri::AppHandle,
+    title: String,
+    body: String,
+) -> Result<(), String> {
+    app.notification()
+        .builder()
+        .title(title)
+        .body(body)
+        .show()
+        .map_err(|error| error.to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![set_tray_title, open_full_window]);
+        .plugin(tauri_plugin_notification::init())
+        .invoke_handler(tauri::generate_handler![
+            set_tray_title,
+            open_full_window,
+            notification_permission_state,
+            request_notification_permission,
+            show_native_notification,
+        ]);
 
     #[cfg(target_os = "macos")]
     let launched_from_login = launched_from_login();
