@@ -1,9 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { timerActions } from './timerStore.js';
 import { useTimerState } from './useTimerState.js';
-
-function invokeBridge(action) {
-  globalThis.ONE_REACT_TIMER_CONTROLS?.[action]?.();
-}
 
 function startLabelFor(state) {
   if (state.running) return '一時停止';
@@ -44,7 +41,7 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
         aria-pressed={state.running}
         disabled={state.completionReady}
         ref={startRef}
-        onClick={() => invokeBridge('start')}
+        onClick={() => timerActions.toggle()}
       >
         {startLabelFor(state)}
       </button>
@@ -53,7 +50,7 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
         id="reset-button"
         type="button"
         disabled={state.completionReady}
-        onClick={() => invokeBridge('reset')}
+        onClick={() => timerActions.reset()}
       >
         リセット
       </button>
