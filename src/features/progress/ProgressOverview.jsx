@@ -1,12 +1,8 @@
-import { useProgressOverviewState } from './useProgressOverviewState.js';
-
 function bridge() {
   return globalThis.ONE_REACT_PROGRESS_OVERVIEW;
 }
 
-export function ProgressOverview() {
-  const state = useProgressOverviewState();
-
+export function ProgressOverview({ state, todayAriaLabel = '' }) {
   return (
     <>
       <div className="controls">
@@ -37,7 +33,7 @@ export function ProgressOverview() {
 
       <div className="progress-summary" aria-live="polite">
         <div className="progress-stat">
-          <strong id="today-count" aria-label={state.todayAriaLabel || undefined}>{state.todayCount}</strong>
+          <strong id="today-count" aria-label={todayAriaLabel || undefined}>{state.todayCount}</strong>
           <span>今日</span>
         </div>
         <div className="progress-stat">
