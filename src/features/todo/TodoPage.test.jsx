@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoPage } from './TodoPage.jsx';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -35,10 +35,6 @@ function dropAt(element, transfer, clientY) {
 describe('TodoPage', () => {
   beforeEach(() => {
     localStorage.clear();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it('時刻と所要時間を指定してTodoを追加し、完了と削除ができる', () => {
@@ -82,9 +78,7 @@ describe('TodoPage', () => {
     expect(screen.getByRole('textbox', { name: 'やること' }).value).toBe('セキスペ復習');
   });
 
-  it('テンプレートを空のタイムラインへドロップすると選択中の開始時刻でTodoを作成する', () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date(2026, 8, 14, 9, 0, 0));
+  it('テンプレートをタイムラインへドロップしてTodoを作成できる', () => {
     render(<TodoPage />);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'テンプレート名' }), {
@@ -96,28 +90,22 @@ describe('TodoPage', () => {
     const timeline = screen.getByTestId('todo-timeline');
     const transfer = dataTransfer({ rejectCustomType: true });
 
+    timeline.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      top: 0,
+      left: 0,
+      right: 700,
+      bottom: 1728,
+      width: 700,
+      height: 1728,
+      toJSON() {},
+    });
+
     fireEvent.dragStart(draggableTemplate, { dataTransfer: transfer });
-    dropAt(timeline, transfer, 60);
+    dropAt(timeline, transfer, 9 * 72);
 
     expect(screen.getByRole('article', { name: '09:00 暗記問題' })).not.toBeNull();
-  });
-
-  it('最初の予定から最後の予定までだけ時間軸を表示する', () => {
-    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
-      { id: 'first', text: '勉強1', completed: false, startMinute: 19 * 60 + 10, duration: 25 },
-      { id: 'second', text: '勉強2', completed: false, startMinute: 19 * 60 + 35, duration: 25 },
-      { id: 'last', text: '勉強3', completed: false, startMinute: 20 * 60 + 30, duration: 25 },
-    ]));
-
-    render(<TodoPage />);
-
-    const timeline = screen.getByTestId('todo-timeline');
-    expect(timeline.dataset.rangeStart).toBe(String(19 * 60 + 10));
-    expect(timeline.dataset.rangeEnd).toBe(String(20 * 60 + 55));
-    expect(screen.getByText('19:10')).not.toBeNull();
-    expect(screen.getByText('20:55')).not.toBeNull();
-    expect(screen.queryByText('16:00')).toBeNull();
-    expect(screen.queryByText('24:00')).toBeNull();
   });
 
   it('短いTodoでも開始時刻と終了時刻を横に表示する', () => {

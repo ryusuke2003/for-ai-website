@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeTodoWithoutOverlap } from './todoSchedule.js';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -8,13 +8,13 @@ const DRAG_MIME = 'application/x-one-todo';
 const MINUTE_STEP = 5;
 const DAY_MINUTES = 24 * 60;
 const PX_PER_HOUR = 72;
-const MIN_TIMELINE_HEIGHT = 44;
-const EMPTY_TIMELINE_HEIGHT = 120;
+const TIMELINE_HEIGHT = 24 * PX_PER_HOUR;
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SUBCARD_CLASS = 'rounded-3xl border border-[var(--one-border)] bg-[var(--one-stat-bg)] p-5 max-[560px]:rounded-[20px] max-[560px]:p-4';
 const HOURS = Array.from({ length: 24 }, (_, index) => index);
 const MINUTES = Array.from({ length: 12 }, (_, index) => index * MINUTE_STEP);
 const DURATIONS = Array.from({ length: 36 }, (_, index) => (index + 1) * MINUTE_STEP);
+const TIMELINE_MARKS = Array.from({ length: 49 }, (_, index) => index * 30);
 
 function reportStorageFailure() {
   window.dispatchEvent(new Event('one:storage-error'));
@@ -406,40 +406,9 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
   );
 }
 
-function timelineBounds(todos, fallbackStartMinute) {
-  if (todos.length === 0) {
-    const startMinute = clamp(fallbackStartMinute, 0, DAY_MINUTES - MINUTE_STEP);
-    return {
-      startMinute,
-      endMinute: Math.min(DAY_MINUTES, startMinute + 60),
-      hasTodos: false,
-    };
-  }
-
-  return {
-    startMinute: Math.min(...todos.map((todo) => todo.startMinute)),
-    endMinute: Math.max(...todos.map((todo) => todo.startMinute + todo.duration)),
-    hasTodos: true,
-  };
-}
-
-function buildTimelineMarks(startMinute, endMinute) {
-  const marks = [startMinute];
-  let minute = Math.ceil(startMinute / 30) * 30;
-  if (minute === startMinute) minute += 30;
-
-  while (minute < endMinute) {
-    marks.push(minute);
-    minute += 30;
-  }
-
-  if (marks.at(-1) !== endMinute) marks.push(endMinute);
-  return marks;
-}
-
-function TimelineTask({ todo, rangeStartMinute, pixelsPerMinute, onToggle, onRemove, onDragStart }) {
-  const top = (todo.startMinute - rangeStartMinute) * pixelsPerMinute;
-  const naturalHeight = todo.duration * pixelsPerMinute;
+function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
+  const top = (todo.startMinute / 60) * PX_PER_HOUR;
+  const naturalHeight = (todo.duration / 60) * PX_PER_HOUR;
   const height = Math.max(38, naturalHeight - 4);
   const timeRange = `${formatMinuteOfDay(todo.startMinute)}–${formatMinuteOfDay(todo.startMinute + todo.duration)}`;
 
@@ -474,35 +443,24 @@ function TimelineTask({ todo, rangeStartMinute, pixelsPerMinute, onToggle, onRem
   );
 }
 
-function DailyTimeline({ todos, templates, draft, draftDuration, fallbackStartMinute, onCreateAt, onMoveTask, onToggle, onRemove }) {
+function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onMoveTask, onToggle, onRemove }) {
+  const viewportRef = useRef(null);
   const currentMinute = useMemo(() => {
     const now = new Date();
     return now.getHours() * 60 + now.getMinutes();
   }, []);
-  const range = useMemo(
-    () => timelineBounds(todos, fallbackStartMinute),
-    [todos, fallbackStartMinute],
-  );
-  const rangeDuration = Math.max(MINUTE_STEP, range.endMinute - range.startMinute);
-  const basePixelsPerMinute = PX_PER_HOUR / 60;
-  const pixelsPerMinute = range.hasTodos
-    ? Math.max(basePixelsPerMinute, MIN_TIMELINE_HEIGHT / rangeDuration)
-    : basePixelsPerMinute;
-  const timelineHeight = range.hasTodos
-    ? rangeDuration * pixelsPerMinute
-    : EMPTY_TIMELINE_HEIGHT;
-  const marks = range.hasTodos
-    ? buildTimelineMarks(range.startMinute, range.endMinute)
-    : [];
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const firstMinute = todos[0]?.startMinute ?? currentMinute;
+    viewport.scrollTop = Math.max(0, ((firstMinute - 60) / 60) * PX_PER_HOUR);
+  }, []);
 
   function minuteFromDrop(event, duration) {
-    if (!range.hasTodos) {
-      return clamp(range.startMinute, 0, DAY_MINUTES - duration);
-    }
-
     const rect = event.currentTarget.getBoundingClientRect();
-    const y = clamp(event.clientY - rect.top, 0, timelineHeight);
-    const minute = snapMinutes(range.startMinute + (y / pixelsPerMinute));
+    const y = clamp(event.clientY - rect.top, 0, TIMELINE_HEIGHT);
+    const minute = snapMinutes((y / PX_PER_HOUR) * 60);
     return clamp(minute, 0, DAY_MINUTES - duration);
   }
 
@@ -530,10 +488,6 @@ function DailyTimeline({ todos, templates, draft, draftDuration, fallbackStartMi
     }
   }
 
-  const currentMinuteVisible = range.hasTodos
-    && currentMinute >= range.startMinute
-    && currentMinute <= range.endMinute;
-
   return (
     <section className={SUBCARD_CLASS} aria-labelledby="timeline-title">
       <div className="mb-4 flex items-baseline justify-between gap-4">
@@ -544,60 +498,38 @@ function DailyTimeline({ todos, templates, draft, draftDuration, fallbackStartMi
         <span className="text-[0.74rem] font-bold text-[var(--one-muted)]">{dayLabel()}</span>
       </div>
 
-      <p className="mb-3 mt-0 text-[0.76rem] font-semibold text-[var(--one-muted)]">最初の予定から最後の予定までだけ時間軸を表示します。タスクやテンプレートは5分刻みでドラッグ配置できます。</p>
+      <p className="mb-3 mt-0 text-[0.76rem] font-semibold text-[var(--one-muted)]">タスクやテンプレートをドラッグすると5分刻みで配置できます。重なる場合は、操作中ではない予定をドラッグ方向へ連鎖的に押し出します。</p>
 
-      <div className="max-h-[610px] overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)] max-[560px]:max-h-[520px]">
+      <div ref={viewportRef} className="h-[610px] overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)] max-[560px]:h-[520px]">
         <div
           className="relative"
-          style={{ height: `${timelineHeight}px` }}
+          style={{ height: `${TIMELINE_HEIGHT}px` }}
           data-testid="todo-timeline"
-          data-range-start={range.hasTodos ? range.startMinute : ''}
-          data-range-end={range.hasTodos ? range.endMinute : ''}
           onDragOver={(event) => {
             event.preventDefault();
             event.dataTransfer.dropEffect = event.dataTransfer.effectAllowed === 'move' ? 'move' : 'copy';
           }}
           onDrop={handleDrop}
         >
-          {marks.map((minute) => {
-            const top = (minute - range.startMinute) * pixelsPerMinute;
+          {TIMELINE_MARKS.map((minute) => {
+            const top = (minute / 60) * PX_PER_HOUR;
             const hourMark = minute % 60 === 0;
-            const startMark = minute === range.startMinute;
-            const endMark = minute === range.endMinute;
-            const boundaryMark = startMark || endMark;
-            const labelTransform = startMark
-              ? 'translateY(4px)'
-              : endMark
-                ? 'translateY(calc(-100% - 4px))'
-                : 'translateY(-50%)';
-
             return (
               <div className="absolute left-0 right-0" key={minute} style={{ top: `${top}px` }} aria-hidden="true">
-                <span
-                  className={`absolute left-3 text-[0.68rem] font-bold ${hourMark || boundaryMark ? 'text-[var(--one-subtle)]' : 'text-[var(--one-muted)] opacity-50'}`}
-                  style={{ transform: labelTransform }}
-                >
+                <span className={`absolute left-3 -translate-y-1/2 text-[0.68rem] font-bold ${hourMark ? 'text-[var(--one-subtle)]' : 'text-[var(--one-muted)] opacity-50'}`}>
                   {formatMinuteOfDay(minute)}
                 </span>
-                <span className={`absolute left-[62px] right-0 border-t ${hourMark || boundaryMark ? 'border-[var(--one-border)]' : 'border-dashed border-[var(--one-border-soft)]'}`} />
+                <span className={`absolute left-[62px] right-0 border-t ${hourMark ? 'border-[var(--one-border)]' : 'border-dashed border-[var(--one-border-soft)]'}`} />
               </div>
             );
           })}
 
-          {currentMinuteVisible ? (
-            <div
-              className="pointer-events-none absolute left-[62px] right-0 z-[5] border-t-2 border-[var(--one-fg)] opacity-20"
-              style={{ top: `${(currentMinute - range.startMinute) * pixelsPerMinute}px` }}
-              aria-hidden="true"
-            />
-          ) : null}
+          <div className="pointer-events-none absolute left-[62px] right-0 z-[5] border-t-2 border-[var(--one-fg)] opacity-20" style={{ top: `${(currentMinute / 60) * PX_PER_HOUR}px` }} aria-hidden="true" />
 
           {todos.map((todo) => (
             <TimelineTask
               key={todo.id}
               todo={todo}
-              rangeStartMinute={range.startMinute}
-              pixelsPerMinute={pixelsPerMinute}
               onToggle={() => onToggle(todo.id)}
               onRemove={() => onRemove(todo.id)}
               onDragStart={(event) => dragPayload(event, { kind: 'task', id: todo.id })}
@@ -605,8 +537,8 @@ function DailyTimeline({ todos, templates, draft, draftDuration, fallbackStartMi
           ))}
 
           {todos.length === 0 ? (
-            <div className="pointer-events-none absolute inset-x-5 top-1/2 -translate-y-1/2 rounded-2xl border border-dashed border-[var(--one-border-strong)] bg-[var(--one-card)] px-4 py-4 text-center text-[0.76rem] font-bold text-[var(--one-muted)]">
-              予定を追加すると、その日の最初から最後までの時間軸が表示されます。
+            <div className="pointer-events-none sticky top-5 z-20 mx-auto mt-5 w-[calc(100%-100px)] rounded-2xl border border-dashed border-[var(--one-border-strong)] bg-[var(--one-card)] px-4 py-3 text-center text-[0.76rem] font-bold text-[var(--one-muted)]">
+              ここへタスクをドラッグして予定を作れます。
             </div>
           ) : null}
         </div>
@@ -739,7 +671,6 @@ export function TodoPage() {
             templates={templates}
             draft={draft}
             draftDuration={duration}
-            fallbackStartMinute={startMinute}
             onCreateAt={createFromDrop}
             onMoveTask={moveTodo}
             onToggle={toggleTodo}
