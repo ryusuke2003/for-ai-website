@@ -18,6 +18,8 @@ import { useTimerState } from './features/timer/useTimerState.js';
 import { TodoPage } from './features/todo/TodoPage.jsx';
 
 const BREAK_MINUTES = 5;
+const TODO_STORAGE_KEY = 'one.todos.v2';
+const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
@@ -110,6 +112,7 @@ export function App() {
   const timerState = useTimerState();
   const focusMode = useFocusModeControl(timerState.completionReady);
   const [page, setPage] = useState(pageFromHash);
+  const [todoResetVersion, setTodoResetVersion] = useState(0);
 
   useEffect(() => {
     function handleHashChange() {
@@ -135,6 +138,14 @@ export function App() {
     setPage('timer');
   }
 
+  function resetTodaySchedule() {
+    if (!window.confirm('今日の予定をすべて削除しますか？テンプレートは残ります。')) return;
+
+    localStorage.removeItem(TODO_STORAGE_KEY);
+    localStorage.removeItem(LEGACY_TODO_STORAGE_KEY);
+    setTodoResetVersion((current) => current + 1);
+  }
+
   const shellWidthClass = page === 'todo'
     ? 'w-[min(1240px,calc(100%_-_32px))]'
     : 'w-[min(760px,calc(100%_-_32px))]';
@@ -150,7 +161,18 @@ export function App() {
       </header>
 
       {page === 'todo' ? (
-        <TodoPage />
+        <>
+          <div className="mb-3 flex justify-end">
+            <button
+              className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
+              type="button"
+              onClick={resetTodaySchedule}
+            >
+              今日の予定をリセット
+            </button>
+          </div>
+          <TodoPage key={todoResetVersion} />
+        </>
       ) : (
         <>
           <TimerSection focusMode={focusMode} />
