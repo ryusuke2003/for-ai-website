@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
-THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
+THEME_BOOTSTRAP_PATH = ROOT / "public" / "theme-bootstrap.js"
 
 
 def require(condition, message):
@@ -34,8 +34,9 @@ def main():
     require("const THEME_STORAGE_KEY = 'one.theme.v1';" in bootstrap, "初期描画用テーマキーをReact側と合わせてください")
     require("new Set(['system', 'light', 'dark'])" in bootstrap, "初期描画でもテーマ許可値を限定してください")
     require("document.documentElement.dataset.theme = initialTheme" in bootstrap, "初期描画で保存済み手動テーマを先に反映してください")
+    require(not (ROOT / "theme-bootstrap.js").exists(), "theme-bootstrap.jsはpublic配下だけで管理してください")
 
-    print("Theme preference is owned by React while the tiny bootstrap prevents theme flash.")
+    print("Theme preference is owned by React while the public bootstrap prevents theme flash.")
 
 
 if __name__ == "__main__":
