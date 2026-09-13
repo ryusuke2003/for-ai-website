@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
 STORAGE_COMPONENT_SOURCE = (ROOT / "src" / "components" / "StorageHealthStatus.jsx").read_text(encoding="utf-8")
+TIMER_STORE_SOURCE = (ROOT / "src" / "features" / "timer" / "timerStore.js").read_text(encoding="utf-8")
 
 
 def function_body(name, next_name):
@@ -86,7 +87,13 @@ def main():
     require("reportStorageHealthFailure();" in health_status,
             "端末保存確認または旧データ掃除に失敗したら既存の保存障害イベントへ通知してください")
 
-    refresh = function_body("refreshGuardProgressFromStorage", "stopCrossTabAction")
+    timer_persist = section(TIMER_STORE_SOURCE, "function persistTimerState(value)", "function initialTimerState()")
+    require("localStorage.setItem" in timer_persist,
+            "Reactタイマーストアは保存状態をlocalStorageへ永続化してください")
+    require("reportStorageFailure();" in timer_persist,
+            "タイマー保存例外は全体の保存障害へ通知してください")
+
+    refresh = function_body("refreshGuardProgressFromStorage", "setCrossTabFeedback")
     count_read = refresh.find("const storedDoneCount = readDoneCount();")
     history_read = refresh.find("const storedHistory = readHistory();")
     failure_check = refresh.find("if (storageCoordinationUnavailable()) return false;", count_read)
@@ -94,7 +101,7 @@ def main():
     require(min(count_read, history_read, failure_check, dom_write) >= 0, "claim固有の進捗再読込で安全な処理順を確認できません")
     require(count_read < history_read < failure_check < dom_write, "保存値は全部読み切ってから障害確認後にDOMへ反映してください")
 
-    claim = function_body("claimPendingCompletion", "blockIfAnotherTabOwnsTimer")
+    claim = function_body("claimPendingCompletion", "verifyCompletionConsumedState")
     session_read = claim.find("const storedSessionId = readStoredSessionId();")
     post_read_check = claim.find("if (storageCoordinationUnavailable()) return true;", session_read)
     pending_check = claim.find("const storedRemaining = storedState?.remainingSeconds;")
@@ -106,12 +113,15 @@ def main():
     another_check = another_tab.find("if (storageCoordinationUnavailable()) return false;", another_read)
     require(another_read >= 0 and another_check > another_read, "別タブ判定は保存読込後の障害を確認してください")
 
-    stale = function_body("blockIfLocalSessionIsStale", "initializeTabGuard")
+    stale = function_body("blockIfLocalSessionIsStale", "beforeStart")
     stale_read = stale.find("const storedSessionId = readStoredSessionId();")
     stale_check = stale.find("if (storageCoordinationUnavailable()) return false;", stale_read)
     require(stale_read >= 0 and stale_check > stale_read, "再開時の古いタブ判定は保存読込後の障害を確認してください")
 
-    print("Runtime storage fallback checks passed with React storage health and tab coordination fallbacks.")
+    require("registerTimerRuntime" in SOURCE and "timerRuntime = runtime;" in SOURCE,
+            "tab guardへReactタイマーruntimeを明示登録してください")
+
+    print("Runtime storage fallback checks passed with React timer storage and tab coordination fallbacks.")
 
 
 if __name__ == "__main__":
