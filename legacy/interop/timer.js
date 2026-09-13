@@ -74,6 +74,9 @@ if (document.documentElement.dataset.reactTimerState === '1') {
 }
 
 if (document.documentElement.dataset.reactTimerControls === '1') {
+  const legacyCustomPreset = presetButtons.find((button) => button.id === 'custom-preset') ?? null;
+  const legacyQuickPresets = presetButtons.filter((button) => button.id !== 'custom-preset');
+
   function forwardDetachedFocus(button, control) {
     const nativeFocus = button.focus.bind(button);
     button.focus = (options) => {
@@ -88,6 +91,30 @@ if (document.documentElement.dataset.reactTimerControls === '1') {
     };
   }
 
+  function validTimerMinutes(minutes) {
+    const guard = globalThis.ONE_TIMER_STATE_GUARD;
+    return Number.isInteger(minutes)
+      && minutes >= (guard?.minMinutes ?? 1)
+      && minutes <= (guard?.maxMinutes ?? MAX_MINUTES);
+  }
+
+  function selectTimerMinutes(minutes, { focusStart = false } = {}) {
+    if (!validTimerMinutes(minutes) || completionReady) return false;
+
+    let target = legacyQuickPresets.find(
+      (button) => Number.parseInt(button.dataset.minutes, 10) === minutes,
+    );
+    if (!target && legacyCustomPreset) {
+      legacyCustomPreset.dataset.minutes = String(minutes);
+      target = legacyCustomPreset;
+    }
+    if (!target) return false;
+
+    target.click();
+    if (focusStart) startButton.focus();
+    return true;
+  }
+
   forwardDetachedFocus(startButton, 'start');
   forwardDetachedFocus(focusModeButton, 'focus');
 
@@ -100,6 +127,12 @@ if (document.documentElement.dataset.reactTimerControls === '1') {
     },
     toggleFocus() {
       focusModeButton.click();
+    },
+    selectMinutes(minutes) {
+      return selectTimerMinutes(minutes);
+    },
+    applyCustomMinutes(minutes) {
+      return selectTimerMinutes(minutes, { focusStart: true });
     },
   });
 }
