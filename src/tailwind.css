@@ -167,11 +167,18 @@
     display: none;
   }
 
+  [aria-labelledby="template-title"] {
+    display: flex;
+    min-height: 0;
+    flex-direction: column;
+  }
+
   [aria-label="保存したテンプレート"] {
     display: flex;
+    min-height: 0;
+    flex: 1 1 0%;
     flex-direction: column-reverse;
     gap: .625rem;
-    max-height: 320px;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-right: 4px;
@@ -236,13 +243,20 @@
     border: 0;
   }
 
-  @media (max-width: 560px) {
-    .timer-progress {
-      width: 92%;
+  @media (max-width: 820px) {
+    [aria-labelledby="template-title"] {
+      display: block;
     }
 
     [aria-label="保存したテンプレート"] {
-      max-height: 260px;
+      max-height: min(520px, 50vh);
+      flex: none;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .timer-progress {
+      width: 92%;
     }
 
     body.focus-mode .shell {
