@@ -238,25 +238,39 @@ export function useDailyGoalControl(todayCountValue) {
 
   return useMemo(() => {
     const activeGoal = goalDate === todayKey && Number.isInteger(goal) ? goal : null;
+    const hasGoal = activeGoal !== null;
+    const remaining = hasGoal ? Math.max(activeGoal - todayCount, 0) : 0;
+    const achieved = hasGoal && remaining === 0;
+    const progressValue = hasGoal ? Math.min(todayCount, activeGoal) : 0;
+    const progressAriaValueText = hasGoal
+      ? achieved
+        ? `目標${activeGoal}回を達成、現在${todayCount}回`
+        : `目標${activeGoal}回中${todayCount}回`
+      : '';
+    const todayAriaLabel = hasGoal
+      ? achieved
+        ? `今日 ${todayCount}回、目標${activeGoal}回を達成`
+        : `今日 ${todayCount}回、目標${activeGoal}回まであと${remaining}回`
+      : '';
 
     if (invalid) {
       return {
         value,
         invalid: true,
-        clearHidden: activeGoal === null,
+        clearHidden: !hasGoal,
         status: '今日の目標は1〜12回の整数で設定してください。',
-        progressHidden: activeGoal === null,
+        progressHidden: !hasGoal,
         progressMax: activeGoal ?? 1,
-        progressValue: activeGoal === null ? 0 : Math.min(todayCount, activeGoal),
-        progressAriaValueText: '',
-        todayAriaLabel: '',
+        progressValue,
+        progressAriaValueText,
+        todayAriaLabel,
         change,
         apply,
         clear,
       };
     }
 
-    if (activeGoal === null) {
+    if (!hasGoal) {
       return {
         value,
         invalid: false,
@@ -273,8 +287,6 @@ export function useDailyGoalControl(todayCountValue) {
       };
     }
 
-    const remaining = Math.max(activeGoal - todayCount, 0);
-    const achieved = remaining === 0;
     return {
       value,
       invalid: false,
@@ -284,13 +296,9 @@ export function useDailyGoalControl(todayCountValue) {
         : `今日の目標 ${activeGoal}回 · 現在${todayCount}回 · あと${remaining}回。${persistenceWarning}`,
       progressHidden: false,
       progressMax: activeGoal,
-      progressValue: Math.min(todayCount, activeGoal),
-      progressAriaValueText: achieved
-        ? `目標${activeGoal}回を達成、現在${todayCount}回`
-        : `目標${activeGoal}回中${todayCount}回`,
-      todayAriaLabel: achieved
-        ? `今日 ${todayCount}回、目標${activeGoal}回を達成`
-        : `今日 ${todayCount}回、目標${activeGoal}回まであと${remaining}回`,
+      progressValue,
+      progressAriaValueText,
+      todayAriaLabel,
       change,
       apply,
       clear,
