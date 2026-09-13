@@ -1,5 +1,4 @@
 import { AppFooter } from './components/AppFooter.jsx';
-import { HeroIntro } from './components/HeroIntro.jsx';
 import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { BackupPanel } from './features/backup/BackupPanel.jsx';
@@ -104,10 +103,11 @@ export function App() {
 
   return (
     <main className="shell mx-auto w-[min(760px,calc(100%_-_32px))] pb-10 pt-[72px] max-[560px]:pt-11">
-      <header className="hero mb-12">
+      <header className="mb-4">
         <ThemeSwitcher />
-        <HeroIntro />
-        <StorageHealthStatus />
+        <div className="sr-only">
+          <StorageHealthStatus />
+        </div>
       </header>
       <TimerSection focusMode={focusMode} />
       <ProgressSection />
