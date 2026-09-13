@@ -53,7 +53,7 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Refresh Cargo.lock for native notification dependency
-        run: cargo metadata --manifest-path src-tauri/Cargo.toml --format-version 1 --no-deps > /dev/null
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
 
       - name: Commit generated Cargo.lock to PR branch
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
