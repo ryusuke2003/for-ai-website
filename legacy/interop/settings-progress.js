@@ -23,7 +23,6 @@ if (
   function buildTimerSettingsSnapshot() {
     const sound = toggleSnapshot(completionSoundToggle, completionSoundStatus);
     const notification = toggleSnapshot(completionNotificationToggle, completionNotificationStatus);
-    const wakeLock = toggleSnapshot(wakeLockToggle, wakeLockStatus);
     const customLocked = customPresetButton.disabled;
 
     return {
@@ -47,10 +46,6 @@ if (
       notificationPressed: notification.pressed,
       notificationDisabled: notification.disabled,
       notificationStatus: notification.status,
-      wakeLockLabel: wakeLock.label,
-      wakeLockPressed: wakeLock.pressed,
-      wakeLockDisabled: wakeLock.disabled,
-      wakeLockStatus: wakeLock.status,
     };
   }
 
@@ -146,7 +141,6 @@ if (
     'setCustomTimerStatus',
     'syncCompletionSoundUi',
     'syncCompletionNotificationUi',
-    'syncWakeLockUi',
   ]) {
     wrapStateMutation(functionName, { settings: true });
   }
@@ -240,10 +234,6 @@ if (document.documentElement.dataset.reactTimerSettings === '1') {
     },
     toggleNotification() {
       completionNotificationToggle.click();
-      refreshSettingsState();
-    },
-    toggleWakeLock() {
-      wakeLockToggle.click();
       refreshSettingsState();
     },
   });

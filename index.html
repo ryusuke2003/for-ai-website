@@ -15,7 +15,6 @@
   <script src="app.js" defer></script>
   <script src="legacy/interop/timer.js" defer></script>
   <script src="completion-sound.js" defer></script>
-  <script src="wake-lock.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="daily-goal-progress.js" defer></script>
   <script src="tab-guard.js" defer></script>
@@ -55,8 +54,6 @@
         <p id="completion-sound-status" role="status" aria-live="polite">完了音はオフです。オンにすると短い試聴音が鳴ります。</p>
         <button id="completion-notification-toggle" type="button" aria-pressed="false" aria-describedby="completion-notification-status">完了通知 OFF</button>
         <p id="completion-notification-status" role="status" aria-live="polite">完了通知はオフです。オンにするとブラウザの通知許可を確認します。</p>
-        <button id="wake-lock-toggle" type="button" aria-pressed="false" aria-describedby="wake-lock-status">画面維持 OFF</button>
-        <p id="wake-lock-status" role="status" aria-live="polite">画面維持はオフです。オンにすると集中中だけ画面のスリープを抑えます。</p>
       </div>
 
       <button id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
