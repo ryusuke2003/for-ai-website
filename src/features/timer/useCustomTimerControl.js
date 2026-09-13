@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { timerActions } from './timerStore.js';
 
-const DEFAULT_STATUS = '1〜180分の整数でも設定できます。';
-
 function timerLimits() {
   const guard = globalThis.ONE_TIMER_STATE_GUARD;
   return {
@@ -25,7 +23,7 @@ function parseMinutes(raw) {
 export function useCustomTimerControl(selectedMinutes, locked) {
   const [value, setValue] = useState(String(selectedMinutes));
   const [invalid, setInvalid] = useState(false);
-  const [status, setStatus] = useState(DEFAULT_STATUS);
+  const [status, setStatus] = useState('');
 
   useEffect(() => {
     setValue(String(selectedMinutes));
@@ -50,13 +48,13 @@ export function useCustomTimerControl(selectedMinutes, locked) {
   const change = useCallback((nextValue) => {
     setValue(String(nextValue ?? ''));
     setInvalid(false);
-    setStatus(DEFAULT_STATUS);
+    setStatus('');
   }, []);
 
   const selectPreset = useCallback((minutes) => {
     if (locked) return false;
     const applied = timerActions.selectMinutes(minutes);
-    if (applied) setStatus(DEFAULT_STATUS);
+    if (applied) setStatus('');
     return applied;
   }, [locked]);
 
