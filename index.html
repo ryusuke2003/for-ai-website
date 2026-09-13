@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-progress-overview="1" data-react-backup-panel="1">
+<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-progress-overview="1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -15,10 +15,8 @@
   <script src="app.js" defer></script>
   <script src="legacy/interop/timer.js" defer></script>
   <script src="tab-guard.js" defer></script>
-  <script src="backup.js" defer></script>
   <script src="legacy/interop/settings-progress.js" defer></script>
   <script src="shortcuts.js" defer></script>
-  <script src="legacy/interop/progress-backup.js" defer></script>
   <script type="module" src="/src/main.jsx"></script>
 </head>
 <body>
@@ -45,13 +43,6 @@
       <button id="discard-button" type="button" aria-describedby="done-hint" hidden>記録せず破棄する</button>
       <p id="done-hint"></p>
       <strong id="done-count">0</strong>
-
-      <button id="backup-export-button" type="button" aria-describedby="backup-hint">JSONを書き出す</button>
-      <button id="backup-import-button" type="button" aria-describedby="backup-hint">JSONから復元</button>
-      <button id="backup-undo-button" type="button" aria-describedby="backup-hint" hidden>直前の復元を取り消す</button>
-      <input id="backup-file-input" type="file" accept="application/json,.json" hidden>
-      <p id="backup-hint"></p>
-      <p id="backup-status" role="status" aria-live="polite"></p>
 
       <p id="focus-mode-status" aria-live="polite"></p>
     </div>
