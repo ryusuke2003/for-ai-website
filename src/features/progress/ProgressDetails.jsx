@@ -1,5 +1,5 @@
 const OPTION_BUTTON_CLASS = 'rounded-full border-0 bg-transparent px-3 py-2 text-[var(--one-subtle)] disabled:cursor-not-allowed disabled:opacity-45';
-const INPUT_CLASS = 'w-[4.8rem] rounded-full border border-[var(--one-control-border-soft)] bg-[var(--one-input-bg)] px-[9px] py-[7px] text-right text-[0.9rem] font-extrabold [font-variant-numeric:tabular-nums] aria-invalid:border-2 aria-invalid:border-current max-[560px]:w-[4.2rem]';
+const INPUT_CLASS = 'w-[4.8rem] rounded-full border border-[var(--one-control-border-soft)] bg-[var(--one-input-bg)] px-[9px] py-[7px] text-right text-[0.9rem] font-extrabold text-inherit [font-variant-numeric:tabular-nums] aria-invalid:border-2 aria-invalid:border-current max-[560px]:w-[4.2rem]';
 const HINT_CLASS = 'hint mt-3 text-[0.82rem] text-[var(--one-muted)]';
 const SECTION_CLASS = 'mt-6 border-t border-[var(--one-border-soft)] pt-[22px]';
 const SECTION_HEADING_CLASS = 'mb-4 flex items-baseline justify-between gap-3';
@@ -123,7 +123,7 @@ export function ProgressDetails({ state, dailyGoal }) {
           {state.activity.map((cell, index) => {
             const level = safeLevel(cell.level);
             const className = [
-              'block h-[14px] w-[14px] rounded bg-[var(--one-activity-0)] max-[560px]:h-3 max-[560px]:w-3 max-[560px]:rounded-[3px]',
+              'block h-[14px] w-[14px] rounded max-[560px]:h-3 max-[560px]:w-3 max-[560px]:rounded-[3px]',
               ACTIVITY_LEVEL_CLASS[level],
               cell.placeholder ? 'invisible' : '',
               cell.current ? 'outline outline-2 outline-offset-1 outline-current' : '',
