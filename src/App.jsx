@@ -143,7 +143,7 @@ function TrayTodoPanel({ onShowTimer }) {
   const [todos, setTodos] = useState(readTrayTodos);
   const [currentMinute, setCurrentMinute] = useState(currentMinuteOfDay);
   const [scrollRequest, setScrollRequest] = useState(0);
-  const viewportRef = useRef(null);
+  const timelineRef = useRef(null);
 
   const range = useMemo(() => {
     if (todos.length === 0) return null;
@@ -169,13 +169,13 @@ function TrayTodoPanel({ onShowTimer }) {
   }, []);
 
   useEffect(() => {
-    const viewport = viewportRef.current;
-    if (!viewport || !range) return;
+    const timeline = timelineRef.current;
+    if (!timeline || !range) return;
 
     const currentTop = (currentMinute - range.first) * range.scale;
-    const preferredTop = currentTop - viewport.clientHeight * 0.38;
-    const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
-    viewport.scrollTop = Math.min(maxScrollTop, Math.max(0, preferredTop));
+    const timelineTop = timeline.getBoundingClientRect().top + window.scrollY;
+    const preferredTop = timelineTop + currentTop - window.innerHeight * 0.38;
+    window.scrollTo(0, Math.max(0, preferredTop));
   }, [currentMinute, range, scrollRequest]);
 
   function toggleTodo(id) {
@@ -190,7 +190,7 @@ function TrayTodoPanel({ onShowTimer }) {
 
   return (
     <section className="min-h-screen bg-[var(--one-page)] p-4 text-[var(--one-fg)]">
-      <div className="mx-auto flex h-full max-w-[520px] flex-col rounded-[28px] border border-[var(--one-border)] bg-[var(--one-card)] p-5 shadow-[var(--one-card-shadow)]">
+      <div className="mx-auto max-w-[520px] rounded-[28px] border border-[var(--one-border)] bg-[var(--one-card)] p-5 shadow-[var(--one-card-shadow)]">
         <div className="mb-4 flex items-center justify-between gap-3">
           <button className="rounded-full border border-[var(--one-border)] px-3.5 py-2 text-[0.76rem] font-extrabold" type="button" onClick={onShowTimer}>タイマーへ</button>
           <strong className="text-[0.92rem]">今日の時間割</strong>
@@ -198,8 +198,8 @@ function TrayTodoPanel({ onShowTimer }) {
         </div>
 
         {range ? (
-          <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)]">
-            <div className="relative" style={{ height: `${range.height}px` }} data-testid="tray-todo-timeline">
+          <div className="rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)]">
+            <div ref={timelineRef} className="relative" style={{ height: `${range.height}px` }} data-testid="tray-todo-timeline">
               {range.marks.map((minute) => {
                 const top = (minute - range.first) * range.scale;
                 const endpoint = minute === range.first || minute === range.last;
@@ -248,7 +248,7 @@ function TrayTodoPanel({ onShowTimer }) {
             </div>
           </div>
         ) : (
-          <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--one-border-strong)] px-6 text-center text-[0.82rem] font-bold text-[var(--one-muted)]">今日の予定はまだありません。</div>
+          <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--one-border-strong)] px-6 text-center text-[0.82rem] font-bold text-[var(--one-muted)]">今日の予定はまだありません。</div>
         )}
       </div>
     </section>
