@@ -198,7 +198,7 @@ function startTimer() {
     endAt,
     completionReady: false,
     completionDate: null,
-    feedback: '集中中。終了までこの時間に集中。',
+    feedback: '終了までこの時間に集中。',
     feedbackState: 'running',
   }, { persist: true });
   timerId = window.setInterval(tick, TICK_INTERVAL_MS);
