@@ -19,10 +19,6 @@ const FALLBACK_STATE = Object.freeze({
   notificationPressed: false,
   notificationDisabled: false,
   notificationStatus: '完了通知はオフです。オンにするとブラウザの通知許可を確認します。',
-  wakeLockLabel: '画面維持 OFF',
-  wakeLockPressed: false,
-  wakeLockDisabled: false,
-  wakeLockStatus: '画面維持はオフです。オンにすると集中中だけ画面のスリープを抑えます。',
 });
 
 function readSnapshot() {
