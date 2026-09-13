@@ -97,7 +97,7 @@ export function App() {
   const focusMode = useFocusModeControl(timerState.completionReady);
 
   return (
-    <main className="shell mx-auto w-[min(760px,calc(100%-32px))] pb-10 pt-[72px] max-[560px]:pt-11">
+    <main className="shell mx-auto w-[min(760px,calc(100%_-_32px))] pb-10 pt-[72px] max-[560px]:pt-11">
       <header className="hero mb-12">
         <ThemeSwitcher />
         <HeroIntro />
