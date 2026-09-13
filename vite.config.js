@@ -1,6 +1,5 @@
 import { copyFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 const legacyScripts = [
@@ -19,6 +18,19 @@ const legacyScripts = [
   'shortcuts.js',
   'privacy-reset.js',
 ];
+
+function injectReactEntry() {
+  return {
+    name: 'inject-react-entry',
+    enforce: 'pre',
+    transformIndexHtml(html) {
+      return html.replace(
+        '<script type="module" data-vite-entry="/src/main.jsx"></script>',
+        '<script type="module" src="/src/main.jsx"></script>',
+      );
+    },
+  };
+}
 
 function copyLegacyScripts() {
   let root;
@@ -42,7 +54,7 @@ function copyLegacyScripts() {
 
 export default defineConfig({
   base: './',
-  plugins: [react(), copyLegacyScripts()],
+  plugins: [injectReactEntry(), copyLegacyScripts()],
   server: {
     host: '127.0.0.1',
   },
