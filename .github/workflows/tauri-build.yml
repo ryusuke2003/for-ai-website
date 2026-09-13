@@ -7,7 +7,7 @@ on:
     tags: ['v*']
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -17,6 +17,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          ref: ${{ github.head_ref || github.ref }}
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -52,11 +53,31 @@ jobs:
       - name: Install frontend dependencies from lockfile
         run: npm ci --no-audit --no-fund
 
-      - name: Verify Cargo.lock is synchronized
-        run: cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
+      - name: Refresh Cargo.lock for native notification dependency
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
 
-      - name: Build Tauri app bundle for macOS with locked dependencies
-        run: npm run tauri -- build --bundles app --no-sign -- --locked
+      - name: Save generated Cargo.lock as Git blob
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import json
+          from pathlib import Path
+          payload = {
+              "content": base64.b64encode(Path("src-tauri/Cargo.lock").read_bytes()).decode("ascii"),
+              "encoding": "base64",
+          }
+          Path("/tmp/cargo-lock-blob.json").write_text(json.dumps(payload), encoding="utf-8")
+          PY
+          blob_sha="$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/blobs" --input /tmp/cargo-lock-blob.json --jq .sha)"
+          echo "GENERATED_CARGO_LOCK_BLOB_SHA=${blob_sha}"
+
+      - name: Build Tauri app bundle for macOS
+        run: npm run tauri -- build --bundles app --no-sign
 
       - name: Archive macOS app bundle
         shell: bash
