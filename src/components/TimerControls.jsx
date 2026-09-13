@@ -14,6 +14,10 @@ function readBridgeState() {
   return globalThis.ONE_REACT_TIMER_CONTROLS?.snapshot?.() ?? DEFAULT_STATE;
 }
 
+function invokeBridge(action) {
+  globalThis.ONE_REACT_TIMER_CONTROLS?.[action]?.();
+}
+
 export function TimerControls() {
   const [state, setState] = useState(readBridgeState);
   const startRef = useRef(null);
@@ -39,8 +43,6 @@ export function TimerControls() {
     };
   }, []);
 
-  const bridge = globalThis.ONE_REACT_TIMER_CONTROLS;
-
   return (
     <>
       <button
@@ -51,7 +53,7 @@ export function TimerControls() {
         aria-pressed={state.startPressed}
         disabled={state.startDisabled}
         ref={startRef}
-        onClick={() => bridge?.start?.()}
+        onClick={() => invokeBridge('start')}
       >
         {state.startLabel}
       </button>
@@ -60,7 +62,7 @@ export function TimerControls() {
         id="reset-button"
         type="button"
         disabled={state.resetDisabled}
-        onClick={() => bridge?.reset?.()}
+        onClick={() => invokeBridge('reset')}
       >
         リセット
       </button>
@@ -72,7 +74,7 @@ export function TimerControls() {
         aria-keyshortcuts="F Escape"
         aria-label={state.focusAriaLabel}
         ref={focusRef}
-        onClick={() => bridge?.toggleFocus?.()}
+        onClick={() => invokeBridge('toggleFocus')}
       >
         {state.focusLabel}
       </button>
