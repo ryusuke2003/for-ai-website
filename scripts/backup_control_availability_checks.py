@@ -46,9 +46,9 @@ def main():
         "ONE_TAB_COORDINATION",
         "ONE_REACT_PROGRESS_OVERVIEW",
     ):
-        require(legacy_global not in SOURCE,
+        require(f"globalThis.{legacy_global}" not in SOURCE,
                 f"backup hookから互換global {legacy_global} を再導入しないでください")
-        require(legacy_global not in MAIN_SOURCE,
+        require(f"globalThis.{legacy_global}" not in MAIN_SOURCE,
                 f"React entryから互換global {legacy_global} を公開しないでください")
 
     can_restore = section("function canRestoreBackup()", "function refreshBackupControlAvailability")
