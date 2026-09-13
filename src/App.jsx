@@ -15,7 +15,11 @@ import { TimerSettings } from './features/timer/TimerSettings.jsx';
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
-import { resetTodoSchedule } from './features/todo/resetTodoSchedule.js';
+import {
+  canRestoreTodoSchedule,
+  resetTodoSchedule,
+  restoreTodoSchedule,
+} from './features/todo/resetTodoSchedule.js';
 import { TodoPage } from './features/todo/TodoPage.jsx';
 
 const BREAK_MINUTES = 5;
@@ -113,6 +117,7 @@ export function App() {
   const [page, setPage] = useState(pageFromHash);
   const [todoResetVersion, setTodoResetVersion] = useState(0);
   const [todoResetStatus, setTodoResetStatus] = useState('');
+  const [todoRestoreAvailable, setTodoRestoreAvailable] = useState(canRestoreTodoSchedule);
 
   useEffect(() => {
     function handleHashChange() {
@@ -146,7 +151,20 @@ export function App() {
     }
 
     setTodoResetVersion((current) => current + 1);
-    setTodoResetStatus('今日の予定をリセットしました。');
+    setTodoRestoreAvailable(canRestoreTodoSchedule());
+    setTodoResetStatus('今日の予定をリセットしました。復元できます。');
+  }
+
+  function restoreTodaySchedule() {
+    const restoreSucceeded = restoreTodoSchedule();
+    if (!restoreSucceeded) {
+      setTodoResetStatus('予定を復元できませんでした。');
+      return;
+    }
+
+    setTodoResetVersion((current) => current + 1);
+    setTodoRestoreAvailable(false);
+    setTodoResetStatus('リセット前の予定を復元しました。');
   }
 
   function scrollTodoTimelineToCurrentTime() {
@@ -195,6 +213,15 @@ export function App() {
             >
               現在時刻へ
             </button>
+            {todoRestoreAvailable ? (
+              <button
+                className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
+                type="button"
+                onClick={restoreTodaySchedule}
+              >
+                リセットを復元
+              </button>
+            ) : null}
             <button
               className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
               type="button"
