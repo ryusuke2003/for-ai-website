@@ -55,8 +55,13 @@ describe('TimerDisplay', () => {
     vi.mocked(useTimerState).mockReturnValue(state({ running: true, endAt }));
     render(<TimerDisplay />);
     const time = document.querySelector('#timer-end-at');
+    const expectedTime = new Intl.DateTimeFormat('ja-JP', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date(endAt));
     expect(time.dateTime).toBe(new Date(endAt).toISOString());
-    expect(time.textContent).toMatch(/12:25/);
+    expect(time.textContent).toContain(expectedTime);
     expect(document.querySelector('#timer-end-time').hidden).toBe(false);
   });
 
