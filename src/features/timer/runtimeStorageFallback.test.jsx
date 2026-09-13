@@ -1,4 +1,3 @@
-import { render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const TAB_STORAGE_PROBE_KEY = 'one.tabStorageProbe.v1';
@@ -66,20 +65,5 @@ describe('実行時の保存障害フォールバック', () => {
       doneCount: '8',
       history: { '2026-09-13': 2 },
     });
-  });
-
-  it('端末保存状態は旧タスク値を掃除し、実行中の保存障害も表示へ反映する', async () => {
-    vi.resetModules();
-    localStorage.setItem('one.task', 'legacy');
-    localStorage.setItem('one.taskDate.v1', '2026-09-13');
-    const { StorageHealthStatus } = await import('../../components/StorageHealthStatus.jsx');
-
-    render(<StorageHealthStatus />);
-    expect(await screen.findByText(/端末保存: 利用できます/)).toBeTruthy();
-    expect(localStorage.getItem('one.task')).toBeNull();
-    expect(localStorage.getItem('one.taskDate.v1')).toBeNull();
-
-    window.dispatchEvent(new Event('one:storage-error'));
-    expect(await screen.findByText(/端末保存を利用できません/)).toBeTruthy();
   });
 });

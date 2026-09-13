@@ -86,6 +86,8 @@ src/
 │   ├── trayTimerSync.js
 │   ├── trayTimerSync.test.js
 │   └── trayWindow.js
+├── storage/
+│   └── useStorageHealthProbe.js
 ├── test/
 │   └── setup.js
 ├── components/
@@ -116,6 +118,8 @@ src-tauri/
 - `progressStore.js`: 累計・90日履歴・別タブ同期
 - `progressInsights.js`: 今週、連続日、7日 / 30日集計
 - `useBackupControl.js`: JSONバックアップ、復元、Undo、ロールバック
+- `useCurrentMinute.js`: Tray Todoの現在時刻を分境界ごとに更新
+- `useStorageHealthProbe.js`: `localStorage` の利用確認とlegacyタスクキーの掃除
 - `src/desktop/trayTimerSync.js`: timerStoreとTauri Tray titleの同期
 - `src/desktop/trayNavigation.js`: Trayコンパクト画面の遷移と再表示時の画面維持
 - `src/desktop/trayWindow.js`: コンパクト表示から通常ウィンドウへの復帰
@@ -193,14 +197,15 @@ npm run tauri -- build --bundles app --no-sign -- --locked
 
 `v` で始まるタグをpushすると、GitHub ActionsがmacOS `.app` をビルドして `timer-macos.zip` をGitHub Releaseへ添付します。タグのバージョンは `src-tauri/tauri.conf.json` の `version` と一致させます。
 
-現在が `0.1.0` の場合:
+patch版を上げる場合は、Tauri設定・Cargo package・Cargo.lockを個別に編集せず次のコマンドを使います。
 
 ```sh
-git switch main
-git pull --ff-only
-git tag -a v0.1.0 -m "v0.1.0"
-git push origin v0.1.0
+npm run version:patch
 ```
+
+たとえば現在が `0.1.1` なら `0.1.2` へ更新し、`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` をまとめて同期します。更新をPRでmainへマージし、CIが成功したあとに同じ版数のタグをpushしてください。
+
+詳しい手順は [`docs/release-versioning.md`](docs/release-versioning.md) を参照してください。
 
 ## CI
 

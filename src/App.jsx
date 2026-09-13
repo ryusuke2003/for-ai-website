@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppFooter } from './components/AppFooter.jsx';
 import { AppNavigation } from './components/AppNavigation.jsx';
-import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { TRAY_NAVIGATION_APPLIED_EVENT } from './desktop/trayNavigation.js';
 import { openFullWindow } from './desktop/trayWindow.js';
@@ -20,6 +19,8 @@ import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 import { TodoPageWithActions } from './features/todo/TodoPageWithActions.jsx';
 import { buildTrayTimelineMarks, shouldHideTrayTimelineMarkLabel } from './features/todo/trayTimelineMarks.js';
+import { useCurrentMinute } from './features/todo/useCurrentMinute.js';
+import { useStorageHealthProbe } from './storage/useStorageHealthProbe.js';
 
 const BREAK_MINUTES = 5;
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -128,11 +129,6 @@ function readTrayTodos() {
   }
 }
 
-function currentMinuteOfDay() {
-  const now = new Date();
-  return now.getHours() * 60 + now.getMinutes();
-}
-
 function formatMinute(value) {
   if (value >= 1440) return '24:00';
   const safe = Math.max(0, value);
@@ -141,7 +137,7 @@ function formatMinute(value) {
 
 function TrayTodoPanel({ onShowTimer }) {
   const [todos, setTodos] = useState(readTrayTodos);
-  const [currentMinute, setCurrentMinute] = useState(currentMinuteOfDay);
+  const { currentMinute, refreshCurrentMinute } = useCurrentMinute();
   const [scrollRequest, setScrollRequest] = useState(0);
   const timelineRef = useRef(null);
 
@@ -160,13 +156,13 @@ function TrayTodoPanel({ onShowTimer }) {
   useEffect(() => {
     function handleTrayNavigation(event) {
       if (event.detail !== 'tray-todo') return;
-      setCurrentMinute(currentMinuteOfDay());
+      refreshCurrentMinute();
       setScrollRequest((current) => current + 1);
     }
 
     window.addEventListener(TRAY_NAVIGATION_APPLIED_EVENT, handleTrayNavigation);
     return () => window.removeEventListener(TRAY_NAVIGATION_APPLIED_EVENT, handleTrayNavigation);
-  }, []);
+  }, [refreshCurrentMinute]);
 
   useEffect(() => {
     const timeline = timelineRef.current;
@@ -176,7 +172,9 @@ function TrayTodoPanel({ onShowTimer }) {
     const timelineTop = timeline.getBoundingClientRect().top + window.scrollY;
     const preferredTop = timelineTop + currentTop - window.innerHeight * 0.38;
     window.scrollTo(0, Math.max(0, preferredTop));
-  }, [currentMinute, range, scrollRequest]);
+    // 毎分の時刻更新ではスクロール位置を奪わず、初回表示とTray再表示時だけ寄せる。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollRequest]);
 
   function toggleTodo(id) {
     const next = todos.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
@@ -262,6 +260,7 @@ export function App() {
   const timerState = useTimerState();
   const focusMode = useFocusModeControl(timerState.completionReady);
   const [page, setPage] = useState(pageFromHash);
+  useStorageHealthProbe();
 
   useEffect(() => {
     function handleHashChange() {
@@ -304,7 +303,6 @@ export function App() {
       <header className="mb-4 flex items-start justify-between gap-4 max-[560px]:flex-col max-[560px]:gap-0">
         <AppNavigation page={page} onNavigate={navigate} />
         <ThemeSwitcher />
-        <div className="sr-only"><StorageHealthStatus /></div>
       </header>
 
       {page === 'todo' ? (
