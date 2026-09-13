@@ -172,7 +172,9 @@ function TrayTodoPanel({ onShowTimer }) {
     const timelineTop = timeline.getBoundingClientRect().top + window.scrollY;
     const preferredTop = timelineTop + currentTop - window.innerHeight * 0.38;
     window.scrollTo(0, Math.max(0, preferredTop));
-  }, [currentMinute, range, scrollRequest]);
+    // 毎分の時刻更新ではスクロール位置を奪わず、初回表示とTray再表示時だけ寄せる。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scrollRequest]);
 
   function toggleTodo(id) {
     const next = todos.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
