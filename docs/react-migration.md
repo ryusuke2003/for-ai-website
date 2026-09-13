@@ -16,7 +16,8 @@ ONE は vanilla JavaScript から React へ段階移行してきたため、移�
 - 自由設定タイマー、タイマー進捗、終了予定時刻、ページタイトルもReact側へ移行済み
 - 日次目標の入力・保存・別タブ同期・進捗表示もReact側へ移行済み
 - 今週回数・連続日・直近7日・直近30日の集計と表示もReact側へ移行済み
-- `stats.js` は削除済み
+- 端末データ削除の状態・確認UI・別タブ通知もReact側へ移行済み
+- `stats.js` / `privacy-reset.js` は削除済み
 - Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
 - タイマー保存形式、複数タブ排他、通知権限、バックアップのロールバックなどの安全性ロジックは維持する
 
@@ -53,7 +54,8 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
    - 自由設定タイマーとタイマー表示の補助処理をReactへ移行済み
    - 日次目標の状態・保存・進捗をReactへ移行済み
    - 今週回数・連続日・7日/30日集計をReactへ移行し、`stats.js` を削除済み
-   - 次にbackup系runtime / interopを整理する
+   - 端末データ削除をReactへ移行し、`privacy-reset.js` を削除済み
+   - 次にbackup書き出し・復元runtime / interopを整理する
 8. **Tailwind移行を再開**
    - 7B: タイマーUI
    - 7C: 集中記録・統計・バックアップUI
@@ -87,7 +89,8 @@ src/
 │   │   └── useProgressOverviewState.js
 │   └── backup/
 │       ├── BackupPanel.jsx
-│       └── useBackupPanelState.js
+│       ├── useBackupPanelState.js
+│       └── usePrivacyResetControl.js
 └── tailwind.css
 ```
 
@@ -106,24 +109,19 @@ legacy/interop/
 
 これらはclassic JavaScriptが保持する既存状態・イベント経路をReactへ公開するための一時的なアダプターです。複数タブ排他、完了記録、バックアップ検証などの既存の安全な処理を迂回しないために残しています。
 
-`timer.js` はタイマー本体への操作委譲と状態snapshotを担当します。`settings-progress.js` は記録/破棄アクション、累計・履歴snapshot、自由設定バックアップ互換を担当します。`progress-backup.js` は現在backup UIだけの互換レイヤーで、progress detailsの状態橋渡しは削除済みです。
+`timer.js` はタイマー本体への操作委譲と状態snapshotに加え、端末データ削除直前に保存し直さずtimer intervalだけを停止する準備eventを受け取ります。`settings-progress.js` は記録/破棄アクション、累計・履歴snapshot、自由設定バックアップ互換を担当します。`progress-backup.js` はバックアップ書き出し・復元・取り消しだけの互換レイヤーまで縮小しました。
 
 ## legacy runtime scaffold
 
 `index.html` の `#root` には画面の完成形を重複して書きません。残すのは、classic scriptが起動時に `querySelector()` で取得する要素と初期状態だけを持つ `#legacy-runtime-scaffold` です。
 
-scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。React移行済みの要素は順次scaffoldから削除しています。日次目標に加えて、今日・今週・連続日・7日履歴・30日マップ用DOMも削除済みです。現在はタイマー本体、記録/破棄と累計のclassic操作、バックアップなどに必要な要素だけを残します。
+scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。React移行済みの要素は順次scaffoldから削除しています。日次目標・集計表示に加えて端末データ削除用DOMも削除済みです。現在はタイマー本体、記録/破棄と累計、バックアップ書き出し・復元に必要な要素だけを残します。
 
-## 進捗データの責務
+## 端末データ削除の責務
 
-保存形式と記録処理そのものは、複数タブの二重記録防止とバックアップ互換を壊さないため、まだclassic runtime側に残しています。
+`usePrivacyResetControl.js` が、ONEの既知localStorageキーだけを対象にした削除・削除後確認・別タブ通知を管理します。`localStorage.clear()` は使いません。通知値はWeb Cryptoを優先し、受信側はキー・長さ・形式を検証してから処理します。
 
-- `app.js`: `one.doneCount` / `one.history.v1` の検証・読込・保存、通常のstorage同期
-- `tab-guard.js`: 完了claim時だけ最新値を再読込する排他制御
-- `settings-progress.js`: 正規化済み履歴と累計をReactへsnapshotとして公開
-- `progressInsights.js`: 保存処理を持たず、snapshotから表示用集計だけを計算
-
-表示集計からlocalStorageへの書き戻しは行いません。保存障害時にclassic runtimeが保持しているメモリ上の履歴もそのままReactへ渡せるため、救出用の現在状態を表示から失わない構成です。
+削除後のreload直前には `one:privacy-reset-prepare` を同期dispatchし、`legacy/interop/timer.js` がintervalと`endAt`を止めます。この準備処理はタイマー状態を保存し直さないため、削除直後にtimer runtimeが古い保存値を復活させない構成です。
 
 ## `index.html` とViteの役割
 
@@ -144,6 +142,7 @@ Vite側はTailwind pluginと、`index.html` に書かれたclassic scriptをprod
 - 複数タブの所有権・二重記録防止
 - 日付境界、今週・連続日・7日/30日履歴
 - 日次目標の厳格検証・保存確認・期限切れ掃除・別タブ同期
+- 端末データ削除の対象限定・削除確認・別タブ通知検証
 - 完了音 / 通知 / Wake Lock
 - バックアップ検証、復元前退避、ロールバック
 - 保存障害時のフォールバック
