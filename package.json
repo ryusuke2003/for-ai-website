@@ -11,7 +11,7 @@
     "tauri": "tauri"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.22.2"
   },
   "dependencies": {
     "react": "19.3.0",
