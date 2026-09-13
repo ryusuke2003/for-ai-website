@@ -17,7 +17,7 @@ describe('ThemeSwitcher', () => {
   it('別タブ由来のstorageイベントへ追従する', () => {
     render(<ThemeSwitcher />);
 
-    window.dispatchEvent(new StorageEvent('storage', {
+    fireEvent(window, new StorageEvent('storage', {
       key: 'one.theme.v1',
       newValue: 'light',
       storageArea: localStorage,
@@ -32,7 +32,7 @@ describe('ThemeSwitcher', () => {
     document.documentElement.dataset.theme = 'dark';
     render(<ThemeSwitcher />);
 
-    window.dispatchEvent(new StorageEvent('storage', {
+    fireEvent(window, new StorageEvent('storage', {
       key: 'one.theme.v1',
       newValue: 'unknown',
       storageArea: localStorage,
