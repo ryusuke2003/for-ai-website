@@ -18,6 +18,7 @@ import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 import { TodoPageWithActions } from './features/todo/TodoPageWithActions.jsx';
+import { buildTrayTimelineMarks } from './features/todo/trayTimelineMarks.js';
 
 const BREAK_MINUTES = 5;
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -140,7 +141,8 @@ function TrayTodoPanel({ onShowTimer }) {
     const last = Math.max(...todos.map((todo) => todo.startMinute + todo.duration));
     const span = Math.max(5, last - first);
     const scale = Math.max(4, 300 / span);
-    return { first, last, scale, height: span * scale };
+    const marks = buildTrayTimelineMarks(first, last);
+    return { first, last, scale, height: span * scale, marks };
   }, [todos]);
 
   function toggleTodo(id) {
@@ -165,10 +167,27 @@ function TrayTodoPanel({ onShowTimer }) {
         {range ? (
           <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)]">
             <div className="relative" style={{ height: `${range.height}px` }} data-testid="tray-todo-timeline">
-              <span className="absolute left-3 top-2 text-[0.68rem] font-bold text-[var(--one-subtle)]">{formatMinute(range.first)}</span>
-              <span className="absolute left-[62px] right-0 top-0 border-t border-[var(--one-border)]" />
-              <span className="absolute bottom-2 left-3 text-[0.68rem] font-bold text-[var(--one-subtle)]">{formatMinute(range.last)}</span>
-              <span className="absolute bottom-0 left-[62px] right-0 border-t border-[var(--one-border)]" />
+              {range.marks.map((minute) => {
+                const top = (minute - range.first) * range.scale;
+                const endpoint = minute === range.first || minute === range.last;
+                const labelTransform = minute === range.first
+                  ? 'translateY(8px)'
+                  : minute === range.last
+                    ? 'translateY(calc(-100% - 8px))'
+                    : 'translateY(-50%)';
+
+                return (
+                  <div className="absolute left-0 right-0" key={minute} style={{ top: `${top}px` }} aria-hidden="true">
+                    <span
+                      className="absolute left-3 text-[0.68rem] font-bold text-[var(--one-subtle)]"
+                      style={{ transform: labelTransform }}
+                    >
+                      {formatMinute(minute)}
+                    </span>
+                    <span className={`absolute left-[62px] right-0 border-t ${endpoint ? 'border-[var(--one-border)]' : 'border-dashed border-[var(--one-border-soft)]'}`} />
+                  </div>
+                );
+              })}
 
               {todos.map((todo) => {
                 const top = (todo.startMinute - range.first) * range.scale;
