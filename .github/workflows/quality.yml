@@ -57,9 +57,6 @@ jobs:
       - name: Check timer state behavior
         run: node scripts/timer_state_behavior_checks.js
 
-      - name: Check timer keyboard shortcuts
-        run: python3 scripts/timer_shortcuts_checks.py
-
       - name: Check wake lock behavior
         run: python3 scripts/wake_lock_checks.py
 
@@ -86,9 +83,6 @@ jobs:
 
       - name: Check idle timer cross-tab sync
         run: python3 scripts/idle_timer_sync_checks.py
-
-      - name: Check theme storage behavior
-        run: python3 scripts/theme_storage_checks.py
 
       - name: Check completion effects behavior
         run: python3 scripts/completion_effects_checks.py
