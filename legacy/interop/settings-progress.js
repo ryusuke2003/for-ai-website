@@ -106,3 +106,16 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
 
   refreshProgress({ force: true });
 }
+
+globalThis.ONE_TAB_COORDINATION = Object.freeze({
+  isEnabled() {
+    return tabCoordinationEnabled && !storageAccessFailed;
+  },
+  hasActiveStoredTimer() {
+    if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
+    const storedState = readTimerState();
+    const storedSessionId = readStoredSessionId();
+    if (storageCoordinationUnavailable()) return false;
+    return Boolean(storedSessionId && isTimerStateActive(storedState));
+  },
+});
