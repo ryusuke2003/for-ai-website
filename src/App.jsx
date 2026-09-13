@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AppFooter } from './components/AppFooter.jsx';
 import { AppNavigation } from './components/AppNavigation.jsx';
 import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
+import { TRAY_NAVIGATION_APPLIED_EVENT } from './desktop/trayNavigation.js';
 import { openFullWindow } from './desktop/trayWindow.js';
 import { BackupPanel } from './features/backup/BackupPanel.jsx';
 import { ProgressDetails } from './features/progress/ProgressDetails.jsx';
@@ -127,6 +128,11 @@ function readTrayTodos() {
   }
 }
 
+function currentMinuteOfDay() {
+  const now = new Date();
+  return now.getHours() * 60 + now.getMinutes();
+}
+
 function formatMinute(value) {
   if (value >= 1440) return '24:00';
   const safe = Math.max(0, value);
@@ -135,15 +141,42 @@ function formatMinute(value) {
 
 function TrayTodoPanel({ onShowTimer }) {
   const [todos, setTodos] = useState(readTrayTodos);
+  const [currentMinute, setCurrentMinute] = useState(currentMinuteOfDay);
+  const [scrollRequest, setScrollRequest] = useState(0);
+  const viewportRef = useRef(null);
+
   const range = useMemo(() => {
     if (todos.length === 0) return null;
-    const first = Math.min(...todos.map((todo) => todo.startMinute));
-    const last = Math.max(...todos.map((todo) => todo.startMinute + todo.duration));
+    const firstTodo = Math.min(...todos.map((todo) => todo.startMinute));
+    const lastTodo = Math.max(...todos.map((todo) => todo.startMinute + todo.duration));
+    const first = Math.max(0, Math.min(firstTodo, currentMinute - 30));
+    const last = Math.min(1440, Math.max(lastTodo, currentMinute + 30));
     const span = Math.max(5, last - first);
     const scale = Math.max(4, 300 / span);
     const marks = buildTrayTimelineMarks(first, last);
     return { first, last, scale, height: span * scale, marks };
-  }, [todos]);
+  }, [todos, currentMinute]);
+
+  useEffect(() => {
+    function handleTrayNavigation(event) {
+      if (event.detail !== 'tray-todo') return;
+      setCurrentMinute(currentMinuteOfDay());
+      setScrollRequest((current) => current + 1);
+    }
+
+    window.addEventListener(TRAY_NAVIGATION_APPLIED_EVENT, handleTrayNavigation);
+    return () => window.removeEventListener(TRAY_NAVIGATION_APPLIED_EVENT, handleTrayNavigation);
+  }, []);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !range) return;
+
+    const currentTop = (currentMinute - range.first) * range.scale;
+    const preferredTop = currentTop - viewport.clientHeight * 0.38;
+    const maxScrollTop = Math.max(0, viewport.scrollHeight - viewport.clientHeight);
+    viewport.scrollTop = Math.min(maxScrollTop, Math.max(0, preferredTop));
+  }, [currentMinute, range, scrollRequest]);
 
   function toggleTodo(id) {
     const next = todos.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
@@ -165,7 +198,7 @@ function TrayTodoPanel({ onShowTimer }) {
         </div>
 
         {range ? (
-          <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)]">
+          <div ref={viewportRef} className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)]">
             <div className="relative" style={{ height: `${range.height}px` }} data-testid="tray-todo-timeline">
               {range.marks.map((minute) => {
                 const top = (minute - range.first) * range.scale;
@@ -188,6 +221,16 @@ function TrayTodoPanel({ onShowTimer }) {
                   </div>
                 );
               })}
+
+              <div
+                className="pointer-events-none absolute left-[62px] right-0 z-20 border-t-2 border-[var(--one-fg)] opacity-35"
+                style={{ top: `${(currentMinute - range.first) * range.scale}px` }}
+                aria-label={`現在時刻 ${formatMinute(currentMinute)}`}
+              >
+                <span className="absolute -left-[58px] -top-2.5 text-[0.62rem] font-extrabold text-[var(--one-fg)]">
+                  {formatMinute(currentMinute)}
+                </span>
+              </div>
 
               {todos.map((todo) => {
                 const top = (todo.startMinute - range.first) * range.scale;
