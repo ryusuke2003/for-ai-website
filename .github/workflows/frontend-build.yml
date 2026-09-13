@@ -30,3 +30,14 @@ jobs:
 
       - name: Build with Vite
         run: npm run build
+
+      - name: Verify production entrypoints
+        shell: bash
+        run: |
+          test -f dist/react-timer-controls-bridge.js
+          grep -q 'react-timer-controls-bridge.js' dist/index.html
+          if grep -q 'src/main.jsx' dist/index.html; then
+            echo 'Unbundled React entry remains in dist/index.html.' >&2
+            exit 1
+          fi
+          grep -Eq 'assets/index-[^" ]+\.js' dist/index.html
