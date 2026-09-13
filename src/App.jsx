@@ -1,14 +1,14 @@
 import { useSyncExternalStore } from 'react';
 import { AppFooter } from './components/AppFooter.jsx';
-import { BackupPanel } from './components/BackupPanel.jsx';
 import { HeroIntro } from './components/HeroIntro.jsx';
-import { ProgressDetails } from './components/ProgressDetails.jsx';
-import { ProgressOverview } from './components/ProgressOverview.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
-import { TimerControls } from './components/TimerControls.jsx';
-import { TimerDisplay } from './components/TimerDisplay.jsx';
-import { TimerSettings } from './components/TimerSettings.jsx';
-import { useTimerState } from './state/useTimerState.js';
+import { BackupPanel } from './features/backup/BackupPanel.jsx';
+import { ProgressDetails } from './features/progress/ProgressDetails.jsx';
+import { ProgressOverview } from './features/progress/ProgressOverview.jsx';
+import { TimerControls } from './features/timer/TimerControls.jsx';
+import { TimerDisplay } from './features/timer/TimerDisplay.jsx';
+import { TimerSettings } from './features/timer/TimerSettings.jsx';
+import { useTimerState } from './features/timer/useTimerState.js';
 
 const STORAGE_FALLBACK = Object.freeze({
   state: 'checking',
