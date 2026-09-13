@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 RESET_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js"
-TIMER_INTEROP_PATH = ROOT / "legacy" / "interop" / "timer.js"
+TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 
 
 def section(source, start_marker, end_marker):
@@ -23,7 +23,7 @@ def require(condition, message):
 
 def main():
     source = RESET_PATH.read_text(encoding="utf-8")
-    timer_interop = TIMER_INTEROP_PATH.read_text(encoding="utf-8")
+    timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
 
     reporter = section(
         source,
@@ -84,18 +84,22 @@ def main():
     prepare_pos = reload.find("window.dispatchEvent(new Event('one:privacy-reset-prepare'))")
     reload_pos = reload.find("window.location.reload()")
     require(prepare_pos >= 0 and reload_pos > prepare_pos,
-            "再読み込み前にclassic timerへ停止準備を通知してください")
-    require("window.addEventListener('one:privacy-reset-prepare'" in timer_interop,
-            "timer interopはprivacy reset準備eventを受け取ってください")
-    timer_prepare = timer_interop.split("window.addEventListener('one:privacy-reset-prepare'", 1)[-1]
-    require("clearTimerInterval();" in timer_prepare and "endAt = null;" in timer_prepare,
+            "再読み込み前にReactタイマーruntimeへ停止準備を通知してください")
+    require("window.addEventListener('one:privacy-reset-prepare', preparePrivacyReset)" in timer_store,
+            "Reactタイマーruntimeはprivacy reset準備eventを受け取ってください")
+    timer_prepare = section(timer_store, "function preparePrivacyReset()", "export function getTimerSnapshot()")
+    require("clearTimerInterval();" in timer_prepare and "endAt: null" in timer_prepare,
             "reset前は保存し直さずtimer intervalと終了時刻だけ停止してください")
+    require("persistTimerState" not in timer_prepare,
+            "privacy reset準備で削除済みタイマー状態を書き戻さないでください")
 
     require("localStorage.clear(" not in source, "他サイトデータを巻き込むlocalStorage.clear()は禁止です")
     require(source.count("reportDataResetStorageFailure();") == 2, "全体通知はlocalStorage例外の2経路だけに限定してください")
     require(not (ROOT / "privacy-reset.js").exists(), "React移行後はprivacy-reset.jsを残さないでください")
+    require(not (ROOT / "legacy" / "interop" / "timer.js").exists(),
+            "削除したtimer interopをprivacy resetのために戻さないでください")
 
-    print("Privacy reset is React-owned, validates cross-tab signals, and stops the classic timer before reload.")
+    print("Privacy reset is React-owned, validates cross-tab signals, and stops the React timer before reload.")
 
 
 if __name__ == "__main__":
