@@ -17,6 +17,10 @@ const TRAY_HEIGHT: f64 = 620.0;
 const FULL_WIDTH: f64 = 1180.0;
 #[cfg(target_os = "macos")]
 const FULL_HEIGHT: f64 = 900.0;
+#[cfg(target_os = "macos")]
+const FULL_HORIZONTAL_MARGIN: f64 = 48.0;
+#[cfg(target_os = "macos")]
+const FULL_VERTICAL_MARGIN: f64 = 64.0;
 
 #[cfg(target_os = "macos")]
 #[derive(Default)]
@@ -55,7 +59,7 @@ fn show_tray_window(app: &AppHandle, position: PhysicalPosition<f64>) {
     let y = position.y + (10.0 * scale);
     let _ = window.set_position(PhysicalPosition::new(x.round() as i32, y.round() as i32));
 
-    emit_navigation(app, "tray-timer");
+    emit_navigation(app, "tray-todo");
     state.0.store(true, Ordering::SeqCst);
     let _ = window.show();
     let _ = window.set_focus();
@@ -76,12 +80,50 @@ fn open_full_window(app: AppHandle, target: String) -> Result<(), String> {
         .0
         .store(false, Ordering::SeqCst);
 
+    let mut full_width = FULL_WIDTH;
+    let mut full_height = FULL_HEIGHT;
+    let mut centered_position = None;
+
+    if let Ok(Some(monitor)) = window.current_monitor() {
+        let scale = monitor.scale_factor();
+        let monitor_size = monitor.size();
+        let monitor_position = monitor.position();
+        let logical_width = monitor_size.width as f64 / scale;
+        let logical_height = monitor_size.height as f64 / scale;
+
+        full_width = FULL_WIDTH.min(
+            (logical_width - FULL_HORIZONTAL_MARGIN * 2.0).max(380.0),
+        );
+        full_height = FULL_HEIGHT.min(
+            (logical_height - FULL_VERTICAL_MARGIN * 2.0).max(640.0),
+        );
+
+        let physical_width = full_width * scale;
+        let physical_height = full_height * scale;
+        let x = monitor_position.x as f64
+            + (monitor_size.width as f64 - physical_width) / 2.0;
+        let y = monitor_position.y as f64
+            + (monitor_size.height as f64 - physical_height) / 2.0;
+        centered_position = Some(PhysicalPosition::new(
+            x.round() as i32,
+            y.round() as i32,
+        ));
+    }
+
+    // Tray直下の位置・装飾状態を見せたまま切り替えると、macOS側の反映順で
+    // 通常ウィンドウが画面端へ残ることがあるため、一度隠してから復元する。
+    let _ = window.hide();
     let _ = window.set_always_on_top(false);
     let _ = window.set_decorations(true);
     let _ = window.set_resizable(true);
     let _ = window.set_min_size(Some(LogicalSize::new(380.0, 640.0)));
-    let _ = window.set_size(LogicalSize::new(FULL_WIDTH, FULL_HEIGHT));
-    let _ = window.center();
+    let _ = window.set_size(LogicalSize::new(full_width, full_height));
+
+    if let Some(position) = centered_position {
+        let _ = window.set_position(position);
+    } else {
+        let _ = window.center();
+    }
 
     emit_navigation(&app, &target);
     let _ = window.show();
