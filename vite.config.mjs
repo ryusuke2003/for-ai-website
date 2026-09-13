@@ -1,3 +1,4 @@
+import tailwindcss from '@tailwindcss/vite';
 import { copyFile, mkdir } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { defineConfig } from 'vite';
@@ -81,7 +82,7 @@ function copyLegacyScripts() {
 
 export default defineConfig({
   base: './',
-  plugins: [injectReactEntry(), copyLegacyScripts()],
+  plugins: [tailwindcss(), injectReactEntry(), copyLegacyScripts()],
   server: {
     host: '127.0.0.1',
   },
