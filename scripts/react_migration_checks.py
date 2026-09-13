@@ -18,9 +18,9 @@ def main():
     require('id="react-footer-root"' in INDEX_SOURCE, "フッター用React境界がありません")
     require('id="react-root"' not in INDEX_SOURCE, "旧Reactプレースホルダーを残さないでください")
 
-    require("hydrateRoot" in MAIN_SOURCE, "既存HTMLを維持した段階移行にはhydrateRootを使ってください")
-    require("<HeroIntro />" in MAIN_SOURCE, "HeroIntroをReactからハイドレートしてください")
-    require("<AppFooter />" in MAIN_SOURCE, "AppFooterをReactからハイドレートしてください")
+    require("createRoot" in MAIN_SOURCE, "手書きフォールバックをReactへ切り替える境界にはcreateRootを使ってください")
+    require("<HeroIntro />" in MAIN_SOURCE, "HeroIntroをReactからマウントしてください")
+    require("<AppFooter />" in MAIN_SOURCE, "AppFooterをReactからマウントしてください")
     require("Built with React + Vite" not in MAIN_SOURCE, "導入確認用の仮表示を残さないでください")
 
     require("ONE SPRINT AT A TIME" in HERO_SOURCE, "ヘッダーのeyebrow文言を維持してください")
@@ -34,7 +34,7 @@ def main():
     ):
         require("dangerouslySetInnerHTML" not in source, f"{source_name} でdangerouslySetInnerHTMLを使わないでください")
 
-    print("React migration step checks passed: static fallbacks and hydrated components stay aligned.")
+    print("React migration step checks passed: static fallbacks and mounted components stay aligned.")
 
 
 if __name__ == "__main__":
