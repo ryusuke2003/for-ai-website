@@ -1,34 +1,8 @@
-// Temporary compatibility layer for custom timer settings and progress overview.
-if (
-  document.documentElement.dataset.reactTimerSettings === '1'
-  || document.documentElement.dataset.reactProgressOverview === '1'
-) {
-  let settingsSnapshot = null;
-  let settingsSerialized = '';
+// Temporary compatibility layer for progress overview and custom-duration backup restore.
+if (document.documentElement.dataset.reactProgressOverview === '1') {
   let progressSnapshot = null;
   let progressSerialized = '';
-  let settingsDirty = false;
-  let progressDirty = false;
   let publishQueued = false;
-
-  function buildTimerSettingsSnapshot() {
-    const customLocked = customPresetButton.disabled;
-
-    return {
-      presets: standardPresetButtons.map((button) => ({
-        minutes: Number.parseInt(button.dataset.minutes, 10),
-        label: button.textContent ?? '',
-        active: button.classList.contains('active'),
-        pressed: button.getAttribute('aria-pressed') === 'true',
-        disabled: button.disabled,
-      })),
-      customValue: customMinutesInput.value,
-      customInvalid: customMinutesInput.getAttribute('aria-invalid') === 'true',
-      customDisabled: customLocked,
-      customApplyDisabled: customLocked,
-      customStatus: customMinutesStatus.textContent ?? '',
-    };
-  }
 
   function buildProgressOverviewSnapshot() {
     return {
@@ -45,39 +19,11 @@ if (
     };
   }
 
-  function publishPendingState() {
+  function dispatchProgressState() {
     publishQueued = false;
-
-    if (settingsDirty) {
-      settingsDirty = false;
-      window.dispatchEvent(new CustomEvent('one:timer-settings-state', {
-        detail: settingsSnapshot,
-      }));
-    }
-
-    if (progressDirty) {
-      progressDirty = false;
-      window.dispatchEvent(new CustomEvent('one:progress-overview-state', {
-        detail: progressSnapshot,
-      }));
-    }
-  }
-
-  function queuePublish() {
-    if (publishQueued) return;
-    publishQueued = true;
-    queueMicrotask(publishPendingState);
-  }
-
-  function refreshSettings({ force = false } = {}) {
-    const next = buildTimerSettingsSnapshot();
-    const serialized = JSON.stringify(next);
-    if (!force && serialized === settingsSerialized) return;
-
-    settingsSerialized = serialized;
-    settingsSnapshot = Object.freeze(next);
-    settingsDirty = true;
-    queuePublish();
+    window.dispatchEvent(new CustomEvent('one:progress-overview-state', {
+      detail: progressSnapshot,
+    }));
   }
 
   function refreshProgress({ force = false } = {}) {
@@ -87,26 +33,19 @@ if (
 
     progressSerialized = serialized;
     progressSnapshot = Object.freeze(next);
-    progressDirty = true;
-    queuePublish();
+    if (publishQueued) return;
+
+    publishQueued = true;
+    queueMicrotask(dispatchProgressState);
   }
 
-  function refreshBoth(options) {
-    refreshSettings(options);
-    refreshProgress(options);
-  }
-
-  function wrapStateMutation(name, { settings = false, progress = false } = {}) {
+  function wrapProgressMutation(name) {
     const original = globalThis[name];
     if (typeof original !== 'function') return;
 
-    globalThis[name] = function reactStateAwareMutation(...args) {
+    globalThis[name] = function reactProgressAwareMutation(...args) {
       const result = original.apply(this, args);
-      const refresh = () => {
-        if (settings) refreshSettings();
-        if (progress) refreshProgress();
-      };
-
+      const refresh = () => refreshProgress();
       if (result && typeof result.finally === 'function') {
         void result.finally(refresh);
       } else {
@@ -117,39 +56,21 @@ if (
   }
 
   for (const functionName of [
-    'syncCustomTimerPresentation',
-    'syncCustomTimerLock',
-    'setCustomTimerStatus',
-  ]) {
-    wrapStateMutation(functionName, { settings: true });
-  }
-
-  for (const functionName of [
     'renderHistory',
     'renderProgressInsights',
     'syncProgressFromStorage',
     'refreshProgressFromStorage',
     'refreshGuardProgressFromStorage',
+    'setRecordAvailability',
   ]) {
-    wrapStateMutation(functionName, { progress: true });
+    wrapProgressMutation(functionName);
   }
 
-  wrapStateMutation('setRecordAvailability', { settings: true, progress: true });
-
-  customMinutesInput.addEventListener('input', () => refreshSettings());
-
-  window.addEventListener('storage', () => refreshBoth());
-  window.addEventListener('pageshow', () => refreshBoth());
-  window.addEventListener('one:idle-timer-sync', () => refreshSettings());
-  window.addEventListener('one:storage-error', () => refreshBoth());
+  window.addEventListener('storage', () => refreshProgress());
+  window.addEventListener('pageshow', () => refreshProgress());
+  window.addEventListener('one:storage-error', () => refreshProgress());
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') refreshBoth();
-  });
-
-  globalThis.ONE_REACT_TIMER_SETTINGS_STATE = Object.freeze({
-    snapshot() {
-      return settingsSnapshot;
-    },
+    if (document.visibilityState === 'visible') refreshProgress();
   });
 
   globalThis.ONE_REACT_PROGRESS_OVERVIEW_STATE = Object.freeze({
@@ -159,70 +80,44 @@ if (
   });
 
   globalThis.ONE_REACT_SECONDARY_STATE = Object.freeze({
-    refreshSettings,
     refreshProgress,
-    refreshBoth,
   });
-
-  refreshBoth({ force: true });
-}
-
-if (document.documentElement.dataset.reactTimerSettings === '1') {
-  const legacyPresetButtons = standardPresetButtons;
-
-  function refreshSettingsState() {
-    globalThis.ONE_REACT_SECONDARY_STATE?.refreshSettings?.();
-  }
-
-  function forwardDetachedFocus(element, control) {
-    const nativeFocus = element.focus.bind(element);
-    element.focus = (options) => {
-      if (element.isConnected) {
-        nativeFocus(options);
-        return;
-      }
-
-      window.dispatchEvent(new CustomEvent('one:timer-settings-focus', {
-        detail: { control },
-      }));
-    };
-  }
-
-  forwardDetachedFocus(customMinutesInput, 'custom-minutes');
-
-  globalThis.ONE_REACT_TIMER_SETTINGS = Object.freeze({
-    selectPreset(minutes) {
-      const target = legacyPresetButtons.find(
-        (button) => Number.parseInt(button.dataset.minutes, 10) === minutes,
-      );
-      target?.click();
-      refreshSettingsState();
-    },
-    setCustomValue(value) {
-      customMinutesInput.value = String(value ?? '');
-      customMinutesInput.dispatchEvent(new Event('input', { bubbles: true }));
-      refreshSettingsState();
-    },
-    applyCustom() {
-      customMinutesApplyButton.click();
-      refreshSettingsState();
-    },
-  });
-}
-
-if (document.documentElement.dataset.reactProgressOverview === '1') {
-  function refreshProgressState() {
-    globalThis.ONE_REACT_SECONDARY_STATE?.refreshProgress?.();
-  }
 
   globalThis.ONE_REACT_PROGRESS_OVERVIEW = Object.freeze({
     record() {
       doneButton.click();
-      refreshProgressState();
+      refreshProgress();
     },
     discard() {
       discardButton.click();
-      refreshProgressState();
+      refreshProgress();
     },
   });
+
+  refreshProgress({ force: true });
+}
+
+const customDurationPreset = document.querySelector('#custom-preset');
+const customDurationGuard = globalThis.ONE_TIMER_STATE_GUARD;
+if (customDurationPreset && customDurationGuard) {
+  availablePresetMinutes = function availableCustomTimerMinutesForBackup() {
+    return Array.from(
+      { length: customDurationGuard.maxMinutes - customDurationGuard.minMinutes + 1 },
+      (_, index) => index + customDurationGuard.minMinutes,
+    );
+  };
+
+  const applyBackupWithoutCustomDurationSync = applyBackup;
+  applyBackup = function applyBackupWithCustomDurationSync(restored) {
+    if (
+      Number.isInteger(restored?.selectedMinutes)
+      && restored.selectedMinutes >= customDurationGuard.minMinutes
+      && restored.selectedMinutes <= customDurationGuard.maxMinutes
+    ) {
+      customDurationPreset.dataset.minutes = String(restored.selectedMinutes);
+    }
+    applyBackupWithoutCustomDurationSync(restored);
+  };
+
+  refreshRecoveryAvailability();
 }

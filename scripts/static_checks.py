@@ -10,6 +10,9 @@ REACT_APP_PATH = ROOT / "src" / "App.jsx"
 STORAGE_COMPONENT_PATH = ROOT / "src" / "components" / "StorageHealthStatus.jsx"
 THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
+TIMER_SETTINGS_PATH = ROOT / "src" / "features" / "timer" / "TimerSettings.jsx"
+TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
+CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
 WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
 COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
 PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
@@ -23,7 +26,6 @@ REQUIRED_SCRIPT_ORDER = [
     "daily-goal-progress.js",
     "tab-guard.js",
     "backup.js",
-    "custom-timer.js",
     "legacy/interop/settings-progress.js",
     "shortcuts.js",
     "privacy-reset.js",
@@ -91,11 +93,7 @@ def main():
         fail_if(timer.get("role") != "timer", "#timer は role=timer を維持してください", errors)
         fail_if("aria-live" in timer, "#timer に aria-live を付けないでください", errors)
 
-    custom_minutes = require_runtime_element(parser, "custom-minutes", errors)
     custom_preset = require_runtime_element(parser, "custom-preset", errors)
-    if custom_minutes is not None:
-        fail_if(custom_minutes.get("type") != "number", "#custom-minutes は type=number にしてください", errors)
-        fail_if(custom_minutes.get("min") != "1" or custom_minutes.get("max") != "180" or custom_minutes.get("step") != "1", "自由設定は1〜180分の整数にしてください", errors)
     if custom_preset is not None:
         fail_if("hidden" not in custom_preset, "#custom-preset は非表示にしてください", errors)
 
@@ -166,6 +164,15 @@ def main():
     fail_if("data-theme-choice={option.value}" not in theme_component, "テーマUIはReact側でdata-theme-choiceを維持してください", errors)
     fail_if('id="theme-status"' not in theme_component, "ReactテーマUIに読み上げ状態を維持してください", errors)
 
+    timer_settings = TIMER_SETTINGS_PATH.read_text(encoding="utf-8")
+    custom_timer_hook = CUSTOM_TIMER_HOOK_PATH.read_text(encoding="utf-8")
+    timer_display = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
+    fail_if('id="custom-minutes"' not in timer_settings, "自由設定入力はReact UIに置いてください", errors)
+    fail_if('min="1"' not in timer_settings or 'max="180"' not in timer_settings, "自由設定は1〜180分に限定してください", errors)
+    fail_if("ONE_REACT_TIMER_CONTROLS?.[action]" not in custom_timer_hook, "自由設定操作はtimer interopへ委譲してください", errors)
+    fail_if("window.addEventListener('one:idle-timer-sync', handleIdleTimerSync)" not in custom_timer_hook, "別タブのアイドル設定変更をReactへ同期してください", errors)
+    fail_if("document.title = documentTitleFor(state, timeText);" not in timer_display, "ページタイトルはReactタイマー状態から同期してください", errors)
+
     wake_lock_hook = WAKE_LOCK_HOOK_PATH.read_text(encoding="utf-8")
     fail_if("WAKE_LOCK_STORAGE_KEY = 'one.wakeLock.v1'" not in wake_lock_hook, "Wake Lock保存キーの互換性を維持してください", errors)
     fail_if("navigator.wakeLock.request('screen')" not in wake_lock_hook, "Wake LockはReact hookからscreenロックを要求してください", errors)
@@ -182,6 +189,7 @@ def main():
         *script_sources,
         storage_component,
         theme_component,
+        custom_timer_hook,
         wake_lock_hook,
         completion_effects_hook,
     ])

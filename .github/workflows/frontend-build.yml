@@ -43,7 +43,8 @@ jobs:
             react-timer-settings-bridge.js \
             react-progress-overview-bridge.js \
             react-progress-details-bridge.js \
-            react-backup-panel-bridge.js; do
+            react-backup-panel-bridge.js \
+            custom-timer.js; do
             if test -e "dist/$old"; then exit 1; fi
             if grep -q "$old" dist/index.html; then exit 1; fi
           done

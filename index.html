@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">
+<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -18,7 +18,6 @@
   <script src="daily-goal-progress.js" defer></script>
   <script src="tab-guard.js" defer></script>
   <script src="backup.js" defer></script>
-  <script src="custom-timer.js" defer></script>
   <script src="legacy/interop/settings-progress.js" defer></script>
   <script src="shortcuts.js" defer></script>
   <script src="privacy-reset.js" defer></script>
@@ -34,9 +33,7 @@
     <div id="legacy-runtime-scaffold" hidden aria-hidden="true">
       <div class="timer-card">
         <div id="timer" role="timer" aria-label="残り時間">25:00</div>
-        <progress id="timer-progress" max="1500" value="0" aria-label="集中時間の進捗"></progress>
         <p id="timer-status" role="status" aria-live="polite">準備できたらスタート。</p>
-        <p id="timer-end-time" hidden><time id="timer-end-at"></time></p>
         <button id="start-button" type="button">スタート</button>
         <button id="reset-button" type="button">リセット</button>
         <button id="focus-mode-button" type="button" aria-pressed="false">集中表示</button>
@@ -44,9 +41,6 @@
         <button type="button" data-minutes="10">10分</button>
         <button type="button" data-minutes="25" class="active" aria-pressed="true">25分</button>
         <button type="button" data-minutes="50">50分</button>
-        <input id="custom-minutes" type="number" min="1" max="180" step="1" value="25" aria-describedby="custom-minutes-status">
-        <button id="custom-minutes-apply" type="button" aria-describedby="custom-minutes-status">設定</button>
-        <p id="custom-minutes-status" role="status" aria-live="polite">1〜180分の整数でも設定できます。</p>
         <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
       </div>
 
