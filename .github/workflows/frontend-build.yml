@@ -45,7 +45,8 @@ jobs:
             react-progress-details-bridge.js \
             react-backup-panel-bridge.js \
             custom-timer.js \
-            daily-goal-progress.js; do
+            daily-goal-progress.js \
+            stats.js; do
             if test -e "dist/$old"; then exit 1; fi
             if grep -q "$old" dist/index.html; then exit 1; fi
           done

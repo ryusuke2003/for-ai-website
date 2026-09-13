@@ -25,7 +25,6 @@ jobs:
           node --check legacy/interop/timer.js
           node --check legacy/interop/settings-progress.js
           node --check legacy/interop/progress-backup.js
-          node --check stats.js
           node --check tab-guard.js
           node --check backup.js
           node --check shortcuts.js

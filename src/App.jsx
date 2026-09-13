@@ -5,8 +5,8 @@ import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { BackupPanel } from './features/backup/BackupPanel.jsx';
 import { ProgressDetails } from './features/progress/ProgressDetails.jsx';
 import { ProgressOverview } from './features/progress/ProgressOverview.jsx';
+import { buildProgressInsights } from './features/progress/progressInsights.js';
 import { useDailyGoalControl } from './features/progress/useDailyGoalControl.js';
-import { useProgressDetailsState } from './features/progress/useProgressDetailsState.js';
 import { useProgressOverviewState } from './features/progress/useProgressOverviewState.js';
 import { TimerControls } from './features/timer/TimerControls.jsx';
 import { TimerDisplay } from './features/timer/TimerDisplay.jsx';
@@ -37,9 +37,10 @@ function TimerSection() {
 }
 
 function ProgressSection() {
-  const overviewState = useProgressOverviewState();
-  const detailsState = useProgressDetailsState();
-  const dailyGoal = useDailyGoalControl(overviewState.todayCount);
+  const progressState = useProgressOverviewState();
+  const insights = buildProgressInsights(progressState.history);
+  const dailyGoal = useDailyGoalControl(insights.todayCount);
+  const overviewState = { ...progressState, ...insights };
 
   return (
     <section className="card progress-card" aria-labelledby="done-title">
@@ -48,7 +49,7 @@ function ProgressSection() {
         <h2 id="done-title">集中を記録して振り返る</h2>
       </div>
       <ProgressOverview state={overviewState} todayAriaLabel={dailyGoal.todayAriaLabel} />
-      <ProgressDetails state={detailsState} dailyGoal={dailyGoal} />
+      <ProgressDetails state={insights} dailyGoal={dailyGoal} />
     </section>
   );
 }

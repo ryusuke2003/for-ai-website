@@ -1,4 +1,4 @@
-// Temporary compatibility layer for progress overview and custom-duration backup restore.
+// Temporary compatibility layer for progress actions/state and custom-duration backup restore.
 if (document.documentElement.dataset.reactProgressOverview === '1') {
   let progressSnapshot = null;
   let progressSerialized = '';
@@ -9,12 +9,8 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
       doneLabel: doneButton.textContent ?? 'タイマー完了後に記録できます',
       doneDisabled: doneButton.disabled,
       discardHidden: discardButton.hidden,
-      todayCount: todayCount.textContent ?? '0',
-      weekCount: weekCount.textContent ?? '0',
-      streakCount: streakCount.textContent ?? '0',
-      streakAriaLabel: streakCount.getAttribute('aria-label') ?? '0日',
       doneCount: doneCount.textContent ?? '0',
-      streakStatus: streakStatus.textContent ?? '',
+      history: Object.freeze({ ...normalizeHistory(focusHistory) }),
     };
   }
 
@@ -56,9 +52,6 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
 
   for (const functionName of [
     'renderHistory',
-    'renderProgressInsights',
-    'syncProgressFromStorage',
-    'refreshProgressFromStorage',
     'refreshGuardProgressFromStorage',
     'setRecordAvailability',
   ]) {
