@@ -268,7 +268,6 @@ const progressRuntime = Object.freeze({
   persistHistoryEntryAtLeast,
 });
 
-globalThis.ONE_PROGRESS_RUNTIME = progressRuntime;
 registerProgressRuntime(progressRuntime);
 
 window.addEventListener('storage', syncProgressFromStorage);
