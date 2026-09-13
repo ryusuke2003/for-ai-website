@@ -20,6 +20,10 @@ function readBridgeState() {
   return bridge()?.snapshot?.() ?? DEFAULT_STATE;
 }
 
+function visibleBackupStatus(message) {
+  return String(message ?? '').replace('タスク本文や実行中タイマー', '実行中タイマー');
+}
+
 export function BackupPanel() {
   const [state, setState] = useState(readBridgeState);
   const fileInputRef = useRef(null);
@@ -108,7 +112,7 @@ export function BackupPanel() {
         累計・日次履歴・選択中のタイマー時間だけを端末上のJSONファイルへ保存します。実行中タイマー、タブ間セッションID、今日の目標、表示・通知などのUI設定は含めません。復元直前の記録は端末内に1世代だけ退避し、復元後の記録が変わっていない間だけ取り消せます。
       </p>
       <p className="hint" id="backup-status" role="status" aria-live="polite">
-        {state.backupStatus}
+        {visibleBackupStatus(state.backupStatus)}
       </p>
 
       <div className="history" aria-labelledby="data-reset-title">
