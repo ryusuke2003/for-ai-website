@@ -6,21 +6,32 @@ const STAT_CLASS = 'rounded-2xl bg-[var(--one-stat-bg)] px-4 py-[18px] text-cent
 const STAT_LABEL_CLASS = 'mt-2 block text-[0.72rem] font-bold text-[var(--one-subtle)]';
 
 export function ProgressOverview({ state, todayAriaLabel = '' }) {
-  const primaryAction = state.breakCompletion ? progressActions.discard : progressActions.record;
-
   return (
     <>
       <div className="flex flex-wrap justify-center gap-2.5">
-        <button
-          className={`${ACTION_BUTTON_CLASS} w-full bg-[var(--one-primary-bg)] text-[var(--one-primary-fg)] disabled:border-[var(--one-border)] disabled:bg-transparent disabled:text-[var(--one-disabled)]`}
-          id="done-button"
-          type="button"
-          aria-describedby="done-hint"
-          disabled={state.doneDisabled}
-          onClick={primaryAction}
-        >
-          {state.doneLabel}
-        </button>
+        {state.breakCompletion ? (
+          <button
+            className={`${ACTION_BUTTON_CLASS} w-full bg-[var(--one-primary-bg)] text-[var(--one-primary-fg)] disabled:border-[var(--one-border)] disabled:bg-transparent disabled:text-[var(--one-disabled)]`}
+            id="done-button"
+            type="button"
+            aria-describedby="done-hint"
+            disabled={state.doneDisabled}
+            onClick={progressActions.discard}
+          >
+            {state.doneLabel}
+          </button>
+        ) : (
+          <button
+            className={`${ACTION_BUTTON_CLASS} w-full bg-[var(--one-primary-bg)] text-[var(--one-primary-fg)] disabled:border-[var(--one-border)] disabled:bg-transparent disabled:text-[var(--one-disabled)]`}
+            id="done-button"
+            type="button"
+            aria-describedby="done-hint"
+            disabled={state.doneDisabled}
+            onClick={progressActions.record}
+          >
+            {state.doneLabel}
+          </button>
+        )}
         <button
           className={`${ACTION_BUTTON_CLASS} bg-transparent text-inherit`}
           id="discard-button"
