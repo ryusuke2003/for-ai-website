@@ -108,6 +108,17 @@ describe('TodoPage', () => {
     expect(screen.getByRole('article', { name: '09:00 暗記問題' })).not.toBeNull();
   });
 
+  it('短いTodoでも開始時刻と終了時刻を横に表示する', () => {
+    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
+      { id: 'time-range', text: '勉強', completed: false, startMinute: 18 * 60 + 30, duration: 25 },
+    ]));
+
+    render(<TodoPage />);
+
+    expect(screen.getByText('勉強')).not.toBeNull();
+    expect(screen.getByText('18:30–18:55')).not.toBeNull();
+  });
+
   it('旧Todoデータを予定表形式へ移行して読み込む', () => {
     localStorage.setItem(LEGACY_TODO_STORAGE_KEY, JSON.stringify([
       { id: '1', text: '保存済みタスク', completed: false },
@@ -117,6 +128,7 @@ describe('TodoPage', () => {
 
     expect(screen.getByText('保存済みタスク')).not.toBeNull();
     expect(screen.getByRole('article', { name: '09:00 保存済みタスク' })).not.toBeNull();
+    expect(screen.getByText('09:00–09:25')).not.toBeNull();
     expect(JSON.parse(localStorage.getItem(TODO_STORAGE_KEY))[0]).toMatchObject({
       text: '保存済みタスク',
       startMinute: 540,
