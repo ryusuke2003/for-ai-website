@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { AppFooter } from './components/AppFooter.jsx';
 import { AppNavigation } from './components/AppNavigation.jsx';
 import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
+import { openFullWindow } from './desktop/trayWindow.js';
 import { BackupPanel } from './features/backup/BackupPanel.jsx';
 import { ProgressDetails } from './features/progress/ProgressDetails.jsx';
 import { ProgressOverview } from './features/progress/ProgressOverview.jsx';
@@ -13,25 +13,25 @@ import { useProgressOverviewState } from './features/progress/useProgressOvervie
 import { TimerControls } from './features/timer/TimerControls.jsx';
 import { TimerDisplay } from './features/timer/TimerDisplay.jsx';
 import { TimerSettings } from './features/timer/TimerSettings.jsx';
+import { TrayTimerPanel } from './features/timer/TrayTimerPanel.jsx';
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
-import {
-  canRestoreTodoSchedule,
-  resetTodoSchedule,
-  restoreTodoSchedule,
-} from './features/todo/resetTodoSchedule.js';
 import { TodoPage } from './features/todo/TodoPage.jsx';
 
 const BREAK_MINUTES = 5;
+const TODO_STORAGE_KEY = 'one.todos.v2';
+const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
 const HINT_CLASS = 'hint mt-3 text-[0.82rem] text-[var(--one-muted)]';
-const TODO_ACTION_CLASS = 'rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.72rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]';
 
 function pageFromHash() {
-  return window.location.hash === '#todo' ? 'todo' : 'timer';
+  if (window.location.hash === '#todo') return 'todo';
+  if (window.location.hash === '#tray-todo') return 'tray-todo';
+  if (window.location.hash === '#tray-timer') return 'tray-timer';
+  return 'timer';
 }
 
 function SectionHeading({ step, id, children }) {
@@ -57,16 +57,11 @@ function TimerSection({ focusMode }) {
       <SectionHeading step="01" id="timer-title">{breakMode ? '5分休憩する' : '時間を決めて集中する'}</SectionHeading>
       <TimerDisplay />
       <div className="flex flex-wrap justify-center gap-2.5">
-        <TimerControls
-          focusModeActive={focusMode.active}
-          onToggleFocusMode={focusMode.toggle}
-        />
+        <TimerControls focusModeActive={focusMode.active} onToggleFocusMode={focusMode.toggle} />
       </div>
       <p className={HINT_CLASS}>キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
       <TimerSettings />
-      {breakMode ? (
-        <p className={HINT_CLASS}>5分プリセットは休憩用です。完了しても集中回数には加算されません。</p>
-      ) : null}
+      {breakMode ? <p className={HINT_CLASS}>5分プリセットは休憩用です。完了しても集中回数には加算されません。</p> : null}
     </section>
   );
 }
@@ -113,30 +108,88 @@ function FocusModeStatus({ status }) {
   return <p id="focus-mode-status" className="sr-only" aria-live="polite">{status}</p>;
 }
 
-function TodoTimelineActions({ version, restoreAvailable, onRestore, onReset }) {
-  const [target, setTarget] = useState(null);
+function readTrayTodos() {
+  try {
+    const raw = localStorage.getItem(TODO_STORAGE_KEY) ?? localStorage.getItem(LEGACY_TODO_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw)
+      .filter((todo) => todo && typeof todo.id === 'string' && typeof todo.text === 'string')
+      .map((todo) => ({
+        ...todo,
+        completed: todo.completed === true,
+        startMinute: Number(todo.startMinute) || 0,
+        duration: Math.max(5, Number(todo.duration) || 25),
+      }))
+      .sort((left, right) => left.startMinute - right.startMinute || left.id.localeCompare(right.id));
+  } catch {
+    return [];
+  }
+}
 
-  useEffect(() => {
-    const timelineTitle = document.getElementById('timeline-title');
-    const header = timelineTitle?.parentElement?.parentElement;
-    const dateTarget = header?.lastElementChild;
-    setTarget(dateTarget instanceof HTMLElement ? dateTarget : null);
-  }, [version]);
+function formatMinute(value) {
+  if (value >= 1440) return '24:00';
+  const safe = Math.max(0, value);
+  return `${String(Math.floor(safe / 60)).padStart(2, '0')}:${String(safe % 60).padStart(2, '0')}`;
+}
 
-  if (!target) return null;
+function TrayTodoPanel({ onShowTimer }) {
+  const [todos, setTodos] = useState(readTrayTodos);
+  const range = useMemo(() => {
+    if (todos.length === 0) return null;
+    const first = Math.min(...todos.map((todo) => todo.startMinute));
+    const last = Math.max(...todos.map((todo) => todo.startMinute + todo.duration));
+    const span = Math.max(5, last - first);
+    const scale = Math.max(4, 300 / span);
+    return { first, last, scale, height: span * scale };
+  }, [todos]);
 
-  return createPortal(
-    <span className="ml-2 inline-flex items-center gap-2 align-middle">
-      {restoreAvailable ? (
-        <button className={TODO_ACTION_CLASS} type="button" onClick={onRestore}>
-          リセットを復元
-        </button>
-      ) : null}
-      <button className={TODO_ACTION_CLASS} type="button" onClick={onReset}>
-        今日の予定をリセット
-      </button>
-    </span>,
-    target,
+  function toggleTodo(id) {
+    const next = todos.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
+    setTodos(next);
+    try {
+      localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      window.dispatchEvent(new Event('one:storage-error'));
+    }
+  }
+
+  return (
+    <section className="min-h-screen bg-[var(--one-page)] p-4 text-[var(--one-fg)]">
+      <div className="mx-auto flex h-full max-w-[520px] flex-col rounded-[28px] border border-[var(--one-border)] bg-[var(--one-card)] p-5 shadow-[var(--one-card-shadow)]">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button className="rounded-full border border-[var(--one-border)] px-3.5 py-2 text-[0.76rem] font-extrabold" type="button" onClick={onShowTimer}>タイマーへ</button>
+          <strong className="text-[0.92rem]">今日の時間割</strong>
+          <button className="rounded-full border border-[var(--one-border)] bg-[var(--one-active-bg)] px-3.5 py-2 text-[0.76rem] font-extrabold" type="button" onClick={() => void openFullWindow('todo')}>Todoを開く</button>
+        </div>
+
+        {range ? (
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)]">
+            <div className="relative" style={{ height: `${range.height}px` }} data-testid="tray-todo-timeline">
+              <span className="absolute left-3 top-2 text-[0.68rem] font-bold text-[var(--one-subtle)]">{formatMinute(range.first)}</span>
+              <span className="absolute left-[62px] right-0 top-0 border-t border-[var(--one-border)]" />
+              <span className="absolute bottom-2 left-3 text-[0.68rem] font-bold text-[var(--one-subtle)]">{formatMinute(range.last)}</span>
+              <span className="absolute bottom-0 left-[62px] right-0 border-t border-[var(--one-border)]" />
+
+              {todos.map((todo) => {
+                const top = (todo.startMinute - range.first) * range.scale;
+                const height = Math.max(18, todo.duration * range.scale - 4);
+                return (
+                  <article key={todo.id} className={`absolute left-[72px] right-3 rounded-xl border border-[var(--one-border-strong)] bg-[var(--one-card)] px-3 ${todo.completed ? 'opacity-55' : ''}`} style={{ top: `${top + 2}px`, height: `${height}px` }} aria-label={`${formatMinute(todo.startMinute)} ${todo.text}`}>
+                    <div className="flex h-full items-center gap-2">
+                      <input type="checkbox" checked={todo.completed} aria-label={`${todo.text}を完了`} onChange={() => toggleTodo(todo.id)} />
+                      <strong className={`min-w-0 flex-1 truncate text-[0.82rem] ${todo.completed ? 'line-through' : ''}`}>{todo.text}</strong>
+                      <span className="text-[0.7rem] font-bold text-[var(--one-muted)]">{formatMinute(todo.startMinute)}–{formatMinute(todo.startMinute + todo.duration)}</span>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div className="flex min-h-[220px] flex-1 items-center justify-center rounded-2xl border border-dashed border-[var(--one-border-strong)] px-6 text-center text-[0.82rem] font-bold text-[var(--one-muted)]">今日の予定はまだありません。</div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -144,9 +197,6 @@ export function App() {
   const timerState = useTimerState();
   const focusMode = useFocusModeControl(timerState.completionReady);
   const [page, setPage] = useState(pageFromHash);
-  const [todoResetVersion, setTodoResetVersion] = useState(0);
-  const [todoResetStatus, setTodoResetStatus] = useState('');
-  const [todoRestoreAvailable, setTodoRestoreAvailable] = useState(canRestoreTodoSchedule);
 
   useEffect(() => {
     function handleHashChange() {
@@ -172,28 +222,12 @@ export function App() {
     setPage('timer');
   }
 
-  function resetTodaySchedule() {
-    const resetSucceeded = resetTodoSchedule();
-    if (!resetSucceeded) {
-      setTodoResetStatus('予定をリセットできませんでした。');
-      return;
-    }
-
-    setTodoResetVersion((current) => current + 1);
-    setTodoRestoreAvailable(canRestoreTodoSchedule());
-    setTodoResetStatus('今日の予定をリセットしました。復元できます。');
+  if (page === 'tray-timer') {
+    return <TrayTimerPanel onShowTodo={() => { window.location.hash = 'tray-todo'; }} />;
   }
 
-  function restoreTodaySchedule() {
-    const restoreSucceeded = restoreTodoSchedule();
-    if (!restoreSucceeded) {
-      setTodoResetStatus('予定を復元できませんでした。');
-      return;
-    }
-
-    setTodoResetVersion((current) => current + 1);
-    setTodoRestoreAvailable(false);
-    setTodoResetStatus('リセット前の予定を復元しました。');
+  if (page === 'tray-todo') {
+    return <TrayTodoPanel onShowTimer={() => { window.location.hash = 'tray-timer'; }} />;
   }
 
   const shellWidthClass = page === 'todo'
@@ -205,22 +239,11 @@ export function App() {
       <header className="mb-4 flex items-start justify-between gap-4 max-[560px]:flex-col max-[560px]:gap-0">
         <AppNavigation page={page} onNavigate={navigate} />
         <ThemeSwitcher />
-        <div className="sr-only">
-          <StorageHealthStatus />
-        </div>
+        <div className="sr-only"><StorageHealthStatus /></div>
       </header>
 
       {page === 'todo' ? (
-        <>
-          <p className="sr-only" aria-live="polite">{todoResetStatus}</p>
-          <TodoPage key={todoResetVersion} />
-          <TodoTimelineActions
-            version={todoResetVersion}
-            restoreAvailable={todoRestoreAvailable}
-            onRestore={restoreTodaySchedule}
-            onReset={resetTodaySchedule}
-          />
-        </>
+        <TodoPage />
       ) : (
         <>
           <TimerSection focusMode={focusMode} />

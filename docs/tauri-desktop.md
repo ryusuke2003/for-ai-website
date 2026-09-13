@@ -1,6 +1,6 @@
 # タイマー macOSデスクトップ版
 
-タイマーは React / Vite のフロントエンドをそのまま利用し、Tauri v2 でmacOSデスクトップアプリとして動作します。Web版とデスクトップ版でタイマーや進捗の実装を二重管理しません。
+タイマーは React / Vite のフロントエンドをそのまま利用し、Tauri v2 でmacOSデスクトップアプリとして動作します。Web版とデスクトップ版でタイマーやTodoの実装を二重管理しません。
 
 ## 必要な環境
 
@@ -30,22 +30,38 @@ npm run dev
 
 ## macOSメニューバー常駐
 
-デスクトップ版はメニューバーにタイマーを常駐させます。macOSではDockアイコンを表示せず、メニューバーをアプリの主な入口にします。
+デスクトップ版はメニューバーにタイマーを常駐させます。macOSではDockアイコンを表示せず、Trayをアプリの主な入口にします。
 
-- メニューバーのタイマーをクリック: 最小限のネイティブメニューを表示
-- ウィンドウの閉じるボタン: アプリを終了せず、ウィンドウを非表示
-- Dock: タイマーのアイコンは表示しない
+### 左クリック: コンパクト操作画面
 
-メニューバーのメニューは、日常的に使う操作だけに絞ります。
+Trayアイコンを左クリックすると、ネイティブの項目一覧ではなく、メニューバー直下にコンパクトなアプリ画面を表示します。もう一度Trayアイコンを押すか、コンパクト画面がフォーカスを失うと非表示になります。
 
-- `タイマーを開く`
-- `Todoを開く`
-- `開始 / 再開`
-- `一時停止`
+最初に表示するのはタイマーです。
+
+- 残り時間、進捗、状態を表示
+- `スタート / 再開 / 一時停止`
 - `リセット`
-- `タイマーを終了`
+- `タイマーを開く`: 通常サイズのタイマー画面へ戻す
+- `Todoへ`: コンパクトTodo表示へ切り替える
 
-`25分開始` や `5分休憩` などのプリセット選択はメインウィンドウ側で行い、メニューバーメニューには重複して載せません。今後もメニューバー側は「すぐ使う最小操作」に留めます。
+コンパクトTodoでは「今日の時間割」だけを表示します。タスク追加フォームやテンプレート編集などは出しません。
+
+- 一番上: 登録済みTodoのうち最も早い開始時刻
+- 一番下: 登録済みTodoのうち最も遅い終了時刻
+- 24時間全体は表示しない
+- Todoのチェックボックスはその場で操作でき、既存のTodo保存領域へ反映する
+- `タイマーへ`: コンパクトタイマーへ戻る
+- `Todoを開く`: 通常サイズのTodo画面を開く
+
+通常サイズのTodo画面では、`現在時刻へ`、`今日の予定をリセット`、`リセットを復元` といった上部の補助ボタンは表示しません。予定の作成・移動・完了・個別削除は従来どおりTodo画面内で行います。
+
+### 右クリック: 終了
+
+Trayアイコンの右クリックメニューには `タイマーを終了` だけを残します。Dockを非表示にしているため、アプリを明示的に終了する入口として利用します。
+
+ウィンドウの閉じるボタンはアプリを終了せず、ウィンドウを非表示にします。
+
+## Tray表示
 
 Trayは通常時はストップウォッチアイコンだけを表示し、タイマー実行中だけ残り時間を横に表示します。
 
@@ -58,9 +74,9 @@ Trayは通常時はストップウォッチアイコンだけを表示し、タ�
 
 `src/desktop/trayTimerSync.js` が `timerStore` を購読し、Tauri実行時だけ `set_tray_title` commandを呼びます。ブラウザ版ではTauri APIを呼びません。
 
-Trayのタイマー操作は `src-tauri/src/lib.rs` から `one:tray-timer-action` eventをmain WebViewへ送り、`src/desktop/trayTimerActions.js` が既存の `timerActions` へ委譲します。Trayからの画面遷移は `one:tray-navigation` eventを使います。内部イベント名は既存互換性のため `one:*` のまま維持します。
+Tray左クリック時のウィンドウサイズ変更・位置調整・フォーカスアウト時の非表示は `src-tauri/src/lib.rs` が担当します。画面切り替えは `one:tray-navigation` eventを利用し、React側は `#tray-timer` / `#tray-todo` をコンパクト表示として扱います。
 
-Rust側のTray生成、Dock非表示、ウィンドウ常駐、終了処理、title反映は `src-tauri/src/lib.rs` が担当します。
+コンパクト表示から通常ウィンドウを開く場合は `src/desktop/trayWindow.js` が `open_full_window` commandを呼び、Rust側で装飾・サイズ・位置を通常状態へ戻します。
 
 ## lockfile準拠のビルド
 
@@ -94,20 +110,18 @@ Rust build cacheも利用します。
 
 ## GitHub Release
 
-`v` で始まるタグをpushすると、Tauri buildの成功後にGitHub Releaseを自動作成し、`timer-macos.zip` をRelease assetとして添付します。再実行時は既存ReleaseのZIPを上書きするため、同じタグでworkflowを再実行しても復旧できます。
+`v` で始まるタグをpushすると、Tauri buildの成功後にGitHub Releaseを自動作成し、`timer-macos.zip` をRelease assetとして添付します。再実行時は既存ReleaseのZIPを上書きします。
 
-タグのバージョンは `src-tauri/tauri.conf.json` の `version` と一致している必要があります。たとえば現在のアプリバージョンが `0.1.0` なら次のようにします。
+タグのバージョンは `src-tauri/tauri.conf.json` の `version` と一致している必要があります。
 
 ```sh
 git tag v0.1.0
 git push origin v0.1.0
 ```
 
-実行後はGitHubのReleasesから `timer-macos.zip` を直接取得できます。次のバージョンを出すときは、先に `tauri.conf.json` の `version` を更新してから対応するタグを作成します。
-
 ## 保存領域
 
-タイマー、進捗、設定、復旧用データはWebViewの `localStorage` に保存します。
+タイマー、進捗、設定、TodoはWebViewの `localStorage` に保存します。コンパクト表示と通常表示は同じmain WebViewを切り替えて使うため、別のデータコピーは作りません。
 
 Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環境へ記録を移す場合はこのアプリのJSONバックアップ / 復元を利用します。
 
@@ -116,15 +130,15 @@ Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環
 - main windowのTauri capabilityは `core:default` のみ
 - filesystem / shell / HTTP / opener等のTauri plugin権限は追加しない
 - frontendのCSPは `index.html` 側で維持
-- frontendからRustへのcommandはTray title更新に限定
-- RustからfrontendへのTray操作は固定されたtimer action / navigation eventだけを送る
+- frontendからRustへのcommandはTray title更新と通常ウィンドウ復帰だけ
+- Rustからfrontendへの画面切り替えは固定されたnavigation eventだけを送る
 - npmは `package-lock.json`、Rustは `Cargo.lock` をCIで強制
 - GitHub Actionsの外部Actionはcommit SHAに固定
 - Release作成時だけ専用jobへ `contents: write` を付与し、通常のbuild jobは `contents: read` のままにする
 
 ## アイコン
 
-アプリ / Trayのアイコンは `src-tauri/icons/icon.png` を利用します。macOSではTrayをtemplate iconとして扱い、ライト / ダークのメニューバーに馴染むようにしています。Trayではシンプルなストップウォッチアイコンを使います。
+アプリ / Trayのアイコンは `src-tauri/icons/icon.png` を利用します。macOSではTrayをtemplate iconとして扱い、ライト / ダークのメニューバーに馴染むようにしています。
 
 将来アイコン一式を作り直す場合はTauriのicon生成を利用できます。
 
@@ -132,21 +146,15 @@ Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環
 npm run tauri icon path/to/app-icon.png
 ```
 
-生成物を確認したうえで `src-tauri/icons/` を更新してください。
-
 ## プロダクト方針
 
 ### ログイン時自動起動は実装しない
 
-タイマーは、macOSへのログイン時やMac起動時に自動起動する機能を**採用しません**。ユーザーが必要なときに手動で起動し、起動後はメニューバーに常駐する設計とします。
+タイマーは、macOSへのログイン時やMac起動時に自動起動する機能を採用しません。ユーザーが必要なときに手動で起動し、起動後はメニューバーに常駐する設計とします。
 
-今後AIが改善案を検討するときも、**ログイン時自動起動を未実装タスク・推奨候補として扱わないでください**。この方針を変更する明示的な指示がある場合だけ再検討します。
+### Trayはコンパクト操作に留める
 
-### メニューバーは最小操作に留める
-
-メニューバーから全機能を操作できるようにはしません。プリセット選択や詳細設定などはメインウィンドウへ集約し、メニューバー側はタイマー / Todoを開く、開始/再開、一時停止、リセット、終了だけを基本とします。
-
-今後AIが機能追加を検討するときも、メニューバーメニューへ項目を増やす場合は「毎回すぐ使う操作か」を基準にし、重複機能を安易に追加しないでください。
+Trayではタイマーと今日の時間割の確認・最小限の操作だけを扱います。詳細設定、Todo作成、テンプレート編集、記録の振り返りなどは通常ウィンドウへ集約します。
 
 ### 内部識別子は互換性のため維持する
 

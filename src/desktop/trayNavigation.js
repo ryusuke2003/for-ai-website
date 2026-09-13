@@ -1,9 +1,16 @@
 import { isTauri } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
 
+const TARGET_HASH = Object.freeze({
+  timer: '',
+  todo: '#todo',
+  'tray-timer': '#tray-timer',
+  'tray-todo': '#tray-todo',
+});
+
 export function applyTrayNavigation(target) {
-  if (target !== 'todo') return false;
-  window.location.hash = 'todo';
+  if (!(target in TARGET_HASH)) return false;
+  window.location.hash = TARGET_HASH[target];
   return true;
 }
 
