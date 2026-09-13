@@ -23,6 +23,7 @@ if (
     const sound = toggleSnapshot(completionSoundToggle, completionSoundStatus);
     const notification = toggleSnapshot(completionNotificationToggle, completionNotificationStatus);
     const wakeLock = toggleSnapshot(wakeLockToggle, wakeLockStatus);
+    const customLocked = customPresetButton.disabled;
 
     return {
       presets: standardPresetButtons.map((button) => ({
@@ -34,8 +35,8 @@ if (
       })),
       customValue: customMinutesInput.value,
       customInvalid: customMinutesInput.getAttribute('aria-invalid') === 'true',
-      customDisabled: customMinutesInput.disabled,
-      customApplyDisabled: customMinutesApplyButton.disabled,
+      customDisabled: customLocked,
+      customApplyDisabled: customLocked,
       customStatus: customMinutesStatus.textContent ?? '',
       soundLabel: sound.label,
       soundPressed: sound.pressed,
