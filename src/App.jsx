@@ -11,12 +11,13 @@ import { useProgressOverviewState } from './features/progress/useProgressOvervie
 import { TimerControls } from './features/timer/TimerControls.jsx';
 import { TimerDisplay } from './features/timer/TimerDisplay.jsx';
 import { TimerSettings } from './features/timer/TimerSettings.jsx';
+import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 
-function TimerSection() {
+function TimerSection({ focusMode }) {
   const state = useTimerState();
-  useTimerShortcuts(state.focusMode);
+  useTimerShortcuts(focusMode.active, focusMode.toggle);
 
   const cardState = state.feedbackState === 'complete'
     ? ' is-complete'
@@ -31,7 +32,12 @@ function TimerSection() {
         <h2 id="timer-title">時間を決めて集中する</h2>
       </div>
       <TimerDisplay />
-      <div className="controls"><TimerControls /></div>
+      <div className="controls">
+        <TimerControls
+          focusModeActive={focusMode.active}
+          onToggleFocusMode={focusMode.toggle}
+        />
+      </div>
       <p className="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
       <TimerSettings />
       <p className="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
@@ -69,12 +75,14 @@ function BackupSection() {
   );
 }
 
-function FocusModeStatus() {
-  const state = useTimerState();
-  return <p id="focus-mode-status" className="sr-only" aria-live="polite">{state.focusModeStatus}</p>;
+function FocusModeStatus({ status }) {
+  return <p id="focus-mode-status" className="sr-only" aria-live="polite">{status}</p>;
 }
 
 export function App() {
+  const timerState = useTimerState();
+  const focusMode = useFocusModeControl(timerState.completionReady);
+
   return (
     <main className="shell">
       <header className="hero">
@@ -82,10 +90,10 @@ export function App() {
         <HeroIntro />
         <StorageHealthStatus />
       </header>
-      <TimerSection />
+      <TimerSection focusMode={focusMode} />
       <ProgressSection />
       <BackupSection />
-      <FocusModeStatus />
+      <FocusModeStatus status={focusMode.status} />
       <AppFooter />
     </main>
   );
