@@ -19,6 +19,7 @@ const PRIVACY_RESET_KEYS = new Set([
   'one.completionEffectClaim.v1',
   'one.wakeLock.v1',
   'one.theme.v1',
+  'one.trayLastFocusMinutes.v1',
   RESET_SIGNAL_KEY,
 ]);
 
