@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useBackupPanelState } from './useBackupPanelState.js';
+import { usePrivacyResetControl } from './usePrivacyResetControl.js';
 
 function bridge() {
   return globalThis.ONE_REACT_BACKUP_PANEL;
@@ -7,6 +8,7 @@ function bridge() {
 
 export function BackupPanel() {
   const state = useBackupPanelState();
+  const reset = usePrivacyResetControl();
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
   const undoButtonRef = useRef(null);
@@ -31,6 +33,8 @@ export function BackupPanel() {
       window.removeEventListener('one:backup-panel-focus', handleFocus);
     };
   }, []);
+
+  void reset;
 
   return (
     <>
