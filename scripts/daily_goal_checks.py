@@ -7,7 +7,6 @@ APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 DETAILS_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressDetails.jsx").read_text(encoding="utf-8")
 OVERVIEW_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressOverview.jsx").read_text(encoding="utf-8")
 HOOK_SOURCE = (ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js").read_text(encoding="utf-8")
-STATS_SOURCE = (ROOT / "stats.js").read_text(encoding="utf-8")
 RESET_SOURCE = (ROOT / "privacy-reset.js").read_text(encoding="utf-8")
 
 
@@ -28,13 +27,13 @@ def section(source, start_marker, end_marker):
 
 def main():
     require('id="daily-goal-input"' not in INDEX_SOURCE, "日次目標UIをlegacy scaffoldへ戻さないでください")
-    require("DAILY_GOAL_STORAGE_KEY" not in STATS_SOURCE, "日次目標状態はstats.jsへ戻さないでください")
-    require("dailyGoal" not in STATS_SOURCE, "日次目標状態はReact feature側で管理してください")
+    require(not (ROOT / "stats.js").exists(), "日次目標や集計をstats.jsへ戻さないでください")
 
     for token in (
-        "useDailyGoalControl(overviewState.todayCount)",
+        "const insights = buildProgressInsights(progressState.history);",
+        "useDailyGoalControl(insights.todayCount)",
         "<ProgressOverview state={overviewState} todayAriaLabel={dailyGoal.todayAriaLabel}",
-        "<ProgressDetails state={detailsState} dailyGoal={dailyGoal}",
+        "<ProgressDetails state={insights} dailyGoal={dailyGoal}",
     ):
         require(token in APP_SOURCE, f"ProgressSectionの日次目標共有に必要です: {token}")
 
