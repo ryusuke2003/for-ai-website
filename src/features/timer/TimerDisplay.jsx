@@ -69,7 +69,7 @@ export function TimerDisplay() {
   return (
     <>
       <div
-        className="my-2 mb-6 font-variant-numeric-tabular text-[clamp(4.5rem,18vw,8.5rem)] font-extrabold leading-none tracking-[-0.07em]"
+        className="my-2 mb-6 [font-variant-numeric:tabular-nums] text-[clamp(4.5rem,18vw,8.5rem)] font-extrabold leading-none tracking-[-0.07em]"
         id="timer"
         role="timer"
         aria-label={`残り時間 ${timeText}`}
