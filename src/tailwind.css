@@ -177,7 +177,7 @@
     display: flex;
     min-height: 0;
     flex: 1 1 0%;
-    flex-direction: column-reverse;
+    flex-direction: column;
     gap: .625rem;
     overflow-y: auto;
     overscroll-behavior: contain;
