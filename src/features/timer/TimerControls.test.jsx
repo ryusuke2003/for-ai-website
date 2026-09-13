@@ -8,6 +8,8 @@ vi.mock('./timerStore.js', () => ({
   timerActions: {
     toggle: vi.fn(),
     reset: vi.fn(),
+    canRestoreReset: vi.fn(),
+    restoreReset: vi.fn(),
   },
 }));
 
@@ -29,15 +31,19 @@ describe('TimerControls', () => {
   beforeEach(() => {
     vi.mocked(timerActions.toggle).mockReset();
     vi.mocked(timerActions.reset).mockReset();
+    vi.mocked(timerActions.restoreReset).mockReset();
+    vi.mocked(timerActions.canRestoreReset).mockReset();
+    vi.mocked(timerActions.canRestoreReset).mockReturnValue(false);
     vi.mocked(useTimerState).mockReturnValue(state());
   });
 
-  it('開始・リセット・集中表示を利用者向けラベルとショートカット情報付きで表示する', () => {
+  it('開始・リセット・復元・集中表示を利用者向けラベルとショートカット情報付きで表示する', () => {
     render(<TimerControls focusModeActive={false} onToggleFocusMode={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'スタート' }).getAttribute('aria-keyshortcuts')).toBe('Space');
     expect(screen.getByRole('button', { name: '集中表示に切り替える' }).getAttribute('aria-keyshortcuts')).toBe('F Escape');
     expect(screen.getByRole('button', { name: 'リセット' })).not.toBeNull();
+    expect(screen.getByRole('button', { name: '復元' }).disabled).toBe(true);
   });
 
   it('開始とリセットはtimerActionsを直接呼ぶ', () => {
@@ -50,6 +56,16 @@ describe('TimerControls', () => {
     expect(timerActions.reset).toHaveBeenCalledOnce();
   });
 
+  it('リセット前の状態があるときだけ復元できる', () => {
+    vi.mocked(timerActions.canRestoreReset).mockReturnValue(true);
+    render(<TimerControls focusModeActive={false} onToggleFocusMode={vi.fn()} />);
+
+    const restoreButton = screen.getByRole('button', { name: '復元' });
+    expect(restoreButton.disabled).toBe(false);
+    fireEvent.click(restoreButton);
+    expect(timerActions.restoreReset).toHaveBeenCalledOnce();
+  });
+
   it('一時停止中は再開、実行中は一時停止と表示する', () => {
     vi.mocked(useTimerState).mockReturnValue(state({ remainingSeconds: 600 }));
     const { rerender } = render(<TimerControls focusModeActive={false} onToggleFocusMode={vi.fn()} />);
@@ -60,11 +76,13 @@ describe('TimerControls', () => {
     expect(screen.getByRole('button', { name: '一時停止' })).not.toBeNull();
   });
 
-  it('未記録完了中は開始とリセットを無効化する', () => {
+  it('未記録完了中は開始・リセット・復元を無効化する', () => {
+    vi.mocked(timerActions.canRestoreReset).mockReturnValue(true);
     vi.mocked(useTimerState).mockReturnValue(state({ completionReady: true, remainingSeconds: 0 }));
     render(<TimerControls focusModeActive={false} onToggleFocusMode={vi.fn()} />);
 
     expect(screen.getByRole('button', { name: 'もう一度' }).disabled).toBe(true);
     expect(screen.getByRole('button', { name: 'リセット' }).disabled).toBe(true);
+    expect(screen.getByRole('button', { name: '復元' }).disabled).toBe(true);
   });
 });

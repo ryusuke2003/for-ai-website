@@ -7,6 +7,7 @@ const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const listeners = new Set();
 let timerId = null;
+let resetUndoState = null;
 
 function reportStorageFailure() {
   window.dispatchEvent(new Event('one:storage-error'));
@@ -152,8 +153,28 @@ function clearTimerInterval() {
   timerId = null;
 }
 
+function clearResetUndo() {
+  resetUndoState = null;
+}
+
+function captureResetUndoState() {
+  const fullDuration = currentState.selectedMinutes * 60;
+  const changed = currentState.running || currentState.remainingSeconds !== fullDuration;
+  if (!changed) {
+    clearResetUndo();
+    return;
+  }
+
+  resetUndoState = Object.freeze({
+    selectedMinutes: currentState.selectedMinutes,
+    remainingSeconds: currentState.remainingSeconds,
+    running: currentState.running,
+  });
+}
+
 function finishTimer() {
   const completedOn = dateKey(new Date(currentState.endAt ?? Date.now()));
+  clearResetUndo();
   clearTimerInterval();
   replaceState({
     ...currentState,
@@ -185,6 +206,7 @@ function startTimer() {
   if (currentState.completionReady) return false;
   if (tabGuardActions.beforeStart(currentState) === false) return false;
 
+  clearResetUndo();
   const remainingSeconds = currentState.remainingSeconds > 0
     ? currentState.remainingSeconds
     : currentState.selectedMinutes * 60;
@@ -231,7 +253,12 @@ function pauseTimer() {
 
 function resetToSelectedMinutes({ consumeCompletion = false } = {}) {
   if (currentState.completionReady && !consumeCompletion) return false;
-  if (!consumeCompletion) tabGuardActions.beforeReset(currentState);
+  if (!consumeCompletion) {
+    captureResetUndoState();
+    tabGuardActions.beforeReset(currentState);
+  } else {
+    clearResetUndo();
+  }
 
   clearTimerInterval();
   replaceState({
@@ -247,10 +274,50 @@ function resetToSelectedMinutes({ consumeCompletion = false } = {}) {
   return true;
 }
 
+function restoreResetState() {
+  if (!resetUndoState || currentState.completionReady) return false;
+
+  const previous = resetUndoState;
+  const sessionSeed = {
+    ...currentState,
+    selectedMinutes: previous.selectedMinutes,
+    remainingSeconds: previous.selectedMinutes * 60,
+    running: false,
+    endAt: null,
+  };
+  if (tabGuardActions.beforeStart(sessionSeed) === false) return false;
+
+  clearTimerInterval();
+  clearResetUndo();
+  const running = previous.running && previous.remainingSeconds > 0;
+  const endAt = running ? Date.now() + previous.remainingSeconds * 1000 : null;
+
+  replaceState({
+    ...currentState,
+    selectedMinutes: previous.selectedMinutes,
+    remainingSeconds: previous.remainingSeconds,
+    running,
+    endAt,
+    completionReady: false,
+    completionDate: null,
+    feedback: running
+      ? 'リセット前の残り時間を復元して再開しました。'
+      : 'リセット前の残り時間を復元しました。',
+    feedbackState: running ? 'running' : 'paused',
+  }, { persist: true });
+
+  if (running) {
+    timerId = window.setInterval(tick, TICK_INTERVAL_MS);
+    tick();
+  }
+  return true;
+}
+
 function selectMinutes(minutes, { focusStart = false } = {}) {
   if (!validTimerMinutes(minutes) || currentState.completionReady) return false;
   if (tabGuardActions.beforeSelectMinutes(currentState) === false) return false;
 
+  clearResetUndo();
   clearTimerInterval();
   replaceState({
     ...currentState,
@@ -283,6 +350,7 @@ function syncIdleState(state) {
     return false;
   }
 
+  clearResetUndo();
   clearTimerInterval();
   replaceState({
     ...currentState,
@@ -303,6 +371,7 @@ function syncIdleState(state) {
 
 function clearPendingCompletion(message, feedbackState = 'complete') {
   if (!currentState.completionReady) return false;
+  clearResetUndo();
   replaceState({
     ...currentState,
     completionReady: false,
@@ -322,6 +391,7 @@ function setFeedback(message, feedbackState = 'idle') {
 }
 
 function preparePrivacyReset() {
+  clearResetUndo();
   clearTimerInterval();
   if (!currentState.running && currentState.endAt === null) return;
   replaceState({
@@ -346,6 +416,12 @@ export const timerActions = Object.freeze({
   },
   reset() {
     return resetToSelectedMinutes();
+  },
+  canRestoreReset() {
+    return resetUndoState !== null && !currentState.completionReady;
+  },
+  restoreReset() {
+    return restoreResetState();
   },
   selectMinutes(minutes) {
     return selectMinutes(minutes);
