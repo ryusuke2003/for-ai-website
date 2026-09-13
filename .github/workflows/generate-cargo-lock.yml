@@ -24,9 +24,10 @@ jobs:
       - name: Generate Cargo.lock
         run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
 
-      - name: Print Cargo.lock
-        shell: bash
-        run: |
-          echo '---CARGO_LOCK_BASE64_BEGIN---'
-          python3 -c "import base64; print(base64.b64encode(open('src-tauri/Cargo.lock','rb').read()).decode())"
-          echo '---CARGO_LOCK_BASE64_END---'
+      - name: Upload Cargo.lock
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: cargo-lock
+          path: src-tauri/Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
