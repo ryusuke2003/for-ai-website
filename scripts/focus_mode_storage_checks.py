@@ -6,7 +6,6 @@ HOOK_SOURCE = (ROOT / "src" / "features" / "timer" / "useFocusModeControl.js").r
 APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 CONTROLS_SOURCE = (ROOT / "src" / "features" / "timer" / "TimerControls.jsx").read_text(encoding="utf-8")
 LEGACY_APP_SOURCE = (ROOT / "app.js").read_text(encoding="utf-8")
-TIMER_INTEROP_SOURCE = (ROOT / "legacy" / "interop" / "timer.js").read_text(encoding="utf-8")
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
 PRIVACY_RESET_SOURCE = (ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js").read_text(encoding="utf-8")
 
@@ -80,16 +79,8 @@ def main():
         require(token not in LEGACY_APP_SOURCE,
                 f"集中表示の旧runtimeをapp.jsへ戻さないでください: {token}")
 
-    for token in (
-        "focusMode:",
-        "focusModeStatus:",
-        "'setFocusMode'",
-        "toggleFocus()",
-        "forwardDetachedFocus(focusModeButton",
-    ):
-        require(token not in TIMER_INTEROP_SOURCE,
-                f"集中表示をtimer interopへ戻さないでください: {token}")
-
+    require(not (ROOT / "legacy" / "interop" / "timer.js").exists(),
+            "集中表示を含む削除済みtimer interopを戻さないでください")
     require('id="focus-mode-button"' not in INDEX_SOURCE,
             "集中表示ボタンのhidden runtime scaffoldは不要です")
     require('id="focus-mode-status"' not in INDEX_SOURCE,
@@ -97,7 +88,7 @@ def main():
     require("'one.focusMode.v1'" in PRIVACY_RESET_SOURCE or '"one.focusMode.v1"' in PRIVACY_RESET_SOURCE,
             "集中表示の保存キーは端末データ削除対象に維持してください")
 
-    print("Focus mode is React-owned; legacy runtime, interop, and hidden scaffold stay removed.")
+    print("Focus mode is React-owned; legacy runtime, timer interop, and hidden scaffold stay removed.")
 
 
 if __name__ == "__main__":
