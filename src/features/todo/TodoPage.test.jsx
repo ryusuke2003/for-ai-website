@@ -19,6 +19,16 @@ function dataTransfer() {
   };
 }
 
+function dropAt(element, transfer, clientY) {
+  const event = new MouseEvent('drop', {
+    bubbles: true,
+    cancelable: true,
+    clientY,
+  });
+  Object.defineProperty(event, 'dataTransfer', { value: transfer });
+  fireEvent(element, event);
+}
+
 describe('TodoPage', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -91,7 +101,7 @@ describe('TodoPage', () => {
     });
 
     fireEvent.dragStart(draggableTemplate, { dataTransfer: transfer });
-    fireEvent.drop(timeline, { dataTransfer: transfer, clientY: 9 * 72 });
+    dropAt(timeline, transfer, 9 * 72);
 
     expect(screen.getByRole('article', { name: '09:00 暗記問題' })).not.toBeNull();
   });
