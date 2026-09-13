@@ -13,6 +13,7 @@ const legacyScripts = [
   'theme.js',
   'stats.js',
   'daily-goal-progress.js',
+  'react-progress-details-bridge.js',
   'tab-guard.js',
   'react-progress-overview-bridge.js',
   'backup.js',
@@ -32,11 +33,15 @@ function injectReactEntry() {
         return html
           .replace(
             '<html lang="ja">',
-            '<html lang="ja" data-react-theme="1" data-react-timer-controls="1" data-react-timer-display="1" data-react-timer-settings="1" data-react-progress-overview="1">',
+            '<html lang="ja" data-react-theme="1" data-react-timer-controls="1" data-react-timer-display="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1">',
           )
           .replace(
             '<script src="app.js" defer></script>',
             '<script src="app.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
+          )
+          .replace(
+            '<script src="daily-goal-progress.js" defer></script>',
+            '<script src="daily-goal-progress.js" defer></script>\n  <script src="react-progress-details-bridge.js" defer></script>',
           )
           .replace(
             '<script src="tab-guard.js" defer></script>',
