@@ -36,9 +36,11 @@
         <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
       </div>
       <p id="theme-status" class="sr-only" role="status" aria-live="polite">表示テーマは自動です。</p>
-      <p class="eyebrow">ONE SPRINT AT A TIME</p>
-      <h1>まずは25分。</h1>
-      <p class="lead">集中する時間を決めて始める。終わったら1回を記録して、続けた日や積み重ねを見返せる。</p>
+      <div id="react-hero-root">
+        <p class="eyebrow">ONE SPRINT AT A TIME</p>
+        <h1>まずは25分。</h1>
+        <p class="lead">集中する時間を決めて始める。終わったら1回を記録して、続けた日や積み重ねを見返せる。</p>
+      </div>
       <p class="hint" id="storage-health-status" role="status" aria-live="polite">端末保存の利用状態を確認しています。</p>
     </header>
 
@@ -177,11 +179,11 @@
 
     <p id="focus-mode-status" class="sr-only" aria-live="polite"></p>
 
-    <div id="react-root" hidden></div>
-
-    <footer>
-      <p>データ収集なし · アカウントなし · 外部通信なし</p>
-    </footer>
+    <div id="react-footer-root">
+      <footer>
+        <p>データ収集なし · アカウントなし · 外部通信なし</p>
+      </footer>
+    </div>
   </main>
 </body>
 </html>
