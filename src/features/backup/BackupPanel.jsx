@@ -21,9 +21,7 @@ export function BackupPanel() {
       const refs = {
         export: exportButtonRef,
         undo: undoButtonRef,
-        reset: resetButtonRef,
         'reset-confirm': resetConfirmButtonRef,
-        'reset-cancel': resetCancelButtonRef,
       };
       refs[event.detail?.control]?.current?.focus();
     }
@@ -106,7 +104,10 @@ export function BackupPanel() {
             aria-describedby="data-reset-hint data-reset-status"
             hidden={reset.resetButtonHidden}
             ref={resetButtonRef}
-            onClick={() => bridge()?.openReset?.()}
+            onClick={() => {
+              reset.openReset();
+              queueMicrotask(() => resetConfirmButtonRef.current?.focus());
+            }}
           >
             この端末のデータを削除
           </button>
@@ -131,7 +132,10 @@ export function BackupPanel() {
               type="button"
               disabled={reset.resetCancelDisabled}
               ref={resetCancelButtonRef}
-              onClick={() => bridge()?.cancelReset?.()}
+              onClick={() => {
+                reset.cancelReset();
+                queueMicrotask(() => resetButtonRef.current?.focus());
+              }}
             >
               キャンセル
             </button>
