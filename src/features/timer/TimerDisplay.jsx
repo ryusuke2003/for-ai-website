@@ -69,7 +69,7 @@ export function TimerDisplay() {
   return (
     <>
       <div
-        className="timer"
+        className="my-2 mb-6 [font-variant-numeric:tabular-nums] text-[clamp(4.5rem,18vw,8.5rem)] font-extrabold leading-none tracking-[-0.07em]"
         id="timer"
         role="timer"
         aria-label={`残り時間 ${timeText}`}
@@ -85,7 +85,7 @@ export function TimerDisplay() {
         aria-valuetext={`${percentage}%`}
       />
       <p
-        className="timer-status"
+        className="-mt-2.5 mb-[22px] min-h-[1.4em] text-[0.88rem] font-bold leading-6 text-[#6c685f]"
         id="timer-status"
         role="status"
         aria-live="polite"
@@ -93,7 +93,7 @@ export function TimerDisplay() {
         {state.feedback}
       </p>
       <p
-        className="timer-status timer-end-time"
+        className="-mt-2.5 mb-[22px] min-h-[1.4em] text-[0.88rem] font-bold leading-6 text-[#6c685f]"
         id="timer-end-time"
         hidden={endTime.hidden}
       >

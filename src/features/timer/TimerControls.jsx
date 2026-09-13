@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { timerActions } from './timerStore.js';
 import { useTimerState } from './useTimerState.js';
 
+const BASE_BUTTON_CLASS = 'min-h-12 rounded-full border border-[#1d1d1f] px-[22px] font-extrabold transition disabled:cursor-not-allowed disabled:opacity-45';
+const SECONDARY_BUTTON_CLASS = `${BASE_BUTTON_CLASS} bg-transparent text-inherit aria-pressed:bg-[#e3ded4]`;
+
 function startLabelFor(state) {
   if (state.running) return '一時停止';
 
@@ -34,7 +37,7 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
   return (
     <>
       <button
-        className="primary"
+        className={`${BASE_BUTTON_CLASS} bg-[#1d1d1f] text-white`}
         id="start-button"
         type="button"
         aria-keyshortcuts="Space"
@@ -46,7 +49,7 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
         {startLabelFor(state)}
       </button>
       <button
-        className="secondary"
+        className={SECONDARY_BUTTON_CLASS}
         id="reset-button"
         type="button"
         disabled={state.completionReady}
@@ -55,7 +58,7 @@ export function TimerControls({ focusModeActive, onToggleFocusMode }) {
         リセット
       </button>
       <button
-        className="secondary"
+        className={SECONDARY_BUTTON_CLASS}
         id="focus-mode-button"
         type="button"
         aria-pressed={focusModeActive}
