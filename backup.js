@@ -158,8 +158,15 @@ function validateBackupPayload(value) {
   return validateBackupData(value.data);
 }
 
+function hasActiveTimerContext() {
+  const fullDuration = selectedMinutes * 60;
+  return timerId !== null
+    || completionReady
+    || (remainingSeconds > 0 && remainingSeconds < fullDuration);
+}
+
 function canRestoreBackup() {
-  if (!tabCoordinationEnabled || hasActiveDailyTaskContext()) return false;
+  if (!tabCoordinationEnabled || hasActiveTimerContext()) return false;
 
   const storedState = readTimerState();
   const storedSessionId = readStoredSessionId();
@@ -320,8 +327,8 @@ function exportBackup() {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
   setBackupStatus(
     backupExportUsedMemoryFallback
-      ? '端末保存を利用できないため、このタブに残っている累計・日次履歴・タイマー時間を救出用JSONとして書き出しました。タスク本文や実行中タイマーは含まれていません。'
-      : 'バックアップを書き出しました。タスク本文や実行中タイマーは含まれていません。',
+      ? '端末保存を利用できないため、このタブに残っている累計・日次履歴・タイマー時間を救出用JSONとして書き出しました。実行中タイマーは含まれていません。'
+      : 'バックアップを書き出しました。実行中タイマーは含まれていません。',
   );
 }
 
@@ -382,7 +389,7 @@ async function importBackup(file) {
   const restoreGuard = currentRestoreGuard();
   const historyDays = Object.keys(restored.history).length;
   const confirmed = window.confirm(
-    `現在の累計と日次履歴を置き換えます。\n\n累計: ${restored.doneCount}回\n日次履歴: ${historyDays}日分\nタイマー: ${restored.selectedMinutes}分\n\nタスク本文は変更しません。復元しますか？`,
+    `現在の累計と日次履歴を置き換えます。\n\n累計: ${restored.doneCount}回\n日次履歴: ${historyDays}日分\nタイマー: ${restored.selectedMinutes}分\n\n復元対象は累計・日次履歴・タイマー時間だけです。復元しますか？`,
   );
   if (!confirmed) {
     setBackupStatus('復元をキャンセルしました。データは変更していません。');
