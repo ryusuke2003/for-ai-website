@@ -1,10 +1,14 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   TRAY_NAVIGATION_APPLIED_EVENT,
   applyTrayNavigation,
 } from './trayNavigation.js';
 
 describe('applyTrayNavigation', () => {
+  beforeEach(() => {
+    window.location.hash = '';
+  });
+
   it('通常画面とTray画面へ遷移できる', () => {
     expect(applyTrayNavigation('todo')).toBe(true);
     expect(window.location.hash).toBe('#todo');
@@ -12,11 +16,32 @@ describe('applyTrayNavigation', () => {
     expect(applyTrayNavigation('tray-timer')).toBe(true);
     expect(window.location.hash).toBe('#tray-timer');
 
-    expect(applyTrayNavigation('tray-todo')).toBe(true);
-    expect(window.location.hash).toBe('#tray-todo');
-
     expect(applyTrayNavigation('timer')).toBe(true);
     expect(window.location.hash).toBe('');
+
+    expect(applyTrayNavigation('tray-todo')).toBe(true);
+    expect(window.location.hash).toBe('#tray-todo');
+  });
+
+  it('Tray Timerで閉じた後に再表示してもTimerのまま開く', () => {
+    window.location.hash = '#tray-timer';
+
+    expect(applyTrayNavigation('tray-todo')).toBe(true);
+    expect(window.location.hash).toBe('#tray-timer');
+  });
+
+  it('Tray Todoで閉じた後に再表示してもTodoのまま開く', () => {
+    window.location.hash = '#tray-todo';
+
+    expect(applyTrayNavigation('tray-todo')).toBe(true);
+    expect(window.location.hash).toBe('#tray-todo');
+  });
+
+  it('Tray画面ではない状態から開く場合は従来どおりTodoを開く', () => {
+    window.location.hash = '';
+
+    expect(applyTrayNavigation('tray-todo')).toBe(true);
+    expect(window.location.hash).toBe('#tray-todo');
   });
 
   it('同じTray Todoを再表示しても通知イベントを発火する', () => {
@@ -32,8 +57,6 @@ describe('applyTrayNavigation', () => {
   });
 
   it('未対応の遷移先は無視する', () => {
-    window.location.hash = '';
-
     expect(applyTrayNavigation('settings')).toBe(false);
     expect(window.location.hash).toBe('');
   });
