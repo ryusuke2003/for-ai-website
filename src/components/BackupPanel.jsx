@@ -1,23 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-
-const DEFAULT_STATE = {
-  importDisabled: false,
-  undoHidden: true,
-  undoDisabled: false,
-  backupStatus: '',
-  resetButtonHidden: false,
-  resetConfirmHidden: true,
-  resetConfirmDisabled: false,
-  resetCancelDisabled: false,
-  resetStatus: '',
-};
+import { useEffect, useRef } from 'react';
+import { useBackupPanelState } from '../state/useBackupPanelState';
 
 function bridge() {
   return globalThis.ONE_REACT_BACKUP_PANEL;
-}
-
-function readBridgeState() {
-  return bridge()?.snapshot?.() ?? DEFAULT_STATE;
 }
 
 function visibleBackupStatus(message) {
@@ -25,7 +10,7 @@ function visibleBackupStatus(message) {
 }
 
 export function BackupPanel() {
-  const [state, setState] = useState(readBridgeState);
+  const state = useBackupPanelState();
   const fileInputRef = useRef(null);
   const exportButtonRef = useRef(null);
   const undoButtonRef = useRef(null);
@@ -34,10 +19,6 @@ export function BackupPanel() {
   const resetCancelButtonRef = useRef(null);
 
   useEffect(() => {
-    function handleState(event) {
-      setState(event.detail ?? readBridgeState());
-    }
-
     function handleFocus(event) {
       const refs = {
         export: exportButtonRef,
@@ -49,12 +30,8 @@ export function BackupPanel() {
       refs[event.detail?.control]?.current?.focus();
     }
 
-    window.addEventListener('one:backup-panel-state', handleState);
     window.addEventListener('one:backup-panel-focus', handleFocus);
-    setState(readBridgeState());
-
     return () => {
-      window.removeEventListener('one:backup-panel-state', handleState);
       window.removeEventListener('one:backup-panel-focus', handleFocus);
     };
   }, []);
