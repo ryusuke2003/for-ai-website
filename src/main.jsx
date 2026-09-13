@@ -3,6 +3,9 @@ import { createRoot } from 'react-dom/client';
 import { App } from './App.jsx';
 import './tailwind.css';
 
+delete globalThis.ONE_TIMER_RUNTIME;
+delete globalThis.ONE_PROGRESS_RUNTIME;
+
 function mountApp() {
   const root = document.querySelector('#root');
   if (!root) return;
