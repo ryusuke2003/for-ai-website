@@ -1,3 +1,242 @@
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
+
+@layer base {
+  :root {
+    --one-fg: #1d1d1f;
+    --one-page: #f3f0e9;
+    --one-body-bg: radial-gradient(circle at top left, rgba(255,255,255,.9), transparent 36rem), #f3f0e9;
+    --one-muted: #7a766d;
+    --one-muted-strong: #6c685f;
+    --one-subtle: #77736a;
+    --one-card: rgba(255,255,255,.7);
+    --one-border: rgba(29,29,31,.12);
+    --one-border-soft: rgba(29,29,31,.1);
+    --one-border-strong: rgba(29,29,31,.36);
+    --one-control-border: #1d1d1f;
+    --one-control-border-soft: rgba(29,29,31,.25);
+    --one-primary-bg: #1d1d1f;
+    --one-primary-fg: #fff;
+    --one-active-bg: #e3ded4;
+    --one-active-fg: #1d1d1f;
+    --one-input-bg: rgba(255,255,255,.45);
+    --one-stat-bg: rgba(29,29,31,.035);
+    --one-bar: #d9d4ca;
+    --one-activity-0: rgba(29,29,31,.08);
+    --one-activity-1: rgba(29,29,31,.28);
+    --one-activity-2: rgba(29,29,31,.48);
+    --one-activity-3: rgba(29,29,31,.68);
+    --one-activity-4: rgba(29,29,31,.9);
+    --one-disabled: #8b877e;
+    --one-card-shadow: 0 18px 60px rgba(40,35,25,.05);
+    --one-card-complete-shadow: 0 18px 60px rgba(40,35,25,.08), 0 0 0 2px rgba(29,29,31,.08);
+    --one-focus-outer: #f2efe7;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: var(--one-fg);
+    background: var(--one-page);
+    font-synthesis: none;
+  }
+
+  :root[data-theme="light"] {
+    color-scheme: light;
+  }
+
+  :root[data-theme="dark"] {
+    --one-fg: #f2efe7;
+    --one-page: #151515;
+    --one-body-bg: radial-gradient(circle at top left, #292825, transparent 32rem), #151515;
+    --one-muted: #aaa69d;
+    --one-muted-strong: #aaa69d;
+    --one-subtle: #aaa69d;
+    --one-card: rgba(33,33,33,.78);
+    --one-border: rgba(255,255,255,.1);
+    --one-border-soft: rgba(255,255,255,.1);
+    --one-border-strong: rgba(255,255,255,.28);
+    --one-control-border: #f2efe7;
+    --one-control-border-soft: rgba(242,239,231,.3);
+    --one-primary-bg: #f2efe7;
+    --one-primary-fg: #151515;
+    --one-active-bg: #393733;
+    --one-active-fg: #f2efe7;
+    --one-input-bg: rgba(255,255,255,.04);
+    --one-stat-bg: rgba(255,255,255,.06);
+    --one-bar: #5b574f;
+    --one-activity-0: rgba(242,239,231,.08);
+    --one-activity-1: rgba(242,239,231,.28);
+    --one-activity-2: rgba(242,239,231,.48);
+    --one-activity-3: rgba(242,239,231,.68);
+    --one-activity-4: rgba(242,239,231,.9);
+    --one-disabled: #77736a;
+    --one-card-shadow: 0 18px 60px rgba(0,0,0,.08);
+    --one-card-complete-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06);
+    --one-focus-outer: #151515;
+    color-scheme: dark;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --one-fg: #f2efe7;
+      --one-page: #151515;
+      --one-body-bg: radial-gradient(circle at top left, #292825, transparent 32rem), #151515;
+      --one-muted: #aaa69d;
+      --one-muted-strong: #aaa69d;
+      --one-subtle: #aaa69d;
+      --one-card: rgba(33,33,33,.78);
+      --one-border: rgba(255,255,255,.1);
+      --one-border-soft: rgba(255,255,255,.1);
+      --one-border-strong: rgba(255,255,255,.28);
+      --one-control-border: #f2efe7;
+      --one-control-border-soft: rgba(242,239,231,.3);
+      --one-primary-bg: #f2efe7;
+      --one-primary-fg: #151515;
+      --one-active-bg: #393733;
+      --one-active-fg: #f2efe7;
+      --one-input-bg: rgba(255,255,255,.04);
+      --one-stat-bg: rgba(255,255,255,.06);
+      --one-bar: #5b574f;
+      --one-activity-0: rgba(242,239,231,.08);
+      --one-activity-1: rgba(242,239,231,.28);
+      --one-activity-2: rgba(242,239,231,.48);
+      --one-activity-3: rgba(242,239,231,.68);
+      --one-activity-4: rgba(242,239,231,.9);
+      --one-disabled: #77736a;
+      --one-card-shadow: 0 18px 60px rgba(0,0,0,.08);
+      --one-card-complete-shadow: 0 18px 60px rgba(0,0,0,.12), 0 0 0 2px rgba(255,255,255,.06);
+      --one-focus-outer: #151515;
+      color-scheme: dark;
+    }
+  }
+
+  *, *::before, *::after {
+    box-sizing: border-box;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--one-body-bg);
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+
+  button:focus-visible,
+  input:focus-visible {
+    outline: 3px solid var(--one-control-border);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 6px var(--one-focus-outer);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      transition-duration: .01ms !important;
+    }
+  }
+}
+
+@layer components {
+  .timer-progress {
+    display: block;
+    width: min(420px, 90%);
+    height: .55rem;
+    margin: -8px auto 22px;
+    accent-color: currentColor;
+  }
+
+  .daily-goal-progress {
+    display: block;
+    width: min(360px, 100%);
+    height: .45rem;
+    margin: 12px auto 0;
+    accent-color: currentColor;
+  }
+
+  .daily-goal-progress[hidden] {
+    display: none;
+  }
+
+  body.focus-mode .shell {
+    display: grid;
+    align-content: center;
+    gap: 12px;
+    width: min(900px, calc(100% - 32px));
+    min-height: 100vh;
+    padding: 32px 0;
+  }
+
+  body.focus-mode .hero,
+  body.focus-mode .progress-card,
+  body.focus-mode .backup-card,
+  body.focus-mode footer {
+    display: none;
+  }
+
+  body.focus-mode .timer-card {
+    margin: 0;
+    padding: 38px 28px 34px;
+  }
+
+  body.focus-mode .timer-card .section-heading,
+  body.focus-mode .timer-card .presets,
+  body.focus-mode .timer-card .hint {
+    display: none;
+  }
+
+  body.focus-mode .timer {
+    margin: 0 0 32px;
+    font-size: clamp(6rem, 22vw, 11rem);
+  }
+
+  body.focus-mode .timer-progress {
+    width: min(480px, 72%);
+    margin: -18px auto 26px;
+  }
+
+  body.focus-mode .timer-status {
+    margin-top: -16px;
+    margin-bottom: 26px;
+    font-size: .95rem;
+  }
+
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  @media (max-width: 560px) {
+    .timer-progress {
+      width: 92%;
+    }
+
+    body.focus-mode .shell {
+      padding: 16px 0;
+    }
+
+    body.focus-mode .timer-card {
+      padding: 28px 18px;
+    }
+
+    body.focus-mode .timer-progress {
+      width: 84%;
+    }
+  }
+}
