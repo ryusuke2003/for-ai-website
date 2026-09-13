@@ -57,7 +57,9 @@ function TimerSection({ focusMode }) {
       </div>
       <p className={HINT_CLASS}>キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
       <TimerSettings />
-      <p className={HINT_CLASS}>{breakMode ? '5分プリセットは休憩用です。完了しても集中回数には加算されません。' : '選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。'}</p>
+      {breakMode ? (
+        <p className={HINT_CLASS}>5分プリセットは休憩用です。完了しても集中回数には加算されません。</p>
+      ) : null}
     </section>
   );
 }
