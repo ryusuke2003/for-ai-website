@@ -5,10 +5,14 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
   let publishQueued = false;
 
   function buildProgressOverviewSnapshot() {
+    const timerState = globalThis.ONE_TIMER_RUNTIME?.snapshot?.() ?? null;
+    const completionReady = timerState?.completionReady === true;
     return {
-      doneLabel: doneButton.textContent ?? 'タイマー完了後に記録できます',
-      doneDisabled: doneButton.disabled,
-      discardHidden: discardButton.hidden,
+      doneLabel: completionReady
+        ? 'この集中を記録する ✓'
+        : 'タイマー完了後に記録できます',
+      doneDisabled: !completionReady,
+      discardHidden: !completionReady,
       doneCount: doneCount.textContent ?? '0',
       history: Object.freeze({ ...normalizeHistory(focusHistory) }),
     };
@@ -53,7 +57,6 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
   for (const functionName of [
     'renderHistory',
     'refreshGuardProgressFromStorage',
-    'setRecordAvailability',
   ]) {
     wrapProgressMutation(functionName);
   }
@@ -61,6 +64,7 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
   window.addEventListener('storage', () => refreshProgress());
   window.addEventListener('pageshow', () => refreshProgress());
   window.addEventListener('one:storage-error', () => refreshProgress());
+  window.addEventListener('one:timer-state', () => refreshProgress());
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshProgress();
   });
@@ -77,12 +81,14 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
 
   globalThis.ONE_REACT_PROGRESS_OVERVIEW = Object.freeze({
     record() {
-      doneButton.click();
+      const recorded = globalThis.ONE_TAB_GUARD?.recordPendingCompletion?.() === true;
       refreshProgress();
+      return recorded;
     },
     discard() {
-      discardButton.click();
+      const discarded = globalThis.ONE_TAB_GUARD?.discardPendingCompletion?.() === true;
       refreshProgress();
+      return discarded;
     },
     restoreBackupData(restored) {
       if (!Number.isSafeInteger(restored?.doneCount) || restored.doneCount < 0) return false;
@@ -106,16 +112,3 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
 
   refreshProgress({ force: true });
 }
-
-globalThis.ONE_TAB_COORDINATION = Object.freeze({
-  isEnabled() {
-    return tabCoordinationEnabled && !storageAccessFailed;
-  },
-  hasActiveStoredTimer() {
-    if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return false;
-    const storedState = readTimerState();
-    const storedSessionId = readStoredSessionId();
-    if (storageCoordinationUnavailable()) return false;
-    return Boolean(storedSessionId && isTimerStateActive(storedState));
-  },
-});
