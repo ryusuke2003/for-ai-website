@@ -24,7 +24,14 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Run React behavior tests
-        run: npm test
+        run: npm test -- --reporter=json --outputFile=vitest-results.json
+      - name: Upload Vitest results
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: vitest-results
+          path: vitest-results.json
+          if-no-files-found: ignore
       - name: Audit dependencies
         run: npm audit --audit-level=moderate
       - name: Build with Vite
