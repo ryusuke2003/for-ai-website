@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ja" data-react-theme="1" data-react-timer-state="1" data-react-timer-controls="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">
+<html lang="ja" data-react-timer-state="1" data-react-timer-controls="1" data-react-timer-settings="1" data-react-progress-overview="1" data-react-progress-details="1" data-react-backup-panel="1">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -17,7 +17,6 @@
   <script src="storage-status.js" defer></script>
   <script src="completion-sound.js" defer></script>
   <script src="wake-lock.js" defer></script>
-  <script src="theme.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="daily-goal-progress.js" defer></script>
   <script src="tab-guard.js" defer></script>
@@ -36,12 +35,6 @@
       React replaces this subtree on mount; it is not a user-facing fallback UI.
     -->
     <div id="legacy-runtime-scaffold" hidden aria-hidden="true">
-      <div class="theme-switcher" role="group" aria-label="表示テーマ" aria-describedby="theme-status">
-        <button type="button" data-theme-choice="system" aria-pressed="true">自動</button>
-        <button type="button" data-theme-choice="light" aria-pressed="false">ライト</button>
-        <button type="button" data-theme-choice="dark" aria-pressed="false">ダーク</button>
-      </div>
-      <p id="theme-status" role="status" aria-live="polite">表示テーマは自動です。</p>
       <p id="storage-health-status" role="status" aria-live="polite">端末保存の利用状態を確認しています。</p>
 
       <div class="timer-card">

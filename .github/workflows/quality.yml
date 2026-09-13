@@ -28,7 +28,6 @@ jobs:
           node --check storage-status.js
           node --check completion-sound.js
           node --check wake-lock.js
-          node --check theme.js
           node --check stats.js
           node --check daily-goal-progress.js
           node --check tab-guard.js
