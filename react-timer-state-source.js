@@ -12,6 +12,7 @@ if (document.documentElement.dataset.reactTimerState === '1') {
       completionReady,
       completionDate: completionReady ? completionDateKey : null,
       focusMode: document.body.classList.contains('focus-mode'),
+      focusModeStatus: focusModeStatus.textContent ?? '',
       feedback: timerStatus.textContent ?? '準備できたらスタート。',
       feedbackState: timerCard.classList.contains('is-complete')
         ? 'complete'
