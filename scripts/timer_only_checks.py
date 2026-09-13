@@ -31,12 +31,18 @@ def main():
     require('localStorage.clear(' not in STORAGE_SOURCE, "旧データ削除でlocalStorage.clear()を使わないでください")
 
     require('<title>ONE — 集中タイマー</title>' in INDEX_SOURCE, "ページタイトルをタイマー用途に合わせてください")
-    require('<span class="step">01</span>\n        <h2 id="timer-title">' in INDEX_SOURCE,
-            "タイマーを最初のステップとして表示してください")
-    require('<span class="step">02</span>\n        <h2 id="done-title">' in INDEX_SOURCE,
-            "集中記録を2番目のステップとして表示してください")
-    require('<span class="step">03</span>\n        <h2 id="backup-title">' in INDEX_SOURCE,
-            "バックアップを3番目のステップとして表示してください")
+
+    timer_step = INDEX_SOURCE.find('<span class="step">01</span>')
+    timer_title = INDEX_SOURCE.find('id="timer-title"')
+    done_step = INDEX_SOURCE.find('<span class="step">02</span>')
+    done_title = INDEX_SOURCE.find('id="done-title"')
+    backup_step = INDEX_SOURCE.find('<span class="step">03</span>')
+    backup_title = INDEX_SOURCE.find('id="backup-title"')
+
+    require(-1 not in (timer_step, timer_title, done_step, done_title, backup_step, backup_title),
+            "タイマー・集中記録・バックアップの3ステップを維持してください")
+    require(timer_step < timer_title < done_step < done_title < backup_step < backup_title,
+            "タイマー→集中記録→バックアップの順で表示してください")
 
     print("Timer-only checks passed: task planning is removed while timer, records, and legacy cleanup remain.")
 
