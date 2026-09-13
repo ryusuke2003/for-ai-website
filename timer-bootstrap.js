@@ -86,24 +86,3 @@
     parse,
   });
 })();
-
-function readBootstrappedTimerMinutes() {
-  if (typeof localStorage === 'undefined') return null;
-
-  try {
-    const guard = globalThis.ONE_TIMER_STATE_GUARD;
-    const raw = localStorage.getItem(guard.storageKey);
-    return guard.parse(raw)?.selectedMinutes ?? null;
-  } catch {
-    return null;
-  }
-}
-
-if (typeof document !== 'undefined') {
-  const bootstrappedCustomMinutes = readBootstrappedTimerMinutes() ?? 25;
-  const bootstrappedCustomPreset = document.querySelector('#custom-preset');
-
-  if (bootstrappedCustomPreset) {
-    bootstrappedCustomPreset.dataset.minutes = String(bootstrappedCustomMinutes);
-  }
-}
