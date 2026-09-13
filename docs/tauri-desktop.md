@@ -32,6 +32,20 @@ npm run dev
 
 デスクトップ版はメニューバーにタイマーを常駐させます。macOSではDockアイコンを表示せず、Trayをアプリの主な入口にします。
 
+### ログイン時自動起動
+
+macOS版を起動すると、次回ログイン用のLaunchAgentを次へ登録します。
+
+```text
+~/Library/LaunchAgents/com.ryusuke2003.one.autostart.plist
+```
+
+LaunchAgentは `/usr/bin/open -b com.ryusuke2003.one --args --autostart` でアプリを起動します。アプリ側は `--autostart` を検知し、通常ウィンドウを表示せずTrayだけを常駐させます。手動で起動した場合は従来どおり通常ウィンドウを表示します。
+
+LaunchAgentはbundle identifierを使って起動するため、配布版は `/Applications/タイマー.app` に置いて一度手動起動してから利用することを前提にします。アプリ更新後も同じbundle identifierを維持します。
+
+LaunchAgentの登録失敗でタイマー本体まで起動不能にしないため、登録に失敗した場合は標準エラーへ記録して通常起動を継続します。
+
 ### 左クリック: コンパクト操作画面
 
 Trayアイコンを左クリックすると、ネイティブの項目一覧ではなく、メニューバー直下にコンパクトなアプリ画面を表示します。もう一度Trayアイコンを押すか、コンパクト画面がフォーカスを失うと非表示になります。
@@ -137,6 +151,7 @@ Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環
 - frontendのCSPは `index.html` 側で維持
 - frontendからRustへのcommandはTray title更新と通常ウィンドウ復帰だけ
 - Rustからfrontendへの画面切り替えは固定されたnavigation eventだけを送る
+- ログイン時自動起動はユーザー領域の `~/Library/LaunchAgents` だけを利用し、管理者権限を要求しない
 - npmは `package-lock.json`、Rustは `Cargo.lock` をCIで強制
 - GitHub Actionsの外部Actionはcommit SHAに固定
 - Release作成時だけ専用jobへ `contents: write` を付与し、通常のbuild jobは `contents: read` のままにする
@@ -153,9 +168,9 @@ npm run tauri icon path/to/app-icon.png
 
 ## プロダクト方針
 
-### ログイン時自動起動は実装しない
+### ログイン時はTrayだけ自動起動する
 
-タイマーは、macOSへのログイン時やMac起動時に自動起動する機能を採用しません。ユーザーが必要なときに手動で起動し、起動後はメニューバーに常駐する設計とします。
+macOSへログインしたときはタイマーを自動起動します。ただし通常ウィンドウを勝手に前面表示せず、メニューバーのTrayだけを常駐させます。ユーザーが必要になったときにTrayからタイマー / Todoを開きます。
 
 ### Trayはコンパクト操作に留める
 
@@ -172,3 +187,4 @@ Trayではタイマーと今日の時間割の確認・最小限の操作だけ�
 - DMG配布
 - Apple Developer証明書によるコード署名
 - notarization
+- アプリ内自動アップデート
