@@ -11,30 +11,30 @@ describe('formatTrayTimerTitle', () => {
     })).toBe('24:32');
   });
 
-  it('一時停止中は停止記号と残り時間を表示する', () => {
+  it('一時停止中は文字を表示しない', () => {
     expect(formatTrayTimerTitle({
       selectedMinutes: 25,
       remainingSeconds: 1472,
       running: false,
       completionReady: false,
-    })).toBe('⏸ 24:32');
+    })).toBe('');
   });
 
-  it('待機中はONEを表示する', () => {
+  it('待機中は文字を表示しない', () => {
     expect(formatTrayTimerTitle({
       selectedMinutes: 25,
       remainingSeconds: 1500,
       running: false,
       completionReady: false,
-    })).toBe('ONE');
+    })).toBe('');
   });
 
-  it('完了時はチェック付きで00:00を表示する', () => {
+  it('完了時も文字を表示しない', () => {
     expect(formatTrayTimerTitle({
       selectedMinutes: 25,
       remainingSeconds: 0,
       running: false,
       completionReady: true,
-    })).toBe('✓ 00:00');
+    })).toBe('');
   });
 });
