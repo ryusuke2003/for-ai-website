@@ -57,7 +57,7 @@ def main():
         "タブ間保存プローブの書込不一致・削除不一致・API例外は全体の保存障害へ通知してください",
     )
 
-    health_probe = section(STORAGE_STATUS_SOURCE, "function probeLocalStorage()", "function updateTaskCharacterCount()")
+    health_probe = section(STORAGE_STATUS_SOURCE, "function probeLocalStorage()", "function removeLegacyTaskData()")
     write_pos = health_probe.find("localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token)")
     verify_write_pos = health_probe.find("const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token")
     reject_write_pos = health_probe.find("if (!persisted)", verify_write_pos)
