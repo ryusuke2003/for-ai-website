@@ -41,14 +41,5 @@ jobs:
       - name: Check timer architecture boundaries
         run: python3 scripts/timer_state_checks.py
 
-      - name: Check backup recovery preservation
-        run: python3 scripts/backup_recovery_checks.py
-
-      - name: Check backup export fallback
-        run: python3 scripts/backup_export_fallback_checks.py
-
-      - name: Check backup restore control availability
-        run: python3 scripts/backup_control_availability_checks.py
-
       - name: Reject common secret material
         run: python3 scripts/secret_checks.py

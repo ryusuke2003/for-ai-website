@@ -43,16 +43,32 @@ describe('timerStateGuard', () => {
     expect(timerStateGuard.parse(JSON.stringify({ ...completed, completionReady: false }))).toBeNull();
   });
 
-  it('旧形式の完了状態を互換読込し、未知フィールドは捨てる', () => {
+  it('旧形式の完了状態を互換読込できる', () => {
     const legacy = { selectedMinutes: 25, remainingSeconds: 0, running: false, endAt: null };
     expect(timerStateGuard.parse(JSON.stringify(legacy))).toEqual(legacy);
-    expect(timerStateGuard.parse(JSON.stringify({ ...legacy, futureField: 'ignored' }))).toEqual(legacy);
+    expect(timerStateGuard.parse(JSON.stringify({ ...legacy, completionReady: true }))).toEqual({
+      ...legacy,
+      completionReady: true,
+    });
+  });
+
+  it('未知フィールドは保存契約へ持ち込まず無視する', () => {
+    const value = state({ futureField: 'ignored' });
+    expect(timerStateGuard.parse(JSON.stringify(value))).toEqual(state());
   });
 
   it('不正な型・範囲・JSONを拒否する', () => {
     const invalidStates = [
-      state({ selectedMinutes: 0 }), state({ selectedMinutes: 181 }), state({ selectedMinutes: '25' }),
-      state({ remainingSeconds: -1 }), state({ remainingSeconds: 1501 }), state({ running: 'false' }), [], null,
+      state({ selectedMinutes: 0 }),
+      state({ selectedMinutes: 181 }),
+      state({ selectedMinutes: '25' }),
+      state({ remainingSeconds: -1 }),
+      state({ remainingSeconds: 1501 }),
+      state({ running: 'false' }),
+      [],
+      null,
+      state({ remainingSeconds: 0, completionReady: false, completionDate: '2026-09-13' }),
+      state({ remainingSeconds: 0, completionReady: true, completionDate: '2026-02-30' }),
     ];
     invalidStates.forEach((value) => expect(timerStateGuard.parse(JSON.stringify(value))).toBeNull());
     expect(timerStateGuard.parse('{not-json')).toBeNull();
