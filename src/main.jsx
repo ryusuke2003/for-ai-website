@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppFooter } from './components/AppFooter.jsx';
+import { BackupPanel } from './components/BackupPanel.jsx';
 import { HeroIntro } from './components/HeroIntro.jsx';
 import { ProgressDetails } from './components/ProgressDetails.jsx';
 import { ProgressOverview } from './components/ProgressOverview.jsx';
@@ -50,6 +51,13 @@ function ensureProgressDetailsRoot() {
   return wrapSiblingRange('react-progress-details-root', start, trailingHint);
 }
 
+function ensureBackupPanelRoot() {
+  const backupCard = document.querySelector('.backup-card');
+  const start = backupCard?.querySelector('#backup-export-button')?.closest('.controls');
+  const end = backupCard?.querySelector('#data-reset-status')?.closest('.history');
+  return wrapSiblingRange('react-backup-panel-root', start, end);
+}
+
 function mountReactUi() {
   mountComponent('#react-theme-root', <ThemeSwitcher />);
   mountComponent('#react-hero-root', <HeroIntro />);
@@ -60,6 +68,8 @@ function mountReactUi() {
   mountComponent('#react-progress-overview-root', <ProgressOverview />);
   ensureProgressDetailsRoot();
   mountComponent('#react-progress-details-root', <ProgressDetails />);
+  ensureBackupPanelRoot();
+  mountComponent('#react-backup-panel-root', <BackupPanel />);
   mountComponent('#react-footer-root', <AppFooter />);
 }
 
