@@ -7,19 +7,23 @@ STYLES_PATH = ROOT / "styles.css"
 
 def main():
     styles = STYLES_PATH.read_text(encoding="utf-8")
-    selector = "button:focus-visible, input:focus-visible {"
+    selector = "button:focus-visible,\ninput:focus-visible {"
     if selector not in styles:
         raise SystemExit("ERROR: キーボード操作用の :focus-visible スタイルがありません")
 
     block = styles.split(selector, 1)[1].split("}", 1)[0]
     required = (
-        "outline: 3px solid #1d1d1f;",
+        "outline: 3px solid var(--one-control-border);",
         "outline-offset: 3px;",
-        "box-shadow: 0 0 0 6px #f2efe7;",
+        "box-shadow: 0 0 0 6px var(--one-focus-outer);",
     )
     for declaration in required:
         if declaration not in block:
             raise SystemExit(f"ERROR: フォーカスリングに {declaration} が必要です")
+
+    for variable in ("--one-control-border:", "--one-focus-outer:"):
+        if variable not in styles:
+            raise SystemExit(f"ERROR: フォーカスリング用テーマ変数がありません: {variable}")
 
     if "currentColor" in block:
         raise SystemExit("ERROR: フォーカスリングを currentColor だけに依存させないでください")

@@ -69,7 +69,7 @@ export function StorageHealthStatus() {
   }, []);
 
   return (
-    <p className="hint" id="storage-health-status" role="status" aria-live="polite" data-state={state.state}>
+    <p className="hint mt-3 text-[0.82rem] text-[var(--one-muted)]" id="storage-health-status" role="status" aria-live="polite" data-state={state.state}>
       {state.text}
     </p>
   );
