@@ -10,10 +10,12 @@ THEME_SOURCE = (ROOT / "src/components/ThemeSwitcher.jsx").read_text(encoding="u
 TIMER_CONTROLS_SOURCE = (ROOT / "src/components/TimerControls.jsx").read_text(encoding="utf-8")
 TIMER_DISPLAY_SOURCE = (ROOT / "src/components/TimerDisplay.jsx").read_text(encoding="utf-8")
 TIMER_SETTINGS_SOURCE = (ROOT / "src/components/TimerSettings.jsx").read_text(encoding="utf-8")
+PROGRESS_OVERVIEW_SOURCE = (ROOT / "src/components/ProgressOverview.jsx").read_text(encoding="utf-8")
 THEME_COMPAT_SOURCE = (ROOT / "theme.js").read_text(encoding="utf-8")
 TIMER_CONTROLS_BRIDGE_SOURCE = (ROOT / "react-timer-controls-bridge.js").read_text(encoding="utf-8")
 TIMER_DISPLAY_BRIDGE_SOURCE = (ROOT / "react-timer-display-bridge.js").read_text(encoding="utf-8")
 TIMER_SETTINGS_BRIDGE_SOURCE = (ROOT / "react-timer-settings-bridge.js").read_text(encoding="utf-8")
+PROGRESS_OVERVIEW_BRIDGE_SOURCE = (ROOT / "react-progress-overview-bridge.js").read_text(encoding="utf-8")
 VITE_SOURCE = (ROOT / "vite.config.mjs").read_text(encoding="utf-8")
 
 
@@ -37,6 +39,8 @@ def main():
     require("<TimerDisplay />" in MAIN_SOURCE, "TimerDisplayをReactからマウントしてください")
     require("<TimerControls />" in MAIN_SOURCE, "TimerControlsをReactからマウントしてください")
     require("<TimerSettings />" in MAIN_SOURCE, "TimerSettingsをReactからマウントしてください")
+    require("<ProgressOverview />" in MAIN_SOURCE, "ProgressOverviewをReactからマウントしてください")
+    require("ensureProgressOverviewRoot" in MAIN_SOURCE, "既存DOM初期化後に集中記録サマリーのReact境界を生成してください")
     require("<AppFooter />" in MAIN_SOURCE, "AppFooterをReactからマウントしてください")
     require("DOMContentLoaded" in MAIN_SOURCE, "legacy初期化完了後にReactをマウントしてください")
     require("{ once: true }" in MAIN_SOURCE, "ReactのDOMContentLoadedハンドラは1回だけ実行してください")
@@ -109,6 +113,23 @@ def main():
         require(token in TIMER_SETTINGS_SOURCE, f"TimerSettingsの移行要件がありません: {token}")
 
     for token in (
+        "useState",
+        "useEffect",
+        "ONE_REACT_PROGRESS_OVERVIEW",
+        "one:progress-overview-state",
+        'id="done-button"',
+        'id="discard-button"',
+        'id="today-count"',
+        'id="week-count"',
+        'id="streak-count"',
+        'id="done-count"',
+        'id="streak-status"',
+        "bridge()?.record?.()",
+        "bridge()?.discard?.()",
+    ):
+        require(token in PROGRESS_OVERVIEW_SOURCE, f"ProgressOverviewの移行要件がありません: {token}")
+
+    for token in (
         "document.documentElement.dataset.reactTimerControls === '1'",
         "startButton.click()",
         "resetButton.click()",
@@ -150,6 +171,19 @@ def main():
     ):
         require(token in TIMER_SETTINGS_BRIDGE_SOURCE, f"タイマー設定ブリッジの要件がありません: {token}")
 
+    for token in (
+        "document.documentElement.dataset.reactProgressOverview === '1'",
+        "ONE_REACT_PROGRESS_OVERVIEW",
+        "progressOverviewSnapshot",
+        "one:progress-overview-state",
+        "doneButton.click()",
+        "discardButton.click()",
+        "todayCount.getAttribute('aria-label')",
+        "streakCount.getAttribute('aria-label')",
+        "MutationObserver",
+    ):
+        require(token in PROGRESS_OVERVIEW_BRIDGE_SOURCE, f"集中記録サマリーブリッジの要件がありません: {token}")
+
     require(
         "document.documentElement.dataset.reactTheme !== '1'" in THEME_COMPAT_SOURCE,
         "旧theme.jsはVite/Reactテーマ管理が無効な場合だけ動く互換処理にしてください",
@@ -158,34 +192,22 @@ def main():
         "order: 'pre'" in VITE_SOURCE,
         "ReactエントリはViteのHTML依存解析より前に注入してください",
     )
-    require(
-        "data-react-theme=\"1\"" in VITE_SOURCE,
-        "Vite経由では旧theme.jsを停止するReactテーマ管理マーカーを付けてください",
-    )
-    require(
-        "data-react-timer-controls=\"1\"" in VITE_SOURCE,
-        "Vite経由ではReact版タイマー主操作を有効にするマーカーを付けてください",
-    )
-    require(
-        "data-react-timer-display=\"1\"" in VITE_SOURCE,
-        "Vite経由ではReact版タイマー表示を有効にするマーカーを付けてください",
-    )
-    require(
-        "data-react-timer-settings=\"1\"" in VITE_SOURCE,
-        "Vite経由ではReact版タイマー設定を有効にするマーカーを付けてください",
-    )
-    require(
-        "react-timer-controls-bridge.js" in VITE_SOURCE,
-        "Vite経由ではvanillaタイマーとReact主操作を橋渡しするスクリプトを読み込んでください",
-    )
-    require(
-        "react-timer-display-bridge.js" in VITE_SOURCE,
-        "Vite経由ではvanillaタイマーとReact表示を橋渡しするスクリプトを読み込んでください",
-    )
-    require(
-        "react-timer-settings-bridge.js" in VITE_SOURCE,
-        "Vite経由ではvanillaタイマー設定とReact UIを橋渡しするスクリプトを読み込んでください",
-    )
+    for marker, message in (
+        ('data-react-theme=\"1\"', "Vite経由では旧theme.jsを停止するReactテーマ管理マーカーを付けてください"),
+        ('data-react-timer-controls=\"1\"', "Vite経由ではReact版タイマー主操作を有効にするマーカーを付けてください"),
+        ('data-react-timer-display=\"1\"', "Vite経由ではReact版タイマー表示を有効にするマーカーを付けてください"),
+        ('data-react-timer-settings=\"1\"', "Vite経由ではReact版タイマー設定を有効にするマーカーを付けてください"),
+        ('data-react-progress-overview=\"1\"', "Vite経由ではReact版集中記録サマリーを有効にするマーカーを付けてください"),
+    ):
+        require(marker in VITE_SOURCE, message)
+
+    for bridge_name, message in (
+        ("react-timer-controls-bridge.js", "Vite経由ではvanillaタイマーとReact主操作を橋渡しするスクリプトを読み込んでください"),
+        ("react-timer-display-bridge.js", "Vite経由ではvanillaタイマーとReact表示を橋渡しするスクリプトを読み込んでください"),
+        ("react-timer-settings-bridge.js", "Vite経由ではvanillaタイマー設定とReact UIを橋渡しするスクリプトを読み込んでください"),
+        ("react-progress-overview-bridge.js", "Vite経由ではvanilla集中記録とReactサマリーを橋渡しするスクリプトを読み込んでください"),
+    ):
+        require(bridge_name in VITE_SOURCE, message)
 
     for source_name, source in (
         ("src/main.jsx", MAIN_SOURCE),
@@ -195,10 +217,11 @@ def main():
         ("src/components/TimerControls.jsx", TIMER_CONTROLS_SOURCE),
         ("src/components/TimerDisplay.jsx", TIMER_DISPLAY_SOURCE),
         ("src/components/TimerSettings.jsx", TIMER_SETTINGS_SOURCE),
+        ("src/components/ProgressOverview.jsx", PROGRESS_OVERVIEW_SOURCE),
     ):
         require("dangerouslySetInnerHTML" not in source, f"{source_name} でdangerouslySetInnerHTMLを使わないでください")
 
-    print("React migration checks passed: presentation, theme, timer display, controls, and timer settings are React-managed behind guarded bridges.")
+    print("React migration checks passed: presentation, theme, timer UI, and progress overview are React-managed behind guarded bridges.")
 
 
 if __name__ == "__main__":
