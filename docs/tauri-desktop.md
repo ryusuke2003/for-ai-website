@@ -92,6 +92,19 @@ src-tauri/target/release/bundle/macos/ONE.app
 
 Rust build cacheも利用します。
 
+## GitHub Release
+
+`v` で始まるタグをpushすると、Tauri buildの成功後にGitHub Releaseを自動作成し、`ONE-macos.zip` をRelease assetとして添付します。再実行時は既存ReleaseのZIPを上書きするため、同じタグでworkflowを再実行しても復旧できます。
+
+タグのバージョンは `src-tauri/tauri.conf.json` の `version` と一致している必要があります。たとえば現在のアプリバージョンが `0.1.0` なら次のようにします。
+
+```sh
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+実行後はGitHubのReleasesから `ONE-macos.zip` を直接取得できます。次のバージョンを出すときは、先に `tauri.conf.json` の `version` を更新してから対応するタグを作成します。
+
 ## 保存領域
 
 タイマー、進捗、設定、復旧用データはWebViewの `localStorage` に保存します。
@@ -107,6 +120,7 @@ Tauriの保存領域はSafari / Chrome / Webデプロイとは別です。別環
 - RustからfrontendへのTray操作は固定された5種類のtimer action eventだけを送る
 - npmは `package-lock.json`、Rustは `Cargo.lock` をCIで強制
 - GitHub Actionsの外部Actionはcommit SHAに固定
+- Release作成時だけ専用jobへ `contents: write` を付与し、通常のbuild jobは `contents: read` のままにする
 
 ## アイコン
 
@@ -132,7 +146,6 @@ ONEは、macOSへのログイン時やMac起動時に自動起動する機能を
 
 個人利用を前提として、次はまだ必須にしていません。
 
-- GitHub Releaseへの自動添付
 - DMG配布
 - Apple Developer証明書によるコード署名
 - notarization

@@ -4,6 +4,7 @@ on:
   pull_request:
   push:
     branches: [main]
+    tags: ['v*']
 
 permissions:
   contents: read
@@ -22,6 +23,18 @@ jobs:
         with:
           node-version: 22.22.2
           cache: npm
+
+      - name: Verify release tag matches app version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          app_version="$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); process.stdout.write(config.version)")"
+          if [ "$tag_version" != "$app_version" ]; then
+            echo "Tag version ($tag_version) does not match Tauri app version ($app_version)." >&2
+            exit 1
+          fi
 
       - name: Setup Rust
         run: |
@@ -63,3 +76,30 @@ jobs:
           path: ONE-macos.zip
           if-no-files-found: error
           retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download macOS app artifact
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: ONE-macos-app
+
+      - name: Create or update GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" ONE-macos.zip --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" ONE-macos.zip \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "ONE $GITHUB_REF_NAME" \
+              --generate-notes
+          fi
