@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { timerActions } from './timerStore.js';
 
 const DEFAULT_STATUS = '1〜180分の整数でも設定できます。';
 
@@ -19,10 +20,6 @@ function parseMinutes(raw) {
   return Number.isInteger(minutes) && minutes >= min && minutes <= max
     ? minutes
     : null;
-}
-
-function invokeTimerControl(action, ...args) {
-  return globalThis.ONE_REACT_TIMER_CONTROLS?.[action]?.(...args);
 }
 
 export function useCustomTimerControl(selectedMinutes, locked) {
@@ -58,9 +55,9 @@ export function useCustomTimerControl(selectedMinutes, locked) {
 
   const selectPreset = useCallback((minutes) => {
     if (locked) return false;
-    invokeTimerControl('selectMinutes', minutes);
-    setStatus(DEFAULT_STATUS);
-    return true;
+    const applied = timerActions.selectMinutes(minutes);
+    if (applied) setStatus(DEFAULT_STATUS);
+    return applied;
   }, [locked]);
 
   const apply = useCallback(() => {
@@ -76,7 +73,9 @@ export function useCustomTimerControl(selectedMinutes, locked) {
       return { ok: false, focusInput: true };
     }
 
-    invokeTimerControl('applyCustomMinutes', minutes);
+    const applied = timerActions.applyCustomMinutes(minutes);
+    if (!applied) return { ok: false, focusInput: false };
+
     setInvalid(false);
     setStatus(`${minutes}分に設定しました。`);
     return { ok: true, focusInput: false };

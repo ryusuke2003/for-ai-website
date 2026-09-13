@@ -29,9 +29,7 @@ jobs:
       - name: Verify production entrypoints
         shell: bash
         run: |
-          test -f dist/legacy/interop/timer.js
           test -f dist/legacy/interop/settings-progress.js
-          grep -q 'legacy/interop/timer.js' dist/index.html
           grep -q 'legacy/interop/settings-progress.js' dist/index.html
           for old in \
             react-timer-state-source.js \
@@ -48,6 +46,7 @@ jobs:
             privacy-reset.js \
             backup.js \
             shortcuts.js \
+            legacy/interop/timer.js \
             legacy/interop/progress-backup.js; do
             if test -e "dist/$old"; then exit 1; fi
             if grep -q "$old" dist/index.html; then exit 1; fi

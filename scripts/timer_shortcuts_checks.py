@@ -46,11 +46,14 @@ def main():
     ):
         require(token in HOOK_SOURCE, f"誤操作防止条件がありません: {token}")
 
-    require("timerControls()?.start?.();" in HOOK_SOURCE, "Spaceは既存timer adapter経由で開始/一時停止してください")
+    require("import { timerActions } from './timerStore.js';" in HOOK_SOURCE,
+            "SpaceショートカットはReactタイマーストアを利用してください")
+    require("timerActions.toggle();" in HOOK_SOURCE,
+            "SpaceはReactタイマーストアで開始/一時停止してください")
+    require("ONE_REACT_TIMER_CONTROLS" not in HOOK_SOURCE,
+            "削除したtimer interopをショートカットへ戻さないでください")
     require(HOOK_SOURCE.count("toggleFocusMode();") >= 2,
             "FとEscapeはReact管理の集中表示処理を直接切り替えてください")
-    require("timerControls()?.toggleFocus?.();" not in HOOK_SOURCE,
-            "集中表示ショートカットをlegacy timer adapterへ戻さないでください")
     require("focusTimerControl('focus');" in HOOK_SOURCE,
             "Escape解除後は集中表示ボタンへフォーカスを戻してください")
 
@@ -60,8 +63,10 @@ def main():
             "集中表示ボタンのaria-keyshortcutsを維持してください")
     require("onClick={onToggleFocusMode}" in CONTROLS_SOURCE,
             "集中表示ボタンはReact側の切替処理を直接呼んでください")
+    require("onClick={() => timerActions.toggle()}" in CONTROLS_SOURCE,
+            "開始ボタンはReactタイマーストアを直接操作してください")
 
-    print("Timer keyboard shortcuts are React-owned and focus-mode shortcuts use React state directly.")
+    print("Timer keyboard shortcuts and controls are React-store owned with input and focus safety.")
 
 
 if __name__ == "__main__":

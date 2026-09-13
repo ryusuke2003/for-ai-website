@@ -38,14 +38,16 @@ def main():
     )
     require(create_session.count("return null;") >= 2, "乱数生成失敗時に弱い代替IDを返さないでください")
 
-    ensure_session = section("function ensureStoredSessionId()", "function isTimerStateActive")
+    ensure_session = section("function ensureStoredSessionId()", "function timerSnapshot")
     require("if (!candidate) return null;" in ensure_session, "セッションID生成失敗後は保存処理へ進まないでください")
 
-    start_listener = section("startButton.addEventListener('click'", "resetButton.addEventListener('click'")
-    require("localSessionId = createSessionId();" in start_listener, "新規タイマー開始時は安全なセッションID生成器を使ってください")
-    require("if (!localSessionId) return;" in start_listener, "ID生成失敗時は弱い識別子を書き込まないでください")
+    before_start = section("function beforeStart(state)", "function beforeReset(state)")
+    require("localSessionId = createSessionId();" in before_start,
+            "新規タイマー開始時は安全なセッションID生成器を使ってください")
+    require("if (!localSessionId) return true;" in before_start,
+            "ID生成失敗時は弱い識別子を書き込まず単一タブ動作へフォールバックしてください")
     require(
-        start_listener.find("if (!localSessionId) return;") < start_listener.find("writeStoredSessionId(localSessionId);"),
+        before_start.find("if (!localSessionId) return true;") < before_start.find("writeStoredSessionId(localSessionId);"),
         "ID生成成功を確認してから保存してください",
     )
 
@@ -54,7 +56,7 @@ def main():
         "既存タブのセッションIDを読み取れる互換パターンは維持してください",
     )
 
-    print("Tab session IDs use cryptographic randomness without weakening single-tab fallback behavior.")
+    print("Tab session IDs use cryptographic randomness through the React timer guard without weak fallback IDs.")
 
 
 if __name__ == "__main__":

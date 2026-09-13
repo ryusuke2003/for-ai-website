@@ -3,8 +3,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TAB_GUARD_PATH = ROOT / "tab-guard.js"
+TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
-TIMER_INTEROP_PATH = ROOT / "legacy" / "interop" / "timer.js"
 
 
 def require(condition, message):
@@ -22,8 +22,8 @@ def section(source, start_marker, end_marker):
 
 def main():
     tab_guard = TAB_GUARD_PATH.read_text(encoding="utf-8")
+    timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
     custom_timer = CUSTOM_TIMER_HOOK_PATH.read_text(encoding="utf-8")
-    timer_interop = TIMER_INTEROP_PATH.read_text(encoding="utf-8")
 
     parse_idle = section(tab_guard, "function parseIdleTimerState", "function syncIdleTimerFromStorage")
     require("ONE_TIMER_STATE_GUARD?.parse(raw)" in parse_idle,
@@ -38,14 +38,18 @@ def main():
             "ローカルに進行中・一時停止・完了待ちがあるときは同期しないでください")
     require("storageCoordinationUnavailable()" in sync_idle,
             "保存障害中はタイマー同期を行わないでください")
-    require("selectedMinutes = state.selectedMinutes;" in sync_idle,
-            "検証済みの選択時間を反映してください")
-    require("remainingSeconds = state.remainingSeconds;" in sync_idle,
-            "検証済みの残り時間を反映してください")
-    require("renderTimer();" in sync_idle, "同期後にタイマー状態を更新してください")
-    require("one:idle-timer-sync" in sync_idle, "React自由設定UIへ同期イベントを通知してください")
-    require("safeWrite(" not in sync_idle and "saveTimerState(" not in sync_idle,
+    require("timerRuntime.syncIdleState?.(state) === true" in sync_idle,
+            "検証済みのアイドル状態だけReactタイマーruntimeへ渡してください")
+    require("safeWrite(" not in sync_idle,
             "別タブ同期から保存値を書き戻さないでください")
+
+    store_sync = section(timer_store, "function syncIdleState(state)", "function clearPendingCompletion")
+    require("state.remainingSeconds !== fullDuration" in store_sync,
+            "Reactタイマーruntimeでも全時間アイドル状態だけ受け入れてください")
+    require("persist: true" not in store_sync and "persistTimerState" not in store_sync,
+            "別タブ同期をlocalStorageへ書き戻さないでください")
+    require("one:idle-timer-sync" in store_sync,
+            "自由設定UIへアイドル同期イベントを通知してください")
 
     custom_sync = section(custom_timer, "function handleIdleTimerSync(event)", "window.addEventListener('one:idle-timer-sync'")
     require("event.detail?.selectedMinutes" in custom_sync,
@@ -56,17 +60,17 @@ def main():
             "自由設定入力欄へ同期値を反映してください")
     require("別のタブで${minutes}分に変更されました。" in custom_sync,
             "別タブ変更を利用者へ通知してください")
-    require("localStorage" not in custom_sync and "safeWrite(" not in custom_sync,
+    require("localStorage" not in custom_sync,
             "React UI同期から保存値を書き戻さないでください")
 
-    require("selectMinutes(minutes)" in timer_interop,
-            "Reactの分数変更をtimer interopへ集約してください")
-    require("legacyCustomPreset.dataset.minutes = String(minutes);" in timer_interop,
-            "任意の分数はhidden custom presetへ反映して既存timer処理へ渡してください")
-    require("completionReady" in timer_interop,
-            "未記録完了中は分数変更を拒否してください")
+    require("timerActions.selectMinutes(minutes)" in custom_timer,
+            "Reactの分数変更はtimerStoreへ集約してください")
+    require("currentState.completionReady" in timer_store,
+            "未記録完了中はtimerStoreで分数変更を拒否してください")
+    require(not (ROOT / "legacy" / "interop" / "timer.js").exists(),
+            "timer interopは削除したままにしてください")
 
-    print("Idle timer settings sync across tabs while custom duration UI is owned by React.")
+    print("Idle timer settings sync through the React timer runtime without storage write-back.")
 
 
 if __name__ == "__main__":

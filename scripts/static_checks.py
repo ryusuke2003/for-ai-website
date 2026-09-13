@@ -12,6 +12,7 @@ THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
 TIMER_SETTINGS_PATH = ROOT / "src" / "features" / "timer" / "TimerSettings.jsx"
 TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
+TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
 WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
 COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
@@ -25,7 +26,6 @@ REQUIRED_SCRIPT_ORDER = [
     "theme-bootstrap.js",
     "timer-bootstrap.js",
     "app.js",
-    "legacy/interop/timer.js",
     "tab-guard.js",
     "legacy/interop/settings-progress.js",
 ]
@@ -86,19 +86,9 @@ def main():
         fail_if("hidden" not in scaffold, "legacy runtime scaffoldは画面に表示しないでください", errors)
         fail_if(scaffold.get("aria-hidden") != "true", "legacy runtime scaffoldは支援技術からも隠してください", errors)
 
-    timer = require_runtime_element(parser, "timer", errors)
-    if timer is not None:
-        fail_if(timer.get("role") != "timer", "#timer は role=timer を維持してください", errors)
-        fail_if("aria-live" in timer, "#timer に aria-live を付けないでください", errors)
-
-    custom_preset = require_runtime_element(parser, "custom-preset", errors)
-    if custom_preset is not None:
-        fail_if("hidden" not in custom_preset, "#custom-preset は非表示にしてください", errors)
-
-    for element_id in ("done-button", "discard-button", "done-count"):
-        require_runtime_element(parser, element_id, errors)
-
+    require_runtime_element(parser, "done-count", errors)
     for removed_id in (
+        "timer", "timer-status", "start-button", "reset-button", "custom-preset", "done-button", "discard-button", "done-hint",
         "today-count", "week-count", "streak-count", "streak-status", "history-grid", "activity-grid", "activity-summary",
         "backup-export-button", "backup-import-button", "backup-undo-button", "backup-file-input", "backup-status",
         "data-reset-button", "data-reset-confirm", "data-reset-confirm-button", "data-reset-cancel-button", "data-reset-status",
@@ -112,7 +102,10 @@ def main():
 
     fail_if(parser.script_urls != REQUIRED_SCRIPT_ORDER, f"classic scriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください", errors)
     fail_if(parser.module_script_urls != ["/src/main.jsx"], "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
-    for removed_file in ("stats.js", "privacy-reset.js", "backup.js", "shortcuts.js", "legacy/interop/progress-backup.js"):
+    for removed_file in (
+        "stats.js", "privacy-reset.js", "backup.js", "shortcuts.js",
+        "legacy/interop/timer.js", "legacy/interop/progress-backup.js",
+    ):
         fail_if((ROOT / removed_file).exists(), f"React移行後は{removed_file}を残さないでください", errors)
 
     theme_bootstrap_attrs = parser.script_attributes.get("theme-bootstrap.js", {})
@@ -140,14 +133,23 @@ def main():
             script_sources.append(script_path.read_text(encoding="utf-8"))
 
     app_source = APP_PATH.read_text(encoding="utf-8")
+    timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
     required_timer_boundary_flow = """if (remainingSeconds <= 0) {
-      finishTimer();
-      return;
-    }
-    stopTimer('再開');"""
-    fail_if(required_timer_boundary_flow not in app_source, "0秒到達時は一時停止より先にfinishTimerへ流してください", errors)
+    finishTimer();
+    return true;
+  }
+
+  clearTimerInterval();"""
+    fail_if(required_timer_boundary_flow not in timer_store, "0秒到達時は一時停止より先にfinishTimerへ流してください", errors)
     fail_if("let storageAccessFailed = false;" not in app_source, "端末保存の失敗状態を保持してください", errors)
-    fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in app_source, "保存失敗時は全体へ通知してください", errors)
+    fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in app_source, "進捗保存失敗時は全体へ通知してください", errors)
+    fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in timer_store, "タイマー保存失敗時は全体へ通知してください", errors)
+    fail_if("globalThis.ONE_TAB_GUARD?.beforeStart?.(currentState)" not in timer_store,
+            "タイマー開始前に既存の複数タブ調停を通してください", errors)
+    fail_if("globalThis.ONE_TAB_GUARD?.registerTimerRuntime?.(timerRuntime)" not in timer_store,
+            "Reactタイマーruntimeをtab guardへ登録してください", errors)
+    fail_if("window.addEventListener('one:privacy-reset-prepare', preparePrivacyReset)" not in timer_store,
+            "端末データ削除直前は保存し直さずタイマーintervalを停止してください", errors)
 
     react_app_source = REACT_APP_PATH.read_text(encoding="utf-8")
     storage_component = STORAGE_COMPONENT_PATH.read_text(encoding="utf-8")
@@ -170,7 +172,10 @@ def main():
     timer_display = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
     fail_if('id="custom-minutes"' not in timer_settings, "自由設定入力はReact UIに置いてください", errors)
     fail_if('min="1"' not in timer_settings or 'max="180"' not in timer_settings, "自由設定は1〜180分に限定してください", errors)
-    fail_if("ONE_REACT_TIMER_CONTROLS?.[action]" not in custom_timer_hook, "自由設定操作はtimer interopへ委譲してください", errors)
+    fail_if("timerActions.selectMinutes(minutes)" not in custom_timer_hook,
+            "自由設定プリセットはReactタイマーストアを直接更新してください", errors)
+    fail_if("timerActions.applyCustomMinutes(minutes)" not in custom_timer_hook,
+            "自由設定適用はReactタイマーストアを直接更新してください", errors)
     fail_if("window.addEventListener('one:idle-timer-sync', handleIdleTimerSync)" not in custom_timer_hook, "別タブのアイドル設定変更をReactへ同期してください", errors)
     fail_if("document.title = documentTitleFor(state, timeText);" not in timer_display, "ページタイトルはReactタイマー状態から同期してください", errors)
 
@@ -210,13 +215,14 @@ def main():
             "復元ポイント保存キーの互換性を維持してください", errors)
     fail_if("ONE_REACT_PROGRESS_OVERVIEW?.restoreBackupData" not in backup_hook_source,
             "バックアップ復元はprogress adapter経由で既存状態を更新してください", errors)
-    fail_if("ONE_REACT_TIMER_CONTROLS?.selectMinutes" not in backup_hook_source,
-            "バックアップ復元はtimer adapter経由でタイマー時間を更新してください", errors)
+    fail_if("timerActions.selectMinutes(restored.selectedMinutes)" not in backup_hook_source,
+            "バックアップ復元はReactタイマーストア経由でタイマー時間を更新してください", errors)
     fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source,
             "削除対象キーはReact hook内の明示Setで管理してください", errors)
 
     storage_source = "\n".join([
         *script_sources,
+        timer_store,
         storage_component,
         theme_component,
         custom_timer_hook,

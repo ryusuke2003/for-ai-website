@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useProgressOverviewState } from '../progress/useProgressOverviewState.js';
+import { timerActions } from '../timer/timerStore.js';
 import { useTimerState } from '../timer/useTimerState.js';
 
 const BACKUP_FORMAT = 'one-focus-backup';
@@ -449,7 +450,7 @@ export function useBackupControl() {
       doneCount: restored.doneCount,
       history: restored.history,
     }) === true;
-    const timerApplied = globalThis.ONE_REACT_TIMER_CONTROLS?.selectMinutes?.(restored.selectedMinutes) === true;
+    const timerApplied = timerActions.selectMinutes(restored.selectedMinutes) === true;
     return progressApplied && timerApplied;
   }
 

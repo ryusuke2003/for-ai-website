@@ -38,30 +38,37 @@ def main():
     require(size_guard < number_parse and pattern_guard < number_parse, "累計回数は数値化する前にサイズと形式を検証してください")
     require("Number.isSafeInteger(count)" in parser, "累計回数はsafe integerだけを受け付けてください")
 
-    load_state = section(app, "function loadState()", "startButton.addEventListener")
-    require("doneCount.textContent = String(readDoneCount());" in load_state, "初期表示は共通の累計値リーダーを使ってください")
+    load_state = section(app, "function loadProgressState()", "document.addEventListener('visibilitychange'")
+    require("doneCount.textContent = String(readDoneCount());" in load_state,
+            "初期表示は共通の累計値リーダーを使ってください")
 
-    record_handler = section(app, "doneButton.addEventListener('click', () => {", "loadState();")
-    require("const current = parseDoneCount(doneCount.textContent);" in record_handler, "保存不可時もメモリ上の累計を基準に加算してください")
+    record_handler = section(tab_guard, "function recordPendingCompletion()", "function discardPendingCompletion()")
+    require("const current = parseDoneCount(doneCount.textContent);" in record_handler,
+            "保存不可時もメモリ上の累計を基準に加算してください")
+    require("doneCount.textContent = String(next);" in record_handler,
+            "保存確認前に現在タブの累計を維持してください")
 
-    guard_progress_refresh = section(tab_guard, "function refreshGuardProgressFromStorage()", "function stopCrossTabAction")
-    require("const storedDoneCount = readDoneCount();" in guard_progress_refresh, "tab-guardのclaim固有再読込も共通の累計値リーダーを使ってください")
-    require("doneCount.textContent = String(storedDoneCount);" in guard_progress_refresh, "claim固有再読込では検証済みの累計値だけを画面へ反映してください")
+    guard_progress_refresh = section(tab_guard, "function refreshGuardProgressFromStorage()", "function setCrossTabFeedback")
+    require("const storedDoneCount = readDoneCount();" in guard_progress_refresh,
+            "tab-guardのclaim固有再読込も共通の累計値リーダーを使ってください")
+    require("doneCount.textContent = String(storedDoneCount);" in guard_progress_refresh,
+            "claim固有再読込では検証済みの累計値だけを画面へ反映してください")
 
-    claim = section(tab_guard, "function claimPendingCompletion(event)", "function blockIfAnotherTabOwnsTimer")
-    disabled_branch = claim.split("if (!completionReady)", 1)[0]
+    claim = section(tab_guard, "function claimPendingCompletion()", "function verifyCompletionConsumedState()")
+    disabled_branch = claim.split("if (!localSessionId)", 1)[0]
     require(
         "if (!tabCoordinationEnabled || storageCoordinationUnavailable()) return true;" in disabled_branch,
         "端末保存不可または保存障害時は保存値を再読込せず、そのまま記録処理へ進めてください",
     )
-    require("refreshGuardProgressFromStorage()" not in disabled_branch, "端末保存不可時にメモリ上の進捗を保存値で上書きしないでください")
+    require("refreshGuardProgressFromStorage()" not in disabled_branch,
+            "端末保存不可時にメモリ上の進捗を保存値で上書きしないでください")
 
     backup_reader = section(backup, "function readStoredDoneCount()", "function readHistory()")
     require("parseDoneCount(safeRead(DONE_COUNT_STORAGE_KEY, '0'))" in backup_reader,
             "Reactバックアップも同じ形式・safe integer検証を通した累計値だけを使ってください")
     require(not (ROOT / "backup.js").exists(), "削除済みclassic backup.jsを戻さないでください")
 
-    print("Progress storage guards preserve in-memory counts while React backup validates stored counts independently.")
+    print("Progress storage guards preserve in-memory counts while React timer completion and backup validate storage.")
 
 
 if __name__ == "__main__":
