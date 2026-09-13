@@ -50,7 +50,8 @@ def main():
     export = section(backup, "function exportBackup()", "function applyBackup(restored)")
     require("backupExportUsedMemoryFallback" in export, "救出用JSONを書き出したことを利用者へ明示してください")
     require("救出用JSON" in export, "保存障害時のバックアップは救出用だと説明してください")
-    require("タスク本文や実行中タイマーは含まれていません" in export, "救出用JSONに含まれない情報を明示してください")
+    require("実行中タイマーは含まれていません" in export, "バックアップに実行中タイマーを含めないことを明示してください")
+    require("タスク本文" not in export, "削除済みタスク機能の文言をバックアップ案内へ残さないでください")
 
     print("Backup export falls back to validated in-memory state only when persistent storage is unavailable.")
 
