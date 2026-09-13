@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Setup Rust
         run: |
@@ -22,15 +24,36 @@ jobs:
       - name: Generate Cargo.lock
         run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
 
-      - name: Commit Cargo.lock
+      - name: Create commit object with Cargo.lock
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          if git diff --quiet -- src-tauri/Cargo.lock && git ls-files --error-unmatch src-tauri/Cargo.lock >/dev/null 2>&1; then
-            echo "Cargo.lock is already up to date."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src-tauri/Cargo.lock
-          git commit -m "Cargo.lockを追加してRust依存を固定"
-          git push
+          set -euo pipefail
+          api="https://api.github.com/repos/${GITHUB_REPOSITORY}"
+          content="$(base64 -w0 src-tauri/Cargo.lock)"
+          blob_sha="$(jq -n --arg content "$content" '{content:$content,encoding:"base64"}' \
+            | curl -fsSL -X POST \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "${api}/git/blobs" -d @- \
+            | jq -r '.sha')"
+          base_tree="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+          tree_sha="$(jq -n --arg base_tree "$base_tree" --arg blob_sha "$blob_sha" \
+              '{base_tree:$base_tree,tree:[{path:"src-tauri/Cargo.lock",mode:"100644",type:"blob",sha:$blob_sha}]}' \
+            | curl -fsSL -X POST \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "${api}/git/trees" -d @- \
+            | jq -r '.sha')"
+          commit_sha="$(jq -n --arg message 'Cargo.lockを追加してRust依存を固定' --arg tree "$tree_sha" --arg parent "$GITHUB_SHA" \
+              '{message:$message,tree:$tree,parents:[$parent]}' \
+            | curl -fsSL -X POST \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                -H "X-GitHub-Api-Version: 2022-11-28" \
+                "${api}/git/commits" -d @- \
+            | jq -r '.sha')"
+          echo "GENERATED_COMMIT_SHA=${commit_sha}"
