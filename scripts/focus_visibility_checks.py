@@ -2,12 +2,12 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-STYLES_PATH = ROOT / "styles.css"
+STYLES_PATH = ROOT / "src" / "tailwind.css"
 
 
 def main():
     styles = STYLES_PATH.read_text(encoding="utf-8")
-    selector = "button:focus-visible,\ninput:focus-visible {"
+    selector = "button:focus-visible,\n  input:focus-visible {"
     if selector not in styles:
         raise SystemExit("ERROR: キーボード操作用の :focus-visible スタイルがありません")
 
@@ -45,7 +45,7 @@ def main():
         if rule not in styles:
             raise SystemExit(f"ERROR: 集中表示のタイマー用スタイルがありません: {rule}")
 
-    print("Focus visibility and timer-only focus mode checks passed.")
+    print("Focus visibility and timer-only focus mode checks passed from src/tailwind.css.")
 
 
 if __name__ == "__main__":
