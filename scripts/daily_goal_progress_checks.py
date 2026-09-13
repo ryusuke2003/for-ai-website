@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parent.parent
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
 PROGRESS_DETAILS_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressDetails.jsx").read_text(encoding="utf-8")
 HOOK_SOURCE = (ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js").read_text(encoding="utf-8")
-STYLE_SOURCE = (ROOT / "timer-progress.css").read_text(encoding="utf-8")
+STYLE_SOURCE = (ROOT / "src" / "tailwind.css").read_text(encoding="utf-8")
 
 
 def fail(message):
@@ -60,8 +60,9 @@ def main():
     require(".daily-goal-progress {" in STYLE_SOURCE, "日次目標進捗バー専用のレイアウトを維持してください")
     require("accent-color: currentColor;" in section(STYLE_SOURCE, ".daily-goal-progress {", "}"), "テーマに追従するprogress表示を維持してください")
     require(".daily-goal-progress[hidden]" in STYLE_SOURCE and "display: none;" in STYLE_SOURCE, "author CSSでもhidden属性を確実に尊重してください")
+    require(not (ROOT / "timer-progress.css").exists(), "進捗CSSを独立ファイルへ戻さないでください")
 
-    print("Daily goal progress is fully React-owned and legacy progress interop stays removed.")
+    print("Daily goal progress is React-owned and its styles stay in the Tailwind CSS entry.")
 
 
 if __name__ == "__main__":
