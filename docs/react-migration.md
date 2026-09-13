@@ -1,13 +1,15 @@
 # React / Tailwind 構成整理方針
 
-ONE は vanilla JavaScript から React へ段階移行してきたため、現在は移行用の bridge / state source / 複数root / フォールバックDOMが残っています。機能を壊さずにこの足場を外してから、Tailwind移行を再開します。
+ONE は vanilla JavaScript から React へ段階移行してきたため、移行用の bridge / state source / legacy script がまだ残っています。機能を壊さずにこの足場を外してから、Tailwind移行を再開します。
 
 ## 現在
 
 - React 19.3.0 / React DOM 19.3.0
 - Vite 8.3.0
 - Tailwind CSS 4.3.3 / `@tailwindcss/vite` 4.3.3
-- React管理UIの状態購読は `useSyncExternalStore` ベースへ統一済み
+- `src/App.jsx` をReact UIの親コンポーネントとして使用
+- Reactのマウント先は `#root` 1つだけ
+- React管理UIの状態購読は `useSyncExternalStore` ベース
 - React管理UIから `MutationObserver` ベースの状態同期は撤去済み
 - Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
 - タイマー保存形式、複数タブ排他、通知権限、Wake Lock、バックアップのロールバックなどの安全性ロジックは維持する
@@ -18,12 +20,14 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
 
 ## 大掃除の順番
 
-1. **Cleanup 1: 移行用の足場を削除**（この段階）
+1. **Cleanup 1: 移行用の足場を削除**（完了）
    - `react_migration_checks.py` など、過去の移行形を固定するだけの検査を削除
    - 機能・セキュリティ・保存・複数タブ・バックアップの振る舞いテストは維持
-2. **Cleanup 2: `App.jsx` + 単一React root**
+2. **Cleanup 2: `App.jsx` + 単一React root**（この段階）
    - 複数の `createRoot()` と `wrapSiblingRange()` を廃止
-   - React管理UIを1つのコンポーネントツリーへまとめる
+   - `ThemeSwitcher` / timer / progress / backup / footer を1つのReactツリーへ統合
+   - タイマーcardの動的class、集中表示の読み上げ、端末保存状態もReact側の表示へ接続
+   - `index.html` の複数 `react-*-root` は削除し、フォールバック全体を `#root` で包む
 3. **Cleanup 3: bridge / state source を feature 単位へ整理**
    - `react-*-bridge.js` / `react-*-state-source.js` を段階的に廃止
    - タイマー、記録、バックアップのロジックを `src/features/*` へ移す
@@ -36,6 +40,12 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
    - 7B: タイマーUI
    - 7C: 集中記録・統計・バックアップUI
    - 7D: テーマ色・フォーカス・レスポンシブと旧CSS整理
+
+## 単一rootへの移行方法
+
+legacy scriptはDOM参照を初期化時に取得するため、Cleanup 2では `index.html` のフォールバックHTML自体はまだ残します。legacy初期化後の `DOMContentLoaded` で `createRoot(document.querySelector('#root'))` を1回だけ実行し、`App` が同じ画面を置き換えます。
+
+既存ロジックが保持しているDOM参照は操作・状態計算の互換層として残し、Reactはイベント駆動の外部状態を表示します。これにより複数タブ排他やバックアップ処理を同時に書き換えず、React islandだけを先に廃止できます。
 
 ## 残すテストの考え方
 
@@ -64,4 +74,4 @@ src/
 └── styles/
 ```
 
-ルート直下にある多数の `react-*.js` と legacy script は、Cleanup 2〜4で安全に減らしていきます。
+ルート直下にある多数の `react-*.js` と legacy script は、Cleanup 3〜4で安全に減らしていきます。
