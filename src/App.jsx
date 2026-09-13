@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AppFooter } from './components/AppFooter.jsx';
 import { AppNavigation } from './components/AppNavigation.jsx';
 import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
@@ -27,6 +28,7 @@ const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
 const HINT_CLASS = 'hint mt-3 text-[0.82rem] text-[var(--one-muted)]';
+const TODO_ACTION_CLASS = 'rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.72rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]';
 
 function pageFromHash() {
   return window.location.hash === '#todo' ? 'todo' : 'timer';
@@ -111,6 +113,33 @@ function FocusModeStatus({ status }) {
   return <p id="focus-mode-status" className="sr-only" aria-live="polite">{status}</p>;
 }
 
+function TodoTimelineActions({ version, restoreAvailable, onRestore, onReset }) {
+  const [target, setTarget] = useState(null);
+
+  useEffect(() => {
+    const timelineTitle = document.getElementById('timeline-title');
+    const header = timelineTitle?.parentElement?.parentElement;
+    const dateTarget = header?.lastElementChild;
+    setTarget(dateTarget instanceof HTMLElement ? dateTarget : null);
+  }, [version]);
+
+  if (!target) return null;
+
+  return createPortal(
+    <span className="ml-2 inline-flex items-center gap-2 align-middle">
+      {restoreAvailable ? (
+        <button className={TODO_ACTION_CLASS} type="button" onClick={onRestore}>
+          リセットを復元
+        </button>
+      ) : null}
+      <button className={TODO_ACTION_CLASS} type="button" onClick={onReset}>
+        今日の予定をリセット
+      </button>
+    </span>,
+    target,
+  );
+}
+
 export function App() {
   const timerState = useTimerState();
   const focusMode = useFocusModeControl(timerState.completionReady);
@@ -167,28 +196,6 @@ export function App() {
     setTodoResetStatus('リセット前の予定を復元しました。');
   }
 
-  function scrollTodoTimelineToCurrentTime() {
-    const timeline = document.querySelector('[data-testid="todo-timeline"]');
-    const viewport = timeline?.parentElement;
-    if (!timeline || !viewport) return;
-
-    const now = new Date();
-    const currentMinute = now.getHours() * 60 + now.getMinutes();
-    const timelineHeight = timeline.scrollHeight || timeline.getBoundingClientRect().height;
-    const pixelsPerMinute = timelineHeight / (24 * 60);
-    const targetTop = currentMinute * pixelsPerMinute - viewport.clientHeight / 2;
-
-    if (typeof viewport.scrollTo === 'function') {
-      viewport.scrollTo({
-        top: Math.max(0, targetTop),
-        behavior: 'smooth',
-      });
-      return;
-    }
-
-    viewport.scrollTop = Math.max(0, targetTop);
-  }
-
   const shellWidthClass = page === 'todo'
     ? 'w-[min(1240px,calc(100%_-_32px))]'
     : 'w-[min(760px,calc(100%_-_32px))]';
@@ -205,33 +212,14 @@ export function App() {
 
       {page === 'todo' ? (
         <>
-          <div className="mb-3 flex flex-wrap justify-end gap-2">
-            <button
-              className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
-              type="button"
-              onClick={scrollTodoTimelineToCurrentTime}
-            >
-              現在時刻へ
-            </button>
-            {todoRestoreAvailable ? (
-              <button
-                className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
-                type="button"
-                onClick={restoreTodaySchedule}
-              >
-                リセットを復元
-              </button>
-            ) : null}
-            <button
-              className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
-              type="button"
-              onClick={resetTodaySchedule}
-            >
-              今日の予定をリセット
-            </button>
-          </div>
           <p className="sr-only" aria-live="polite">{todoResetStatus}</p>
           <TodoPage key={todoResetVersion} />
+          <TodoTimelineActions
+            version={todoResetVersion}
+            restoreAvailable={todoRestoreAvailable}
+            onRestore={restoreTodaySchedule}
+            onReset={resetTodaySchedule}
+          />
         </>
       ) : (
         <>
