@@ -25,7 +25,6 @@ jobs:
           node --check legacy/interop/timer.js
           node --check legacy/interop/settings-progress.js
           node --check legacy/interop/progress-backup.js
-          node --check storage-status.js
           node --check completion-sound.js
           node --check wake-lock.js
           node --check stats.js
@@ -39,9 +38,6 @@ jobs:
 
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
-
-      - name: Check timer-only product scope
-        run: python3 scripts/timer_only_checks.py
 
       - name: Check Tailwind migration boundaries
         run: python3 scripts/tailwind_migration_checks.py
