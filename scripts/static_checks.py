@@ -16,6 +16,7 @@ REQUIRED_SCRIPT_ORDER = [
     "theme-bootstrap.js",
     "timer-bootstrap.js",
     "app.js",
+    "legacy/interop/timer.js",
     "storage-status.js",
     "completion-sound.js",
     "wake-lock.js",
@@ -25,8 +26,10 @@ REQUIRED_SCRIPT_ORDER = [
     "tab-guard.js",
     "backup.js",
     "custom-timer.js",
+    "legacy/interop/settings-progress.js",
     "shortcuts.js",
     "privacy-reset.js",
+    "legacy/interop/progress-backup.js",
 ]
 
 
@@ -38,6 +41,7 @@ class PageParser(HTMLParser):
         self.resource_urls = []
         self.resource_order = []
         self.script_urls = []
+        self.module_script_urls = []
         self.script_attributes = {}
         self.theme_choices = []
 
@@ -57,8 +61,11 @@ class PageParser(HTMLParser):
             src = values["src"]
             self.resource_urls.append(src)
             self.resource_order.append(("script", src))
-            self.script_urls.append(src)
             self.script_attributes[src] = values
+            if values.get("type", "").lower() == "module":
+                self.module_script_urls.append(src)
+            else:
+                self.script_urls.append(src)
         if tag == "link" and values.get("href"):
             href = values["href"]
             self.resource_urls.append(href)
@@ -228,6 +235,11 @@ def main():
     fail_if(
         parser.script_urls != REQUIRED_SCRIPT_ORDER,
         f"JavaScriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください",
+        errors,
+    )
+    fail_if(
+        parser.module_script_urls != ["/src/main.jsx"],
+        "Reactエントリは /src/main.jsx のmodule scriptを1つだけ読み込んでください",
         errors,
     )
 
