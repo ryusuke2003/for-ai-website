@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoPage } from './TodoPage.jsx';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -35,6 +35,10 @@ function dropAt(element, transfer, clientY) {
 describe('TodoPage', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('時刻と所要時間を指定してTodoを追加し、完了と削除ができる', () => {
@@ -106,6 +110,18 @@ describe('TodoPage', () => {
     dropAt(timeline, transfer, 9 * 300);
 
     expect(screen.getByRole('article', { name: '09:00 暗記問題' })).not.toBeNull();
+  });
+
+  it('現在時刻へボタンで現在時刻の1時間前が上端になる位置へ移動する', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-14T13:20:00+09:00'));
+    render(<TodoPage />);
+
+    const viewport = screen.getByTestId('todo-timeline-viewport');
+    viewport.scrollTop = 0;
+    fireEvent.click(screen.getByRole('button', { name: '現在時刻へ' }));
+
+    expect(viewport.scrollTop).toBe(3700);
   });
 
   it('短いTodoでも開始時刻と終了時刻を横に表示する', () => {
