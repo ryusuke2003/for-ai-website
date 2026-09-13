@@ -96,14 +96,14 @@ describe('TodoPage', () => {
       top: 0,
       left: 0,
       right: 700,
-      bottom: 1728,
+      bottom: 7200,
       width: 700,
-      height: 1728,
+      height: 7200,
       toJSON() {},
     });
 
     fireEvent.dragStart(draggableTemplate, { dataTransfer: transfer });
-    dropAt(timeline, transfer, 9 * 72);
+    dropAt(timeline, transfer, 9 * 300);
 
     expect(screen.getByRole('article', { name: '09:00 暗記問題' })).not.toBeNull();
   });
@@ -117,6 +117,23 @@ describe('TodoPage', () => {
 
     expect(screen.getByText('勉強')).not.toBeNull();
     expect(screen.getByText('18:30–18:55')).not.toBeNull();
+  });
+
+  it('5分Todoを連続配置してもカード同士が重ならない高さにする', () => {
+    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
+      { id: 'first-five', text: '5分その1', completed: false, startMinute: 20 * 60, duration: 5 },
+      { id: 'second-five', text: '5分その2', completed: false, startMinute: 20 * 60 + 5, duration: 5 },
+    ]));
+
+    render(<TodoPage />);
+
+    const first = screen.getByRole('article', { name: '20:00 5分その1' });
+    const second = screen.getByRole('article', { name: '20:05 5分その2' });
+    const firstTop = Number.parseFloat(first.style.top);
+    const firstHeight = Number.parseFloat(first.style.height);
+    const secondTop = Number.parseFloat(second.style.top);
+
+    expect(firstHeight).toBeLessThanOrEqual(secondTop - firstTop);
   });
 
   it('旧Todoデータを予定表形式へ移行して読み込む', () => {
