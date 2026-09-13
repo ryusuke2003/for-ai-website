@@ -17,7 +17,7 @@ import { TrayTimerPanel } from './features/timer/TrayTimerPanel.jsx';
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
-import { TodoPage } from './features/todo/TodoPage.jsx';
+import { TodoPageWithActions } from './features/todo/TodoPageWithActions.jsx';
 
 const BREAK_MINUTES = 5;
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -243,7 +243,7 @@ export function App() {
       </header>
 
       {page === 'todo' ? (
-        <TodoPage />
+        <TodoPageWithActions />
       ) : (
         <>
           <TimerSection focusMode={focusMode} />
