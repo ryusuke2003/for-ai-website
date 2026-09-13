@@ -9,8 +9,6 @@ const presetButtons = [...document.querySelectorAll('[data-minutes]')];
 const doneButton = document.querySelector('#done-button');
 const discardButton = document.querySelector('#discard-button');
 const doneCount = document.querySelector('#done-count');
-const todayCount = document.querySelector('#today-count');
-const historyGrid = document.querySelector('#history-grid');
 
 const DEFAULT_MINUTES = 25;
 const MAX_MINUTES = 180;
@@ -117,6 +115,63 @@ function readHistory() {
 function saveHistory() {
   focusHistory = normalizeHistory(focusHistory);
   safeWrite(STORAGE_KEYS.history, JSON.stringify(focusHistory));
+}
+
+function parseHistoryStorageEvent(raw) {
+  if (raw === null) return {};
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_HISTORY_BYTES) return null;
+
+  try {
+    const value = JSON.parse(raw);
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+    return normalizeHistory(value);
+  } catch {
+    return null;
+  }
+}
+
+function parseDoneCountStorageEvent(raw) {
+  if (raw === null) return 0;
+  if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_DONE_COUNT_BYTES) return null;
+  if (!DONE_COUNT_PATTERN.test(raw)) return null;
+
+  const value = Number(raw);
+  return Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function syncProgressFromStorage(event) {
+  if (event.key === STORAGE_KEYS.history) {
+    const nextHistory = parseHistoryStorageEvent(event.newValue);
+    if (nextHistory === null) return;
+
+    focusHistory = nextHistory;
+    renderHistory();
+    return;
+  }
+
+  if (event.key === STORAGE_KEYS.count) {
+    const nextCount = parseDoneCountStorageEvent(event.newValue);
+    if (nextCount === null) return;
+    doneCount.textContent = String(nextCount);
+  }
+}
+
+function refreshProgressFromStorage() {
+  if (storageAccessFailed) return;
+
+  const nextCount = readDoneCount();
+  if (storageAccessFailed) return;
+
+  const nextHistory = readHistory();
+  if (storageAccessFailed) return;
+
+  doneCount.textContent = String(nextCount);
+  focusHistory = nextHistory;
+  renderHistory();
+}
+
+function refreshProgressWhenVisible() {
+  if (document.visibilityState === 'visible') refreshProgressFromStorage();
 }
 
 function formatTime(totalSeconds) {
@@ -376,38 +431,7 @@ function restoreTimerState() {
 }
 
 function renderHistory() {
-  const todayKey = dateKey();
-  renderedDateKey = todayKey;
-  todayCount.textContent = String(focusHistory[todayKey] ?? 0);
-  historyGrid.replaceChildren();
-
-  const weekdayFormatter = new Intl.DateTimeFormat('ja-JP', { weekday: 'short' });
-
-  for (let offset = 6; offset >= 0; offset -= 1) {
-    const day = new Date();
-    day.setHours(12, 0, 0, 0);
-    day.setDate(day.getDate() - offset);
-
-    const key = dateKey(day);
-    const count = focusHistory[key] ?? 0;
-    const item = document.createElement('div');
-    const bar = document.createElement('span');
-    const weekday = document.createElement('span');
-    const value = document.createElement('strong');
-
-    item.className = 'history-day';
-    item.setAttribute('role', 'listitem');
-    item.setAttribute('aria-label', `${key}: ${count}回`);
-
-    bar.className = `history-bar level-${Math.min(count, 4)}`;
-    bar.setAttribute('aria-hidden', 'true');
-    weekday.className = 'history-weekday';
-    weekday.textContent = offset === 0 ? '今日' : weekdayFormatter.format(day);
-    value.textContent = String(count);
-
-    item.append(bar, value, weekday);
-    historyGrid.append(item);
-  }
+  renderedDateKey = dateKey();
 }
 
 function refreshDateSensitiveUi() {
@@ -447,7 +471,10 @@ document.addEventListener('keydown', (event) => {
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'visible') refreshDateSensitiveUi();
 });
+document.addEventListener('visibilitychange', refreshProgressWhenVisible);
 window.addEventListener('focus', refreshDateSensitiveUi);
+window.addEventListener('storage', syncProgressFromStorage);
+window.addEventListener('pageshow', refreshProgressFromStorage);
 
 discardButton.addEventListener('click', () => {
   if (!completionReady) return;
