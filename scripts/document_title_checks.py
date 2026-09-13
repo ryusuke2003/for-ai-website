@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-CUSTOM_TIMER_PATH = ROOT / "custom-timer.js"
+TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
 
 
 def require(condition, message):
@@ -19,7 +19,7 @@ def section(source, start_marker, end_marker):
 
 
 def main():
-    source = CUSTOM_TIMER_PATH.read_text(encoding="utf-8")
+    source = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
 
     require(
         "const DEFAULT_DOCUMENT_TITLE = 'ONE — 集中タイマー';" in source,
@@ -28,41 +28,30 @@ def main():
 
     title_renderer = section(
         source,
-        "function renderTimerDocumentTitle()",
-        "const renderTimerWithoutProgress = renderTimer;",
+        "function documentTitleFor(state, timeText)",
+        "export function TimerDisplay()",
     )
-    completion_pos = title_renderer.find("if (completionReady)")
-    running_pos = title_renderer.find("if (timerId !== null && endAt !== null)")
-    paused_pos = title_renderer.find("document.title = partiallyElapsed")
+    completion_pos = title_renderer.find("if (state.completionReady)")
+    running_pos = title_renderer.find("if (state.running)")
+    paused_pos = title_renderer.find("const partiallyElapsed")
 
-    require("const formatted = formatTime(remainingSeconds);" in title_renderer, "タイトルも共通の残り時間表記を使ってください")
-    require("const fullDuration = selectedMinutes * 60;" in title_renderer, "一時停止判定は選択時間全体を基準にしてください")
-    require(
-        "remainingSeconds > 0 && remainingSeconds < fullDuration" in title_renderer,
-        "途中経過だけを一時停止状態として扱ってください",
-    )
     require(completion_pos >= 0, "未記録の完了をタイトルへ反映してください")
     require(running_pos > completion_pos, "完了状態は実行中表示より優先してください")
-    require(paused_pos > running_pos, "一時停止表示は実行中判定の後にしてください")
-    require("document.title = '完了！ — ONE';" in title_renderer, "完了タイトルを維持してください")
-    require("document.title = `${formatted} — ONE`;" in title_renderer, "実行中は残り時間をタイトルへ表示してください")
-    require("`${formatted} 一時停止 — ONE`" in title_renderer, "一時停止中も残り時間をタイトルへ残してください")
-    require(": DEFAULT_DOCUMENT_TITLE;" in title_renderer, "待機状態では通常タイトルへ戻してください")
+    require(paused_pos > running_pos, "一時停止判定は実行中判定の後にしてください")
+    require("state.remainingSeconds > 0 && state.remainingSeconds < fullDuration" in title_renderer,
+            "途中経過だけを一時停止状態として扱ってください")
+    require("return '完了！ — ONE';" in title_renderer, "完了タイトルを維持してください")
+    require("return `${timeText} — ONE`;" in title_renderer, "実行中は残り時間をタイトルへ表示してください")
+    require("`${timeText} 一時停止 — ONE`" in title_renderer, "一時停止中も残り時間をタイトルへ残してください")
+    require("DEFAULT_DOCUMENT_TITLE" in title_renderer, "待機状態では通常タイトルへ戻してください")
 
-    wrapper = section(
-        source,
-        "renderTimer = function renderTimerWithProgress()",
-        "function applyCustomTimerMinutes()",
-    )
-    base_pos = wrapper.find("renderTimerWithoutProgress();")
-    progress_pos = wrapper.find("renderTimerProgress();")
-    title_pos = wrapper.find("renderTimerDocumentTitle();")
-    require(0 <= base_pos < progress_pos < title_pos, "本来の描画→進捗→タイトルの順で同期してください")
+    require("useEffect(() => {" in source, "React state変更時にタイトルを同期してください")
+    require("document.title = documentTitleFor(state, timeText);" in source,
+            "ページタイトルは共通計算結果から更新してください")
+    require(not (ROOT / "custom-timer.js").exists(),
+            "タイトル同期のためだけにclassic custom-timer.jsを残さないでください")
 
-    initial_sync = source.rfind("renderTimerDocumentTitle();")
-    require(initial_sync > source.find("customTimerLockObserver.observe"), "初期復元後にもタイトルを再同期してください")
-
-    print("Document title follows running, paused, completed, and idle timer states consistently.")
+    print("Document title follows running, paused, completed, and idle React timer states consistently.")
 
 
 if __name__ == "__main__":
