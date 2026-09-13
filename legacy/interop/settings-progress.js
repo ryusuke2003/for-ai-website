@@ -118,4 +118,6 @@ if (customDurationPreset && customDurationGuard) {
     }
     applyBackupWithoutCustomDurationSync(restored);
   };
+
+  refreshRecoveryAvailability();
 }
