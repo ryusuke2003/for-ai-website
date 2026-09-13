@@ -1,12 +1,13 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import { hydrateRoot } from 'react-dom/client';
+import { AppFooter } from './components/AppFooter.jsx';
+import { HeroIntro } from './components/HeroIntro.jsx';
 
-function App() {
-  return <p>Built with React + Vite</p>;
+function hydrateComponent(selector, component) {
+  const root = document.querySelector(selector);
+  if (!root) return;
+  hydrateRoot(root, component);
 }
 
-const root = document.querySelector('#react-root');
-
-if (root) {
-  createRoot(root).render(<App />);
-}
+hydrateComponent('#react-hero-root', <HeroIntro />);
+hydrateComponent('#react-footer-root', <AppFooter />);
