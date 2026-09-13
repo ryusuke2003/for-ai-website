@@ -88,7 +88,7 @@ pub fn run() {
             .menu(&menu)
             .show_menu_on_left_click(false)
             .icon_as_template(true)
-            .title("ONE")
+            .title("")
             .tooltip("ONE")
             .on_menu_event(|app, event| match event.id().as_ref() {
                 "timer-start" => emit_timer_action(app, "start"),
