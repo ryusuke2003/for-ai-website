@@ -6,7 +6,6 @@ INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
 REACT_APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 APP_SOURCE = (ROOT / "app.js").read_text(encoding="utf-8")
 SHORTCUTS_SOURCE = (ROOT / "shortcuts.js").read_text(encoding="utf-8")
-STORAGE_SOURCE = (ROOT / "storage-status.js").read_text(encoding="utf-8")
 STYLES_SOURCE = (ROOT / "styles.css").read_text(encoding="utf-8")
 
 
@@ -26,11 +25,11 @@ def main():
     require('taskInput' not in SHORTCUTS_SOURCE, "タスク入力専用ショートカットを残さないでください")
     require('.task-card' not in STYLES_SOURCE, "タスクカード専用CSSを残さないでください")
 
-    require("const LEGACY_TASK_STORAGE_KEYS = ['one.task', 'one.taskDate.v1'];" in STORAGE_SOURCE,
-            "旧バージョンのタスク保存値は移行時に削除してください")
-    require("LEGACY_TASK_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));" in STORAGE_SOURCE,
+    require("const LEGACY_TASK_STORAGE_KEYS = ['one.task', 'one.taskDate.v1'];" in REACT_APP_SOURCE,
+            "旧バージョンのタスク保存値はReact初期化時に削除してください")
+    require("LEGACY_TASK_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));" in REACT_APP_SOURCE,
             "旧タスク保存値を既知キー単位で削除してください")
-    require('localStorage.clear(' not in STORAGE_SOURCE, "旧データ削除でlocalStorage.clear()を使わないでください")
+    require('localStorage.clear(' not in REACT_APP_SOURCE, "旧データ削除でlocalStorage.clear()を使わないでください")
 
     require('<title>ONE — 集中タイマー</title>' in INDEX_SOURCE, "ページタイトルをタイマー用途に合わせてください")
 
