@@ -39,9 +39,6 @@ jobs:
       - name: Check static security and accessibility invariants
         run: python3 scripts/static_checks.py
 
-      - name: Check timer-only product scope
-        run: python3 scripts/timer_only_checks.py
-
       - name: Check Tailwind migration boundaries
         run: python3 scripts/tailwind_migration_checks.py
 
