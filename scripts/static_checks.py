@@ -11,6 +11,7 @@ STORAGE_COMPONENT_PATH = ROOT / "src" / "components" / "StorageHealthStatus.jsx"
 THEME_BOOTSTRAP_PATH = ROOT / "theme-bootstrap.js"
 THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
 WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
+COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
 PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
 
 REQUIRED_SCRIPT_ORDER = [
@@ -18,7 +19,6 @@ REQUIRED_SCRIPT_ORDER = [
     "timer-bootstrap.js",
     "app.js",
     "legacy/interop/timer.js",
-    "completion-sound.js",
     "stats.js",
     "daily-goal-progress.js",
     "tab-guard.js",
@@ -100,7 +100,7 @@ def main():
         fail_if("hidden" not in custom_preset, "#custom-preset は非表示にしてください", errors)
 
     for element_id in (
-        "completion-sound-toggle", "done-button", "discard-button",
+        "done-button", "discard-button",
         "today-count", "week-count", "streak-count", "done-count", "streak-status",
         "activity-grid", "activity-summary", "backup-export-button", "backup-import-button",
         "backup-undo-button", "backup-file-input", "data-reset-button", "data-reset-confirm",
@@ -170,9 +170,21 @@ def main():
     fail_if("WAKE_LOCK_STORAGE_KEY = 'one.wakeLock.v1'" not in wake_lock_hook, "Wake Lock保存キーの互換性を維持してください", errors)
     fail_if("navigator.wakeLock.request('screen')" not in wake_lock_hook, "Wake LockはReact hookからscreenロックを要求してください", errors)
 
+    completion_effects_hook = COMPLETION_EFFECTS_HOOK_PATH.read_text(encoding="utf-8")
+    fail_if("COMPLETION_SOUND_STORAGE_KEY = 'one.completionSound.v1'" not in completion_effects_hook, "完了音保存キーの互換性を維持してください", errors)
+    fail_if("COMPLETION_NOTIFICATION_STORAGE_KEY = 'one.completionNotification.v1'" not in completion_effects_hook, "完了通知保存キーの互換性を維持してください", errors)
+    fail_if("Notification.requestPermission()" not in completion_effects_hook, "完了通知はReact hookから明示的に許可を要求してください", errors)
+    fail_if("new Notification('集中スプリント完了'" not in completion_effects_hook, "完了通知の固定タイトルを維持してください", errors)
+
     privacy_reset_source = PRIVACY_RESET_PATH.read_text(encoding="utf-8")
     fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source, "削除対象キーは明示Setで管理してください", errors)
-    storage_source = "\n".join(script_sources + [storage_component, theme_component, wake_lock_hook])
+    storage_source = "\n".join([
+        *script_sources,
+        storage_component,
+        theme_component,
+        wake_lock_hook,
+        completion_effects_hook,
+    ])
     storage_keys = set(re.findall(r"['\"](one\.[A-Za-z0-9.]+)['\"]", storage_source))
     for storage_key in sorted(storage_keys):
         represented = f"'{storage_key}'" in privacy_reset_source or f'"{storage_key}"' in privacy_reset_source

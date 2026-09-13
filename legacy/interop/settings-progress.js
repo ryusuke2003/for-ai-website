@@ -1,4 +1,4 @@
-// Temporary compatibility layer for settings and progress overview.
+// Temporary compatibility layer for custom timer settings and progress overview.
 if (
   document.documentElement.dataset.reactTimerSettings === '1'
   || document.documentElement.dataset.reactProgressOverview === '1'
@@ -11,18 +11,7 @@ if (
   let progressDirty = false;
   let publishQueued = false;
 
-  function toggleSnapshot(button, status) {
-    return {
-      label: button.textContent ?? '',
-      pressed: button.getAttribute('aria-pressed') === 'true',
-      disabled: button.disabled,
-      status: status.textContent ?? '',
-    };
-  }
-
   function buildTimerSettingsSnapshot() {
-    const sound = toggleSnapshot(completionSoundToggle, completionSoundStatus);
-    const notification = toggleSnapshot(completionNotificationToggle, completionNotificationStatus);
     const customLocked = customPresetButton.disabled;
 
     return {
@@ -38,14 +27,6 @@ if (
       customDisabled: customLocked,
       customApplyDisabled: customLocked,
       customStatus: customMinutesStatus.textContent ?? '',
-      soundLabel: sound.label,
-      soundPressed: sound.pressed,
-      soundDisabled: sound.disabled,
-      soundStatus: sound.status,
-      notificationLabel: notification.label,
-      notificationPressed: notification.pressed,
-      notificationDisabled: notification.disabled,
-      notificationStatus: notification.status,
     };
   }
 
@@ -139,8 +120,6 @@ if (
     'syncCustomTimerPresentation',
     'syncCustomTimerLock',
     'setCustomTimerStatus',
-    'syncCompletionSoundUi',
-    'syncCompletionNotificationUi',
   ]) {
     wrapStateMutation(functionName, { settings: true });
   }
@@ -226,14 +205,6 @@ if (document.documentElement.dataset.reactTimerSettings === '1') {
     },
     applyCustom() {
       customMinutesApplyButton.click();
-      refreshSettingsState();
-    },
-    toggleSound() {
-      completionSoundToggle.click();
-      refreshSettingsState();
-    },
-    toggleNotification() {
-      completionNotificationToggle.click();
       refreshSettingsState();
     },
   });

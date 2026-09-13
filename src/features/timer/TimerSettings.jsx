@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { useCompletionEffectsControl } from './useCompletionEffectsControl.js';
 import { useTimerSettingsState } from './useTimerSettingsState.js';
 import { useTimerState } from './useTimerState.js';
 import { useWakeLockControl } from './useWakeLockControl.js';
@@ -10,6 +11,7 @@ function invokeBridge(action, ...args) {
 export function TimerSettings() {
   const state = useTimerSettingsState();
   const timerState = useTimerState();
+  const completionEffects = useCompletionEffectsControl(timerState);
   const wakeLock = useWakeLockControl(timerState.running);
   const customMinutesRef = useRef(null);
 
@@ -80,24 +82,24 @@ export function TimerSettings() {
         <button
           id="completion-sound-toggle"
           type="button"
-          className={state.soundPressed ? 'active' : undefined}
-          aria-pressed={state.soundPressed}
+          className={completionEffects.sound.pressed ? 'active' : undefined}
+          aria-pressed={completionEffects.sound.pressed}
           aria-describedby="completion-sound-status"
-          disabled={state.soundDisabled}
-          onClick={() => invokeBridge('toggleSound')}
+          disabled={completionEffects.sound.disabled}
+          onClick={() => void completionEffects.sound.toggle()}
         >
-          {state.soundLabel}
+          {completionEffects.sound.label}
         </button>
         <button
           id="completion-notification-toggle"
           type="button"
-          className={state.notificationPressed ? 'active' : undefined}
-          aria-pressed={state.notificationPressed}
+          className={completionEffects.notification.pressed ? 'active' : undefined}
+          aria-pressed={completionEffects.notification.pressed}
           aria-describedby="completion-notification-status"
-          disabled={state.notificationDisabled}
-          onClick={() => invokeBridge('toggleNotification')}
+          disabled={completionEffects.notification.disabled}
+          onClick={() => void completionEffects.notification.toggle()}
         >
-          {state.notificationLabel}
+          {completionEffects.notification.label}
         </button>
         <button
           id="wake-lock-toggle"
@@ -116,10 +118,10 @@ export function TimerSettings() {
         {state.customStatus}
       </p>
       <p className="hint" id="completion-sound-status" role="status" aria-live="polite">
-        {state.soundStatus}
+        {completionEffects.sound.status}
       </p>
       <p className="hint" id="completion-notification-status" role="status" aria-live="polite">
-        {state.notificationStatus}
+        {completionEffects.notification.status}
       </p>
       <p className="hint" id="wake-lock-status" role="status" aria-live="polite">
         {wakeLock.status}

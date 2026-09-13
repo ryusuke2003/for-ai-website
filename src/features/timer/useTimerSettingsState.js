@@ -11,14 +11,6 @@ const FALLBACK_STATE = Object.freeze({
   customDisabled: false,
   customApplyDisabled: false,
   customStatus: '1〜180分の整数でも設定できます。',
-  soundLabel: '完了音 OFF',
-  soundPressed: false,
-  soundDisabled: false,
-  soundStatus: '完了音はオフです。オンにすると短い試聴音が鳴ります。',
-  notificationLabel: '完了通知 OFF',
-  notificationPressed: false,
-  notificationDisabled: false,
-  notificationStatus: '完了通知はオフです。オンにするとブラウザの通知許可を確認します。',
 });
 
 function readSnapshot() {
