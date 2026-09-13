@@ -39,5 +39,24 @@ jobs:
       - name: Install frontend dependencies
         run: npm install --no-audit --no-fund
 
-      - name: Build Tauri application for macOS
-        run: npm run tauri -- build --no-bundle
+      - name: Build Tauri app bundle for macOS
+        run: npm run tauri -- build --bundles app --no-sign
+
+      - name: Archive macOS app bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type d -name '*.app' -print -quit)"
+          if [ -z "$app_path" ]; then
+            echo "macOS .app bundle was not generated" >&2
+            exit 1
+          fi
+          ditto -c -k --sequesterRsrc --keepParent "$app_path" ONE-macos.zip
+
+      - name: Upload macOS app artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ONE-macos-app
+          path: ONE-macos.zip
+          if-no-files-found: error
+          retention-days: 7
