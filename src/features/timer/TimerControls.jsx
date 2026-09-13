@@ -14,7 +14,7 @@ function startLabelFor(state) {
   return 'スタート';
 }
 
-export function TimerControls() {
+export function TimerControls({ focusModeActive, onToggleFocusMode }) {
   const state = useTimerState();
   const startRef = useRef(null);
   const focusRef = useRef(null);
@@ -31,8 +31,8 @@ export function TimerControls() {
     };
   }, []);
 
-  const focusLabel = state.focusMode ? '通常表示' : '集中表示';
-  const focusAriaLabel = state.focusMode ? '通常表示に戻る' : '集中表示に切り替える';
+  const focusLabel = focusModeActive ? '通常表示' : '集中表示';
+  const focusAriaLabel = focusModeActive ? '通常表示に戻る' : '集中表示に切り替える';
 
   return (
     <>
@@ -61,11 +61,11 @@ export function TimerControls() {
         className="secondary"
         id="focus-mode-button"
         type="button"
-        aria-pressed={state.focusMode}
+        aria-pressed={focusModeActive}
         aria-keyshortcuts="F Escape"
         aria-label={focusAriaLabel}
         ref={focusRef}
-        onClick={() => invokeBridge('toggleFocus')}
+        onClick={onToggleFocusMode}
       >
         {focusLabel}
       </button>
