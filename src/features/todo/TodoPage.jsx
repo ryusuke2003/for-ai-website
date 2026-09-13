@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { placeTodoWithoutOverlap } from './todoSchedule.js';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
 const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
@@ -499,7 +500,7 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
         <span className="text-[0.74rem] font-bold text-[var(--one-muted)]">{dayLabel()}</span>
       </div>
 
-      <p className="mb-3 mt-0 text-[0.76rem] font-semibold text-[var(--one-muted)]">タスクやテンプレートをドラッグすると、5分刻みでその時刻に配置できます。配置済みタスクもドラッグで時間変更できます。</p>
+      <p className="mb-3 mt-0 text-[0.76rem] font-semibold text-[var(--one-muted)]">タスクやテンプレートをドラッグすると5分刻みで配置できます。重なる場合は、操作中ではない予定をドラッグ方向へ連鎖的に押し出します。</p>
 
       <div ref={viewportRef} className="h-[610px] overflow-y-auto rounded-2xl border border-[var(--one-border)] bg-[var(--one-input-bg)] max-[560px]:h-[520px]">
         <div
@@ -572,7 +573,7 @@ export function TodoPage() {
 
   function addTodo(text = draft, taskDuration = duration, taskStartMinute = startMinute) {
     const trimmed = text.trim();
-    if (!trimmed) return;
+    if (!trimmed) return false;
 
     const normalizedDuration = normalizeDuration(taskDuration);
     const normalizedStart = clamp(
@@ -580,24 +581,25 @@ export function TodoPage() {
       0,
       DAY_MINUTES - normalizedDuration,
     );
+    const candidate = {
+      id: createId(),
+      text: trimmed.slice(0, 120),
+      completed: false,
+      startMinute: normalizedStart,
+      duration: normalizedDuration,
+    };
+    const placed = placeTodoWithoutOverlap(todos, candidate, normalizedStart, 'forward');
+    if (!placed) return false;
 
-    setTodos((current) => [
-      ...current,
-      {
-        id: createId(),
-        text: trimmed.slice(0, 120),
-        completed: false,
-        startMinute: normalizedStart,
-        duration: normalizedDuration,
-      },
-    ]);
+    setTodos(placed);
     setDraft('');
     setStartMinute(clamp(normalizedStart + normalizedDuration, 0, DAY_MINUTES - MINUTE_STEP));
+    return true;
   }
 
   function createFromDrop(text, taskDuration, taskStartMinute, source) {
-    addTodo(text, taskDuration, taskStartMinute);
-    if (source !== 'draft') return;
+    const added = addTodo(text, taskDuration, taskStartMinute);
+    if (!added || source !== 'draft') return;
     setDuration(taskDuration);
   }
 
@@ -608,11 +610,16 @@ export function TodoPage() {
   }
 
   function moveTodo(id, nextStartMinute) {
-    setTodos((current) => current.map((todo) => (
-      todo.id === id
-        ? { ...todo, startMinute: clamp(nextStartMinute, 0, DAY_MINUTES - todo.duration) }
-        : todo
-    )));
+    const task = todos.find((todo) => todo.id === id);
+    if (!task) return false;
+
+    const normalizedStart = clamp(nextStartMinute, 0, DAY_MINUTES - task.duration);
+    const direction = normalizedStart < task.startMinute ? 'backward' : 'forward';
+    const placed = placeTodoWithoutOverlap(todos, task, normalizedStart, direction);
+    if (!placed) return false;
+
+    setTodos(placed);
+    return true;
   }
 
   function toggleTodo(id) {
