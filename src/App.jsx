@@ -47,9 +47,19 @@ function TimerSection({ focusMode }) {
 
 function ProgressSection() {
   const progressState = useProgressOverviewState();
+  const timerState = useTimerState();
   const insights = buildProgressInsights(progressState.history);
   const dailyGoal = useDailyGoalControl(insights.todayCount);
-  const overviewState = { ...progressState, ...insights };
+  const completionReady = timerState.completionReady === true;
+  const overviewState = {
+    ...progressState,
+    ...insights,
+    doneLabel: completionReady
+      ? 'この集中を記録する ✓'
+      : 'タイマー完了後に記録できます',
+    doneDisabled: !completionReady,
+    discardHidden: !completionReady,
+  };
 
   return (
     <section className="card progress-card" aria-labelledby="done-title">
