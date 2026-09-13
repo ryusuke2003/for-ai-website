@@ -146,6 +146,28 @@ export function App() {
     setTodoResetVersion((current) => current + 1);
   }
 
+  function scrollTodoTimelineToCurrentTime() {
+    const timeline = document.querySelector('[data-testid="todo-timeline"]');
+    const viewport = timeline?.parentElement;
+    if (!timeline || !viewport) return;
+
+    const now = new Date();
+    const currentMinute = now.getHours() * 60 + now.getMinutes();
+    const timelineHeight = timeline.scrollHeight || timeline.getBoundingClientRect().height;
+    const pixelsPerMinute = timelineHeight / (24 * 60);
+    const targetTop = currentMinute * pixelsPerMinute - viewport.clientHeight / 2;
+
+    if (typeof viewport.scrollTo === 'function') {
+      viewport.scrollTo({
+        top: Math.max(0, targetTop),
+        behavior: 'smooth',
+      });
+      return;
+    }
+
+    viewport.scrollTop = Math.max(0, targetTop);
+  }
+
   const shellWidthClass = page === 'todo'
     ? 'w-[min(1240px,calc(100%_-_32px))]'
     : 'w-[min(760px,calc(100%_-_32px))]';
@@ -162,7 +184,14 @@ export function App() {
 
       {page === 'todo' ? (
         <>
-          <div className="mb-3 flex justify-end">
+          <div className="mb-3 flex flex-wrap justify-end gap-2">
+            <button
+              className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
+              type="button"
+              onClick={scrollTodoTimelineToCurrentTime}
+            >
+              現在時刻へ
+            </button>
             <button
               className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.76rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]"
               type="button"
