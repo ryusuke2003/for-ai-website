@@ -1,5 +1,4 @@
 import { AppFooter } from './components/AppFooter.jsx';
-import { StorageHealthStatus } from './components/StorageHealthStatus.jsx';
 import { ThemeSwitcher } from './components/ThemeSwitcher.jsx';
 import { BackupPanel } from './features/backup/BackupPanel.jsx';
 import { ProgressDetails } from './features/progress/ProgressDetails.jsx';
@@ -99,7 +98,6 @@ export function App() {
     <main className="shell mx-auto w-[min(760px,calc(100%_-_32px))] pb-10 pt-[72px] max-[560px]:pt-11">
       <header className="mb-4">
         <ThemeSwitcher />
-        <StorageHealthStatus />
       </header>
       <TimerSection focusMode={focusMode} />
       <ProgressSection />
