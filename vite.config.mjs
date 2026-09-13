@@ -9,6 +9,7 @@ const legacyScripts = [
   'storage-status.js',
   'completion-sound.js',
   'wake-lock.js',
+  'theme.js',
   'stats.js',
   'daily-goal-progress.js',
   'tab-guard.js',
