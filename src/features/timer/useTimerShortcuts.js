@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { timerActions } from './timerStore.js';
 
 const INTERACTIVE_SELECTOR = [
   'input',
@@ -11,10 +12,6 @@ const INTERACTIVE_SELECTOR = [
   '[role="button"]',
   '[role="link"]',
 ].join(', ');
-
-function timerControls() {
-  return globalThis.ONE_REACT_TIMER_CONTROLS;
-}
 
 function isInteractiveShortcutTarget(target) {
   return target instanceof Element && Boolean(target.closest(INTERACTIVE_SELECTOR));
@@ -56,7 +53,7 @@ export function useTimerShortcuts(focusModeActive, toggleFocusMode) {
 
       if (event.code === 'Space') {
         event.preventDefault();
-        timerControls()?.start?.();
+        timerActions.toggle();
         return;
       }
 
