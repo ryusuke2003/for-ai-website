@@ -16,6 +16,7 @@ CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerCo
 WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
 COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
 DAILY_GOAL_HOOK_PATH = ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js"
+PROGRESS_INSIGHTS_PATH = ROOT / "src" / "features" / "progress" / "progressInsights.js"
 PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
 
 REQUIRED_SCRIPT_ORDER = [
@@ -23,7 +24,6 @@ REQUIRED_SCRIPT_ORDER = [
     "timer-bootstrap.js",
     "app.js",
     "legacy/interop/timer.js",
-    "stats.js",
     "tab-guard.js",
     "backup.js",
     "legacy/interop/settings-progress.js",
@@ -98,13 +98,17 @@ def main():
         fail_if("hidden" not in custom_preset, "#custom-preset は非表示にしてください", errors)
 
     for element_id in (
-        "done-button", "discard-button",
-        "today-count", "week-count", "streak-count", "done-count", "streak-status",
-        "activity-grid", "activity-summary", "backup-export-button", "backup-import-button",
-        "backup-undo-button", "backup-file-input", "data-reset-button", "data-reset-confirm",
-        "data-reset-confirm-button", "data-reset-cancel-button", "data-reset-status",
+        "done-button", "discard-button", "done-count",
+        "backup-export-button", "backup-import-button", "backup-undo-button", "backup-file-input",
+        "data-reset-button", "data-reset-confirm", "data-reset-confirm-button",
+        "data-reset-cancel-button", "data-reset-status",
     ):
         require_runtime_element(parser, element_id, errors)
+
+    for removed_id in (
+        "today-count", "week-count", "streak-count", "streak-status", "history-grid", "activity-grid", "activity-summary",
+    ):
+        fail_if(removed_id in parser.by_id, f"#{removed_id} はReact管理なのでruntime scaffoldへ戻さないでください", errors)
 
     fail_if(not parser.csp, "Content-Security-Policy が見つかりません", errors)
     if parser.csp:
@@ -113,6 +117,7 @@ def main():
 
     fail_if(parser.script_urls != REQUIRED_SCRIPT_ORDER, f"classic scriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください", errors)
     fail_if(parser.module_script_urls != ["/src/main.jsx"], "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
+    fail_if((ROOT / "stats.js").exists(), "React移行後はstats.jsを残さないでください", errors)
 
     theme_bootstrap_attrs = parser.script_attributes.get("theme-bootstrap.js", {})
     fail_if("defer" in theme_bootstrap_attrs, "theme-bootstrap.js は初期描画前に実行してください", errors)
@@ -186,6 +191,13 @@ def main():
     daily_goal_hook = DAILY_GOAL_HOOK_PATH.read_text(encoding="utf-8")
     fail_if("DAILY_GOAL_STORAGE_KEY = 'one.dailyGoal.v1'" not in daily_goal_hook,
             "日次目標保存キーの互換性を維持してください", errors)
+
+    progress_insights = PROGRESS_INSIGHTS_PATH.read_text(encoding="utf-8")
+    fail_if("buildProgressInsights" not in react_app_source, "進捗集計はReact Appから利用してください", errors)
+    fail_if("calculateCurrentWeekCount" not in progress_insights or "calculateCurrentStreak" not in progress_insights,
+            "週次回数と連続日集計をReact featureへ維持してください", errors)
+    fail_if("calculateActivityWindow" not in progress_insights,
+            "30日アクティビティ集計をReact featureへ維持してください", errors)
 
     privacy_reset_source = PRIVACY_RESET_PATH.read_text(encoding="utf-8")
     fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source, "削除対象キーは明示Setで管理してください", errors)
