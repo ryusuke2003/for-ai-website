@@ -14,7 +14,6 @@
   <script src="timer-bootstrap.js" defer></script>
   <script src="app.js" defer></script>
   <script src="legacy/interop/timer.js" defer></script>
-  <script src="completion-sound.js" defer></script>
   <script src="stats.js" defer></script>
   <script src="daily-goal-progress.js" defer></script>
   <script src="tab-guard.js" defer></script>
@@ -49,11 +48,6 @@
         <button id="custom-minutes-apply" type="button" aria-describedby="custom-minutes-status">設定</button>
         <p id="custom-minutes-status" role="status" aria-live="polite">1〜180分の整数でも設定できます。</p>
         <button id="custom-preset" type="button" data-minutes="25" hidden tabindex="-1" aria-hidden="true"></button>
-
-        <button id="completion-sound-toggle" type="button" aria-pressed="false" aria-describedby="completion-sound-status">完了音 OFF</button>
-        <p id="completion-sound-status" role="status" aria-live="polite">完了音はオフです。オンにすると短い試聴音が鳴ります。</p>
-        <button id="completion-notification-toggle" type="button" aria-pressed="false" aria-describedby="completion-notification-status">完了通知 OFF</button>
-        <p id="completion-notification-status" role="status" aria-live="polite">完了通知はオフです。オンにするとブラウザの通知許可を確認します。</p>
       </div>
 
       <button id="done-button" type="button" aria-describedby="done-hint" disabled>タイマー完了後に記録できます</button>
