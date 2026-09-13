@@ -25,6 +25,7 @@ jobs:
           node --check react-timer-controls-bridge.js
           node --check react-timer-display-bridge.js
           node --check react-timer-settings-bridge.js
+          node --check react-progress-overview-bridge.js
           node --check storage-status.js
           node --check completion-sound.js
           node --check wake-lock.js
