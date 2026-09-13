@@ -1,4 +1,4 @@
-// Temporary compatibility layer for progress actions/state and custom-duration backup restore.
+// Temporary compatibility layer for progress actions/state.
 if (document.documentElement.dataset.reactProgressOverview === '1') {
   let progressSnapshot = null;
   let progressSerialized = '';
@@ -84,32 +84,25 @@ if (document.documentElement.dataset.reactProgressOverview === '1') {
       discardButton.click();
       refreshProgress();
     },
+    restoreBackupData(restored) {
+      if (!Number.isSafeInteger(restored?.doneCount) || restored.doneCount < 0) return false;
+      if (!restored.history || typeof restored.history !== 'object' || Array.isArray(restored.history)) return false;
+
+      const normalized = normalizeHistory(restored.history);
+      const inputEntries = Object.entries(restored.history);
+      if (Object.keys(normalized).length !== inputEntries.length) return false;
+      const historySum = Object.values(normalized).reduce((sum, count) => sum + count, 0);
+      if (!Number.isSafeInteger(historySum) || restored.doneCount < historySum) return false;
+
+      const countPersisted = safeWrite(STORAGE_KEYS.count, String(restored.doneCount));
+      focusHistory = normalized;
+      saveHistory();
+      doneCount.textContent = String(restored.doneCount);
+      renderHistory();
+      refreshProgress();
+      return countPersisted && !storageAccessFailed;
+    },
   });
 
   refreshProgress({ force: true });
-}
-
-const customDurationPreset = document.querySelector('#custom-preset');
-const customDurationGuard = globalThis.ONE_TIMER_STATE_GUARD;
-if (customDurationPreset && customDurationGuard) {
-  availablePresetMinutes = function availableCustomTimerMinutesForBackup() {
-    return Array.from(
-      { length: customDurationGuard.maxMinutes - customDurationGuard.minMinutes + 1 },
-      (_, index) => index + customDurationGuard.minMinutes,
-    );
-  };
-
-  const applyBackupWithoutCustomDurationSync = applyBackup;
-  applyBackup = function applyBackupWithCustomDurationSync(restored) {
-    if (
-      Number.isInteger(restored?.selectedMinutes)
-      && restored.selectedMinutes >= customDurationGuard.minMinutes
-      && restored.selectedMinutes <= customDurationGuard.maxMinutes
-    ) {
-      customDurationPreset.dataset.minutes = String(restored.selectedMinutes);
-    }
-    applyBackupWithoutCustomDurationSync(restored);
-  };
-
-  refreshRecoveryAvailability();
 }
