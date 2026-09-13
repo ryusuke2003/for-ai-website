@@ -388,7 +388,7 @@ function initializeTabGuard() {
   clearStoredSessionId();
 }
 
-function registerTimerRuntime(runtime) {
+export function registerTimerRuntime(runtime) {
   if (timerRuntimeRegistered) return false;
   if (!runtime || typeof runtime.snapshot !== 'function') return false;
 
@@ -398,7 +398,7 @@ function registerTimerRuntime(runtime) {
   return true;
 }
 
-function registerProgressRuntime(runtime) {
+export function registerProgressRuntime(runtime) {
   if (progressRuntimeRegistered) return false;
   if (!runtime || typeof runtime.snapshot !== 'function' || typeof runtime.refreshFromStorage !== 'function') {
     return false;
@@ -442,9 +442,7 @@ window.addEventListener('one:storage-error', () => {
   disableTabCoordination();
 });
 
-globalThis.ONE_TAB_GUARD = Object.freeze({
-  registerTimerRuntime,
-  registerProgressRuntime,
+export const tabGuardActions = Object.freeze({
   beforeStart,
   beforeReset,
   beforeSelectMinutes,
@@ -452,7 +450,7 @@ globalThis.ONE_TAB_GUARD = Object.freeze({
   discardPendingCompletion,
 });
 
-globalThis.ONE_TAB_COORDINATION = Object.freeze({
+export const tabCoordination = Object.freeze({
   isEnabled() {
     return tabCoordinationEnabled && !storageAccessFailed;
   },

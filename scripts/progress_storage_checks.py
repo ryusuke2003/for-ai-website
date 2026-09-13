@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 STORE_PATH = ROOT / "src" / "features" / "progress" / "progressStore.js"
-TAB_GUARD_PATH = ROOT / "tab-guard.js"
+TAB_GUARD_PATH = ROOT / "src" / "features" / "timer" / "tabGuard.js"
 BACKUP_HOOK_PATH = ROOT / "src" / "features" / "backup" / "useBackupControl.js"
 
 
@@ -59,7 +59,7 @@ def main():
 
     guard_progress_refresh = section(tab_guard, "function refreshGuardProgressFromStorage()", "function setCrossTabFeedback")
     require("progressRuntime.refreshFromStorage?.() === true" in guard_progress_refresh,
-            "tab-guardのclaim固有再読込はReact storeへ委譲してください")
+            "module tab guardのclaim固有再読込はReact storeへ委譲してください")
 
     claim = section(tab_guard, "function claimPendingCompletion()", "function verifyCompletionConsumedState()")
     disabled_branch = claim.split("if (!localSessionId)", 1)[0]

@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-TAB_GUARD_PATH = ROOT / "tab-guard.js"
+TAB_GUARD_PATH = ROOT / "src" / "features" / "timer" / "tabGuard.js"
 TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
 
@@ -70,7 +70,7 @@ def main():
     require(not (ROOT / "legacy" / "interop" / "timer.js").exists(),
             "timer interopは削除したままにしてください")
 
-    print("Idle timer settings sync through the React timer runtime without storage write-back.")
+    print("Idle timer settings sync through the module timer guard without storage write-back.")
 
 
 if __name__ == "__main__":

@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
+SOURCE = (ROOT / "src" / "features" / "timer" / "tabGuard.js").read_text(encoding="utf-8")
 
 
 def section(start_marker, end_marker):
@@ -56,7 +56,7 @@ def main():
         "既存タブのセッションIDを読み取れる互換パターンは維持してください",
     )
 
-    print("Tab session IDs use cryptographic randomness through the React timer guard without weak fallback IDs.")
+    print("Tab session IDs use cryptographic randomness through the module timer guard without weak fallback IDs.")
 
 
 if __name__ == "__main__":

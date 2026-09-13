@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
+SOURCE = (ROOT / "src" / "features" / "timer" / "tabGuard.js").read_text(encoding="utf-8")
 STORAGE_COMPONENT_SOURCE = (ROOT / "src" / "components" / "StorageHealthStatus.jsx").read_text(encoding="utf-8")
 TIMER_STORE_SOURCE = (ROOT / "src" / "features" / "timer" / "timerStore.js").read_text(encoding="utf-8")
 PROGRESS_STORE_SOURCE = (ROOT / "src" / "features" / "progress" / "progressStore.js").read_text(encoding="utf-8")
@@ -114,11 +114,11 @@ def main():
             "再開時の古いタブ判定は保存読込後の障害を確認してください")
 
     require("registerTimerRuntime" in SOURCE and "timerRuntime = runtime;" in SOURCE,
-            "tab guardへReactタイマーruntimeを明示登録してください")
+            "module tab guardへReactタイマーruntimeを明示登録してください")
     require("registerProgressRuntime" in SOURCE and "progressRuntime = runtime;" in SOURCE,
-            "tab guardへReact進捗runtimeを明示登録してください")
+            "module tab guardへReact進捗runtimeを明示登録してください")
 
-    print("Runtime storage fallback checks passed with React timer/progress stores and tab coordination fallbacks.")
+    print("Runtime storage fallback checks passed with React timer/progress stores and module tab coordination fallbacks.")
 
 
 if __name__ == "__main__":

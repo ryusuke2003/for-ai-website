@@ -31,9 +31,8 @@ jobs:
         run: |
           test -f dist/theme-bootstrap.js
           test -f dist/timer-bootstrap.js
-          test -f dist/tab-guard.js
-          grep -q 'tab-guard.js' dist/index.html
           for old in \
+            tab-guard.js \
             app.js \
             react-timer-state-source.js \
             react-secondary-state-source.js \

@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-TAB_GUARD_SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
+TAB_GUARD_SOURCE = (ROOT / "src" / "features" / "timer" / "tabGuard.js").read_text(encoding="utf-8")
 PROGRESS_STORE_SOURCE = (ROOT / "src" / "features" / "progress" / "progressStore.js").read_text(encoding="utf-8")
 PROGRESS_VIEW_SOURCE = (ROOT / "src" / "features" / "progress" / "ProgressOverview.jsx").read_text(encoding="utf-8")
 
@@ -118,17 +118,17 @@ def main():
             "破棄の保存失敗時は再読み込みリスクを案内してください")
 
     require("recordPendingCompletion," in TAB_GUARD_SOURCE and "discardPendingCompletion," in TAB_GUARD_SOURCE,
-            "安全な記録・破棄処理をONE_TAB_GUARDから公開してください")
-    require("globalThis.ONE_TAB_GUARD?.recordPendingCompletion?.()" in PROGRESS_STORE_SOURCE,
-            "React記録actionはtab guardのclaim経路を利用してください")
-    require("globalThis.ONE_TAB_GUARD?.discardPendingCompletion?.()" in PROGRESS_STORE_SOURCE,
-            "React破棄actionもtab guardのclaim経路を利用してください")
+            "安全な記録・破棄処理をtabGuardActionsから公開してください")
+    require("tabGuardActions.recordPendingCompletion()" in PROGRESS_STORE_SOURCE,
+            "React記録actionはmodule tab guardのclaim経路を利用してください")
+    require("tabGuardActions.discardPendingCompletion()" in PROGRESS_STORE_SOURCE,
+            "React破棄actionもmodule tab guardのclaim経路を利用してください")
     require("onClick={progressActions.record}" in PROGRESS_VIEW_SOURCE,
             "記録ボタンはReact progress actionへ直結してください")
     require("onClick={progressActions.discard}" in PROGRESS_VIEW_SOURCE,
             "破棄ボタンはReact progress actionへ直結してください")
 
-    print("Completion persistence commits React timer consumption before React progress persistence, with in-memory rescue on failure.")
+    print("Completion persistence commits React timer consumption before React progress persistence through the module tab guard, with in-memory rescue on failure.")
 
 
 if __name__ == "__main__":

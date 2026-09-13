@@ -1,3 +1,5 @@
+import { registerProgressRuntime, tabGuardActions } from '../timer/tabGuard.js';
+
 const DONE_COUNT_STORAGE_KEY = 'one.doneCount';
 const HISTORY_STORAGE_KEY = 'one.history.v1';
 const HISTORY_LIMIT = 90;
@@ -250,10 +252,10 @@ export function subscribeProgress(listener) {
 
 export const progressActions = Object.freeze({
   record() {
-    return globalThis.ONE_TAB_GUARD?.recordPendingCompletion?.() === true;
+    return tabGuardActions.recordPendingCompletion() === true;
   },
   discard() {
-    return globalThis.ONE_TAB_GUARD?.discardPendingCompletion?.() === true;
+    return tabGuardActions.discardPendingCompletion() === true;
   },
   restoreBackupData,
 });
@@ -267,8 +269,7 @@ const progressRuntime = Object.freeze({
 });
 
 globalThis.ONE_PROGRESS_RUNTIME = progressRuntime;
-globalThis.ONE_REACT_PROGRESS_OVERVIEW = progressActions;
-globalThis.ONE_TAB_GUARD?.registerProgressRuntime?.(progressRuntime);
+registerProgressRuntime(progressRuntime);
 
 window.addEventListener('storage', syncProgressFromStorage);
 window.addEventListener('pageshow', refreshFromStorage);

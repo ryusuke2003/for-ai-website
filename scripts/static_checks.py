@@ -25,7 +25,6 @@ PRIVACY_RESET_HOOK_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyRese
 REQUIRED_SCRIPT_ORDER = [
     "theme-bootstrap.js",
     "timer-bootstrap.js",
-    "tab-guard.js",
 ]
 
 
@@ -87,7 +86,7 @@ def main():
             "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
 
     for removed_file in (
-        "app.js", "stats.js", "privacy-reset.js", "backup.js", "shortcuts.js",
+        "tab-guard.js", "app.js", "stats.js", "privacy-reset.js", "backup.js", "shortcuts.js",
         "legacy/interop/timer.js", "legacy/interop/settings-progress.js", "legacy/interop/progress-backup.js",
     ):
         fail_if((ROOT / removed_file).exists(), f"React移行後は{removed_file}を残さないでください", errors)
@@ -129,10 +128,10 @@ def main():
             "0秒到達時は一時停止より先にfinishTimerへ流してください", errors)
     fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in timer_store,
             "タイマー保存失敗時は全体へ通知してください", errors)
-    fail_if("globalThis.ONE_TAB_GUARD?.beforeStart?.(currentState)" not in timer_store,
-            "タイマー開始前に既存の複数タブ調停を通してください", errors)
-    fail_if("globalThis.ONE_TAB_GUARD?.registerTimerRuntime?.(timerRuntime)" not in timer_store,
-            "Reactタイマーruntimeをtab guardへ登録してください", errors)
+    fail_if("tabGuardActions.beforeStart(currentState)" not in timer_store,
+            "タイマー開始前にmoduleの複数タブ調停を通してください", errors)
+    fail_if("registerTimerRuntime(timerRuntime)" not in timer_store,
+            "Reactタイマーruntimeをmodule tab guardへ登録してください", errors)
     fail_if("window.addEventListener('one:privacy-reset-prepare', preparePrivacyReset)" not in timer_store,
             "端末データ削除直前は保存し直さずタイマーintervalを停止してください", errors)
 
@@ -142,7 +141,7 @@ def main():
         ("MAX_HISTORY_BYTES = 50_000", "履歴保存値のサイズ上限を維持してください"),
         ("MAX_DONE_COUNT_BYTES = 32", "累計保存値のサイズ上限を維持してください"),
         ("window.dispatchEvent(new Event('one:storage-error'))", "進捗保存失敗時は全体へ通知してください"),
-        ("globalThis.ONE_TAB_GUARD?.registerProgressRuntime?.(progressRuntime)", "React進捗runtimeをtab guardへ登録してください"),
+        ("registerProgressRuntime(progressRuntime)", "React進捗runtimeをmodule tab guardへ登録してください"),
         ("window.addEventListener('storage', syncProgressFromStorage)", "進捗は別タブstorage更新へ追従してください"),
     ):
         fail_if(token not in progress_store, message, errors)
