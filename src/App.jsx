@@ -15,32 +15,41 @@ import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 
+const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
+const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
+const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
+const HINT_CLASS = 'hint mt-3 text-[0.82rem] text-[var(--one-muted)]';
+
+function SectionHeading({ step, id, children }) {
+  return (
+    <div className={SECTION_HEADING_CLASS}>
+      <span className={STEP_CLASS}>{step}</span>
+      <h2 className="m-0 text-[1.05rem]" id={id}>{children}</h2>
+    </div>
+  );
+}
+
 function TimerSection({ focusMode }) {
   const state = useTimerState();
   useTimerShortcuts(focusMode.active, focusMode.toggle);
 
-  const cardState = state.feedbackState === 'complete'
-    ? ' is-complete'
-    : state.feedbackState === 'running'
-      ? ' is-running'
-      : '';
+  const stateClass = state.feedbackState === 'complete'
+    ? 'border-[var(--one-border-strong)] shadow-[var(--one-card-complete-shadow)]'
+    : '';
 
   return (
-    <section className={`card timer-card${cardState}`} aria-labelledby="timer-title">
-      <div className="section-heading">
-        <span className="step">01</span>
-        <h2 id="timer-title">時間を決めて集中する</h2>
-      </div>
+    <section className={`${CARD_CLASS} timer-card text-center transition-[border-color,box-shadow] duration-200 ${stateClass}`} aria-labelledby="timer-title">
+      <SectionHeading step="01" id="timer-title">時間を決めて集中する</SectionHeading>
       <TimerDisplay />
-      <div className="controls">
+      <div className="flex flex-wrap justify-center gap-2.5">
         <TimerControls
           focusModeActive={focusMode.active}
           onToggleFocusMode={focusMode.toggle}
         />
       </div>
-      <p className="hint">キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
+      <p className={HINT_CLASS}>キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
       <TimerSettings />
-      <p className="hint">選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
+      <p className={HINT_CLASS}>選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
     </section>
   );
 }
@@ -62,11 +71,8 @@ function ProgressSection() {
   };
 
   return (
-    <section className="card progress-card" aria-labelledby="done-title">
-      <div className="section-heading">
-        <span className="step">02</span>
-        <h2 id="done-title">集中を記録して振り返る</h2>
-      </div>
+    <section className={`${CARD_CLASS} progress-card`} aria-labelledby="done-title">
+      <SectionHeading step="02" id="done-title">集中を記録して振り返る</SectionHeading>
       <ProgressOverview state={overviewState} todayAriaLabel={dailyGoal.todayAriaLabel} />
       <ProgressDetails state={insights} dailyGoal={dailyGoal} />
     </section>
@@ -75,11 +81,8 @@ function ProgressSection() {
 
 function BackupSection() {
   return (
-    <section className="card backup-card" aria-labelledby="backup-title">
-      <div className="section-heading">
-        <span className="step">03</span>
-        <h2 id="backup-title">記録をバックアップする</h2>
-      </div>
+    <section className={`${CARD_CLASS} backup-card`} aria-labelledby="backup-title">
+      <SectionHeading step="03" id="backup-title">記録をバックアップする</SectionHeading>
       <BackupPanel />
     </section>
   );
@@ -94,8 +97,8 @@ export function App() {
   const focusMode = useFocusModeControl(timerState.completionReady);
 
   return (
-    <main className="shell">
-      <header className="hero">
+    <main className="shell mx-auto w-[min(760px,calc(100%-32px))] pb-10 pt-[72px] max-[560px]:pt-11">
+      <header className="hero mb-12">
         <ThemeSwitcher />
         <HeroIntro />
         <StorageHealthStatus />
