@@ -31,6 +31,7 @@ jobs:
         run: |
           test -f dist/react-timer-state-source.js
           test -f dist/react-secondary-state-source.js
+          test -f dist/react-remaining-state-source.js
           test -f dist/react-timer-controls-bridge.js
           test -f dist/react-timer-settings-bridge.js
           test -f dist/react-progress-overview-bridge.js
@@ -39,6 +40,7 @@ jobs:
           test -f dist/react-backup-panel-bridge.js
           grep -q 'react-timer-state-source.js' dist/index.html
           grep -q 'react-secondary-state-source.js' dist/index.html
+          grep -q 'react-remaining-state-source.js' dist/index.html
           grep -q 'react-timer-controls-bridge.js' dist/index.html
           grep -q 'react-timer-settings-bridge.js' dist/index.html
           grep -q 'react-progress-overview-bridge.js' dist/index.html
