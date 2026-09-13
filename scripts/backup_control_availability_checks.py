@@ -23,12 +23,21 @@ def require(condition, message):
 
 
 def main():
+    require(
+        "function hasActiveTimerContext()" in SOURCE,
+        "現在タブのタイマー状態判定はタイマー専用の名前にしてください",
+    )
+    require(
+        "hasActiveDailyTaskContext" not in SOURCE,
+        "削除済みタスク機能の互換名をバックアップ処理へ残さないでください",
+    )
+
     can_restore = section(
         "function canRestoreBackup()",
         "function setBackupStatus",
     )
     require(
-        "hasActiveDailyTaskContext()" in can_restore,
+        "hasActiveTimerContext()" in can_restore,
         "現在タブの進行中・一時停止中・完了待ち状態では復元を許可しないでください",
     )
     require(
