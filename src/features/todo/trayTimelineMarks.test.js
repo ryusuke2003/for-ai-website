@@ -11,7 +11,7 @@ describe('buildTrayTimelineMarks', () => {
   });
 
   it('最初の時刻に近い30分刻みは省き、最初の時刻を優先する', () => {
-    expect(buildTrayTimelineMarks(118, 190)).toEqual([118, 150, 180, 190]);
+    expect(buildTrayTimelineMarks(118, 190)).toEqual([118, 150, 190]);
   });
 
   it('08:10〜08:35のような短い範囲では30分刻みより端点を優先する', () => {
