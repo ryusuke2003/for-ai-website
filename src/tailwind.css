@@ -167,6 +167,13 @@
     display: none;
   }
 
+  [aria-label="保存したテンプレート"] {
+    max-height: 320px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+  }
+
   body.focus-mode .shell {
     display: grid;
     align-content: center;
@@ -225,6 +232,10 @@
   @media (max-width: 560px) {
     .timer-progress {
       width: 92%;
+    }
+
+    [aria-label="保存したテンプレート"] {
+      max-height: 260px;
     }
 
     body.focus-mode .shell {
