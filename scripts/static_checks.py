@@ -15,6 +15,7 @@ TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
 CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
 WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
 COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
+DAILY_GOAL_HOOK_PATH = ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js"
 PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
 
 REQUIRED_SCRIPT_ORDER = [
@@ -182,6 +183,10 @@ def main():
     fail_if("Notification.requestPermission()" not in completion_effects_hook, "完了通知はReact hookから明示的に許可を要求してください", errors)
     fail_if("new Notification('集中スプリント完了'" not in completion_effects_hook, "完了通知の固定タイトルを維持してください", errors)
 
+    daily_goal_hook = DAILY_GOAL_HOOK_PATH.read_text(encoding="utf-8")
+    fail_if("DAILY_GOAL_STORAGE_KEY = 'one.dailyGoal.v1'" not in daily_goal_hook,
+            "日次目標保存キーの互換性を維持してください", errors)
+
     privacy_reset_source = PRIVACY_RESET_PATH.read_text(encoding="utf-8")
     fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source, "削除対象キーは明示Setで管理してください", errors)
     storage_source = "\n".join([
@@ -191,6 +196,7 @@ def main():
         custom_timer_hook,
         wake_lock_hook,
         completion_effects_hook,
+        daily_goal_hook,
     ])
     storage_keys = set(re.findall(r"['\"](one\.[A-Za-z0-9.]+)['\"]", storage_source))
     for storage_key in sorted(storage_keys):
