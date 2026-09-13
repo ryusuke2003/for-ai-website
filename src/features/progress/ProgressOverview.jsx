@@ -1,6 +1,4 @@
-function bridge() {
-  return globalThis.ONE_REACT_PROGRESS_OVERVIEW;
-}
+import { progressActions } from './progressStore.js';
 
 export function ProgressOverview({ state, todayAriaLabel = '' }) {
   return (
@@ -12,7 +10,7 @@ export function ProgressOverview({ state, todayAriaLabel = '' }) {
           type="button"
           aria-describedby="done-hint"
           disabled={state.doneDisabled}
-          onClick={() => bridge()?.record?.()}
+          onClick={progressActions.record}
         >
           {state.doneLabel}
         </button>
@@ -22,7 +20,7 @@ export function ProgressOverview({ state, todayAriaLabel = '' }) {
           type="button"
           aria-describedby="done-hint"
           hidden={state.discardHidden}
-          onClick={() => bridge()?.discard?.()}
+          onClick={progressActions.discard}
         >
           記録せず破棄する
         </button>
