@@ -14,12 +14,36 @@ function mountComponent(selector, component) {
   createRoot(root).render(component);
 }
 
+function ensureProgressOverviewRoot() {
+  const existing = document.querySelector('#react-progress-overview-root');
+  if (existing) return existing;
+
+  const start = document.querySelector('#done-button')?.closest('.controls');
+  const end = document.querySelector('#streak-status');
+  if (!start || !end || start.parentElement !== end.parentElement) return null;
+
+  const root = document.createElement('div');
+  root.id = 'react-progress-overview-root';
+  start.before(root);
+
+  let current = start;
+  while (current) {
+    const next = current.nextSibling;
+    root.append(current);
+    if (current === end) break;
+    current = next;
+  }
+
+  return root;
+}
+
 function mountReactUi() {
   mountComponent('#react-theme-root', <ThemeSwitcher />);
   mountComponent('#react-hero-root', <HeroIntro />);
   mountComponent('#react-timer-display-root', <TimerDisplay />);
   mountComponent('#react-timer-controls-root', <TimerControls />);
   mountComponent('#react-timer-settings-root', <TimerSettings />);
+  ensureProgressOverviewRoot();
   mountComponent('#react-progress-overview-root', <ProgressOverview />);
   mountComponent('#react-footer-root', <AppFooter />);
 }
