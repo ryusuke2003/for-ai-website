@@ -409,7 +409,7 @@ function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
   const top = (todo.startMinute / 60) * PX_PER_HOUR;
   const naturalHeight = (todo.duration / 60) * PX_PER_HOUR;
   const height = Math.max(38, naturalHeight - 4);
-  const compact = naturalHeight < 54;
+  const timeRange = `${formatMinuteOfDay(todo.startMinute)}–${formatMinuteOfDay(todo.startMinute + todo.duration)}`;
 
   return (
     <article
@@ -427,13 +427,11 @@ function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
           aria-label={`${todo.text}を完了`}
           onChange={onToggle}
         />
-        <div className="min-w-0 flex-1">
-          <strong className={`block truncate text-[0.84rem] ${todo.completed ? 'line-through' : ''}`}>{todo.text}</strong>
-          {!compact ? (
-            <span className="mt-0.5 block text-[0.7rem] font-bold text-[var(--one-muted)]">
-              {formatMinuteOfDay(todo.startMinute)}–{formatMinuteOfDay(todo.startMinute + todo.duration)} · {todo.duration}分
-            </span>
-          ) : null}
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <strong className={`min-w-0 truncate text-[0.84rem] ${todo.completed ? 'line-through' : ''}`}>{todo.text}</strong>
+          <span className="shrink-0 text-[0.72rem] font-bold text-[var(--one-muted)]" data-testid={`todo-time-range-${todo.id}`}>
+            {timeRange}
+          </span>
         </div>
         <span className="shrink-0 text-[0.68rem] font-bold text-[var(--one-muted)]" aria-hidden="true">⋮⋮</span>
         <button className="shrink-0 rounded-full border-0 bg-transparent px-1.5 py-1 text-[0.68rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]" type="button" aria-label={`${todo.text}を削除`} onClick={onRemove}>
