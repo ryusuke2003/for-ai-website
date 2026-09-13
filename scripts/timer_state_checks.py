@@ -3,8 +3,9 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-APP_PATH = ROOT / "app.js"
 BOOTSTRAP_PATH = ROOT / "timer-bootstrap.js"
+TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
+TIMER_STATE_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useTimerState.js"
 TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
 PROGRESS_STYLE_PATH = ROOT / "timer-progress.css"
 EXPECTED_LIMIT = 10_000
@@ -31,8 +32,9 @@ def require(condition, message):
 
 
 def main():
-    app_source = APP_PATH.read_text(encoding="utf-8")
     bootstrap_source = BOOTSTRAP_PATH.read_text(encoding="utf-8")
+    timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
+    timer_state_hook = TIMER_STATE_HOOK_PATH.read_text(encoding="utf-8")
     timer_display = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
 
     require(read_limit(bootstrap_source) == EXPECTED_LIMIT,
@@ -42,20 +44,31 @@ def main():
     size_guard_position = bootstrap_source.find("raw.length > MAX_BYTES")
     require(parse_position >= 0 and 0 <= size_guard_position < parse_position,
             "timer-bootstrap.js は JSON.parse より前にサイズ上限を確認してください")
+    require("document.querySelector('#custom-preset')" not in bootstrap_source,
+            "保存形式bootstrapへhidden timer DOM処理を戻さないでください")
 
-    bootstrap_body = source_range(
-        bootstrap_source,
-        "function readBootstrappedTimerMinutes()",
-        "if (typeof document !== 'undefined')",
-    )
-    require("guard.parse(raw)" in bootstrap_body,
-            "起動前タイマー復元は共通検証器を使用してください")
+    read_stored = source_range(timer_store, "function readStoredTimerState()", "function storageShape")
+    require("guard?.parse?.(raw)" in read_stored,
+            "Reactタイマーストアは共通検証器で保存状態を復元してください")
+    require("JSON.parse(raw)" not in read_stored,
+            "Reactタイマーストアで保存状態を独自にJSON.parseしないでください")
 
-    app_body = source_range(app_source, "function readTimerState()", "function dateKey")
-    require("ONE_TIMER_STATE_GUARD?.parse(raw)" in app_body,
-            "app.js の readTimerState() は共通検証器を使用してください")
-    require("JSON.parse(raw)" not in app_body,
-            "app.js の readTimerState() でタイマー状態を独自にJSON.parseしないでください")
+    initial = source_range(timer_store, "function initialTimerState()", "let currentState")
+    for token in (
+        "stored?.running === true",
+        "Math.ceil((storedEndAt - Date.now()) / 1000)",
+        "legacyCompletedState",
+        "completionDate: dateKey(new Date(storedEndAt))",
+        "再読み込み前の続きから再開しました。",
+    ):
+        require(token in initial, f"Reactタイマー復元処理が不足しています: {token}")
+
+    require("useSyncExternalStore(subscribeTimer, getTimerSnapshot, getTimerSnapshot)" in timer_state_hook,
+            "React UIはtimerStoreを直接購読してください")
+    require("ONE_REACT_TIMER_STATE" not in timer_state_hook,
+            "削除したtimer interopのsnapshotへ戻さないでください")
+    require(not (ROOT / "legacy" / "interop" / "timer.js").exists(),
+            "React移行後はlegacy/interop/timer.jsを残さないでください")
 
     for token in (
         'id="timer-progress"',
@@ -100,7 +113,7 @@ def main():
     require(not (ROOT / "custom-timer.js").exists(),
             "React移行後はclassic custom-timer.jsを残さないでください")
 
-    print("Timer state parsing, React progress, end time, and document title stay synchronized.")
+    print("Timer storage validation, restore, controls, progress, end time, and title are React-store owned.")
 
 
 if __name__ == "__main__":
