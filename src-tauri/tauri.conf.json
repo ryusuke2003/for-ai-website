@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "ONE",
+  "productName": "タイマー",
   "version": "0.1.0",
   "identifier": "com.ryusuke2003.one",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "ONE",
+        "title": "タイマー",
         "width": 820,
         "height": 900,
         "minWidth": 380,
