@@ -5,7 +5,7 @@ on:
     branches: [ci/tauri-locked-dependencies]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   generate-lock:
@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          persist-credentials: false
 
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -24,10 +22,15 @@ jobs:
       - name: Generate synchronized package-lock
         run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
 
-      - name: Upload package-lock
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: synchronized-package-lock
-          path: package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+      - name: Commit lockfile and push temporary tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "package-lockを同期してnpm ciを有効化"
+          tag_name="generated-package-lock-${GITHUB_RUN_ID}"
+          git tag "$tag_name"
+          git push origin "refs/tags/$tag_name"
+          echo "GENERATED_TAG=$tag_name"
