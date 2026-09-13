@@ -1,14 +1,13 @@
 import tailwindcss from '@tailwindcss/vite';
 import { copyFile, mkdir } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { defineConfig } from 'vite';
 
 const legacyScripts = [
   'theme-bootstrap.js',
   'timer-bootstrap.js',
   'app.js',
-  'react-timer-state-source.js',
-  'react-timer-controls-bridge.js',
+  'legacy/interop/timer.js',
   'storage-status.js',
   'completion-sound.js',
   'wake-lock.js',
@@ -18,14 +17,10 @@ const legacyScripts = [
   'tab-guard.js',
   'backup.js',
   'custom-timer.js',
-  'react-secondary-state-source.js',
-  'react-timer-settings-bridge.js',
-  'react-progress-overview-bridge.js',
+  'legacy/interop/settings-progress.js',
   'shortcuts.js',
   'privacy-reset.js',
-  'react-remaining-state-source.js',
-  'react-progress-details-bridge.js',
-  'react-backup-panel-bridge.js',
+  'legacy/interop/progress-backup.js',
 ];
 
 function injectReactEntry() {
@@ -41,15 +36,15 @@ function injectReactEntry() {
           )
           .replace(
             '<script src="app.js" defer></script>',
-            '<script src="app.js" defer></script>\n  <script src="react-timer-state-source.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
+            '<script src="app.js" defer></script>\n  <script src="legacy/interop/timer.js" defer></script>',
           )
           .replace(
             '<script src="custom-timer.js" defer></script>',
-            '<script src="custom-timer.js" defer></script>\n  <script src="react-secondary-state-source.js" defer></script>\n  <script src="react-timer-settings-bridge.js" defer></script>\n  <script src="react-progress-overview-bridge.js" defer></script>',
+            '<script src="custom-timer.js" defer></script>\n  <script src="legacy/interop/settings-progress.js" defer></script>',
           )
           .replace(
             '<script src="privacy-reset.js" defer></script>',
-            '<script src="privacy-reset.js" defer></script>\n  <script src="react-remaining-state-source.js" defer></script>\n  <script src="react-progress-details-bridge.js" defer></script>\n  <script src="react-backup-panel-bridge.js" defer></script>',
+            '<script src="privacy-reset.js" defer></script>\n  <script src="legacy/interop/progress-backup.js" defer></script>',
           )
           .replace(
             '<script type="module" data-vite-entry="/src/main.jsx"></script>',
@@ -72,9 +67,13 @@ function copyLegacyScripts() {
       outDir = resolve(config.root, config.build.outDir);
     },
     async closeBundle() {
-      await mkdir(outDir, { recursive: true });
       await Promise.all(
-        legacyScripts.map((file) => copyFile(resolve(root, file), resolve(outDir, file))),
+        legacyScripts.map(async (file) => {
+          const source = resolve(root, file);
+          const destination = resolve(outDir, file);
+          await mkdir(dirname(destination), { recursive: true });
+          await copyFile(source, destination);
+        }),
       );
     },
   };

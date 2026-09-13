@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useTimerState } from '../state/useTimerState.js';
+import { useTimerState } from './useTimerState.js';
 
 function invokeBridge(action) {
   globalThis.ONE_REACT_TIMER_CONTROLS?.[action]?.();

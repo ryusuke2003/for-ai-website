@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useBackupPanelState } from '../state/useBackupPanelState';
+import { useBackupPanelState } from './useBackupPanelState.js';
 
 function bridge() {
   return globalThis.ONE_REACT_BACKUP_PANEL;

@@ -1,4 +1,4 @@
-import { useTimerState } from '../state/useTimerState.js';
+import { useTimerState } from './useTimerState.js';
 
 const endTimeFormatter = new Intl.DateTimeFormat('ja-JP', {
   hour: '2-digit',

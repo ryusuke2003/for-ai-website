@@ -1,4 +1,4 @@
-import { useProgressDetailsState } from '../state/useProgressDetailsState';
+import { useProgressDetailsState } from './useProgressDetailsState.js';
 
 function bridge() {
   return globalThis.ONE_REACT_PROGRESS_DETAILS;

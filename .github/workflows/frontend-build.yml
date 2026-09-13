@@ -29,22 +29,24 @@ jobs:
       - name: Verify production entrypoints
         shell: bash
         run: |
-          test -f dist/react-timer-state-source.js
-          test -f dist/react-secondary-state-source.js
-          test -f dist/react-remaining-state-source.js
-          test -f dist/react-timer-controls-bridge.js
-          test -f dist/react-timer-settings-bridge.js
-          test -f dist/react-progress-overview-bridge.js
-          test -f dist/react-progress-details-bridge.js
-          test -f dist/react-backup-panel-bridge.js
-          grep -q 'react-timer-state-source.js' dist/index.html
-          grep -q 'react-secondary-state-source.js' dist/index.html
-          grep -q 'react-remaining-state-source.js' dist/index.html
-          grep -q 'react-timer-controls-bridge.js' dist/index.html
-          grep -q 'react-timer-settings-bridge.js' dist/index.html
-          grep -q 'react-progress-overview-bridge.js' dist/index.html
-          grep -q 'react-progress-details-bridge.js' dist/index.html
-          grep -q 'react-backup-panel-bridge.js' dist/index.html
+          test -f dist/legacy/interop/timer.js
+          test -f dist/legacy/interop/settings-progress.js
+          test -f dist/legacy/interop/progress-backup.js
+          grep -q 'legacy/interop/timer.js' dist/index.html
+          grep -q 'legacy/interop/settings-progress.js' dist/index.html
+          grep -q 'legacy/interop/progress-backup.js' dist/index.html
+          for old in \
+            react-timer-state-source.js \
+            react-secondary-state-source.js \
+            react-remaining-state-source.js \
+            react-timer-controls-bridge.js \
+            react-timer-settings-bridge.js \
+            react-progress-overview-bridge.js \
+            react-progress-details-bridge.js \
+            react-backup-panel-bridge.js; do
+            if test -e "dist/$old"; then exit 1; fi
+            if grep -q "$old" dist/index.html; then exit 1; fi
+          done
           if test -e dist/backup-timer-context-compat.js; then exit 1; fi
           if grep -q 'backup-timer-context-compat.js' dist/index.html; then exit 1; fi
           if grep -q 'react-timer-display-bridge.js' dist/index.html; then exit 1; fi
