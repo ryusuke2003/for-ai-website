@@ -15,6 +15,7 @@ import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 
+const BREAK_MINUTES = 5;
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
@@ -31,6 +32,7 @@ function SectionHeading({ step, id, children }) {
 
 function TimerSection({ focusMode }) {
   const state = useTimerState();
+  const breakMode = state.selectedMinutes === BREAK_MINUTES;
   useTimerShortcuts(focusMode.active, focusMode.toggle);
 
   const stateClass = state.feedbackState === 'complete'
@@ -39,7 +41,7 @@ function TimerSection({ focusMode }) {
 
   return (
     <section className={`${CARD_CLASS} timer-card text-center transition-[border-color,box-shadow] duration-200 ${stateClass}`} aria-labelledby="timer-title">
-      <SectionHeading step="01" id="timer-title">時間を決めて集中する</SectionHeading>
+      <SectionHeading step="01" id="timer-title">{breakMode ? '5分休憩する' : '時間を決めて集中する'}</SectionHeading>
       <TimerDisplay />
       <div className="flex flex-wrap justify-center gap-2.5">
         <TimerControls
@@ -49,7 +51,7 @@ function TimerSection({ focusMode }) {
       </div>
       <p className={HINT_CLASS}>キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
       <TimerSettings />
-      <p className={HINT_CLASS}>選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。</p>
+      <p className={HINT_CLASS}>{breakMode ? '5分プリセットは休憩用です。完了しても集中回数には加算されません。' : '選んだ時間と途中経過はこのブラウザに保存されるため、再読み込みしても続きから再開できます。'}</p>
     </section>
   );
 }
@@ -60,14 +62,18 @@ function ProgressSection() {
   const insights = buildProgressInsights(progressState.history);
   const dailyGoal = useDailyGoalControl(insights.todayCount);
   const completionReady = timerState.completionReady === true;
+  const breakCompletion = completionReady && timerState.selectedMinutes === BREAK_MINUTES;
   const overviewState = {
     ...progressState,
     ...insights,
-    doneLabel: completionReady
-      ? 'この集中を記録する ✓'
-      : 'タイマー完了後に記録できます',
+    breakCompletion,
+    doneLabel: breakCompletion
+      ? '休憩を終了する'
+      : completionReady
+        ? 'この集中を記録する ✓'
+        : 'タイマー完了後に記録できます',
     doneDisabled: !completionReady,
-    discardHidden: !completionReady,
+    discardHidden: !completionReady || breakCompletion,
   };
 
   return (
@@ -82,7 +88,7 @@ function ProgressSection() {
 function BackupSection() {
   return (
     <section className={`${CARD_CLASS} backup-card`} aria-labelledby="backup-title">
-      <SectionHeading step="03" id="backup-title">記録をバックアップする</SectionHeading>
+      <SectionHeading step="03" id="done-title">記録をバックアップする</SectionHeading>
       <BackupPanel />
     </section>
   );
