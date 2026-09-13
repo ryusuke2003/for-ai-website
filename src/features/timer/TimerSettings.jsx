@@ -4,7 +4,7 @@ import { useCustomTimerControl } from './useCustomTimerControl.js';
 import { useTimerState } from './useTimerState.js';
 import { useWakeLockControl } from './useWakeLockControl.js';
 
-const QUICK_PRESETS = Object.freeze([10, 25, 50]);
+const QUICK_PRESETS = Object.freeze([5, 25, 50]);
 const OPTION_BUTTON_CLASS = 'rounded-full border-0 bg-transparent px-3 py-2 text-[#77736a] disabled:cursor-not-allowed disabled:opacity-45';
 const ACTIVE_OPTION_CLASS = 'bg-[#e3ded4] text-[#1d1d1f] font-extrabold';
 const HINT_CLASS = 'mt-3 text-[0.82rem] text-[#7a766d]';
