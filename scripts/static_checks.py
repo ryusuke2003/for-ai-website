@@ -18,6 +18,7 @@ COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useComplet
 DAILY_GOAL_HOOK_PATH = ROOT / "src" / "features" / "progress" / "useDailyGoalControl.js"
 PROGRESS_INSIGHTS_PATH = ROOT / "src" / "features" / "progress" / "progressInsights.js"
 BACKUP_PANEL_PATH = ROOT / "src" / "features" / "backup" / "BackupPanel.jsx"
+BACKUP_HOOK_PATH = ROOT / "src" / "features" / "backup" / "useBackupControl.js"
 PRIVACY_RESET_HOOK_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js"
 
 REQUIRED_SCRIPT_ORDER = [
@@ -26,10 +27,8 @@ REQUIRED_SCRIPT_ORDER = [
     "app.js",
     "legacy/interop/timer.js",
     "tab-guard.js",
-    "backup.js",
     "legacy/interop/settings-progress.js",
     "shortcuts.js",
-    "legacy/interop/progress-backup.js",
 ]
 
 
@@ -97,14 +96,12 @@ def main():
     if custom_preset is not None:
         fail_if("hidden" not in custom_preset, "#custom-preset は非表示にしてください", errors)
 
-    for element_id in (
-        "done-button", "discard-button", "done-count",
-        "backup-export-button", "backup-import-button", "backup-undo-button", "backup-file-input",
-    ):
+    for element_id in ("done-button", "discard-button", "done-count"):
         require_runtime_element(parser, element_id, errors)
 
     for removed_id in (
         "today-count", "week-count", "streak-count", "streak-status", "history-grid", "activity-grid", "activity-summary",
+        "backup-export-button", "backup-import-button", "backup-undo-button", "backup-file-input", "backup-status",
         "data-reset-button", "data-reset-confirm", "data-reset-confirm-button", "data-reset-cancel-button", "data-reset-status",
     ):
         fail_if(removed_id in parser.by_id, f"#{removed_id} はReact管理なのでruntime scaffoldへ戻さないでください", errors)
@@ -116,8 +113,8 @@ def main():
 
     fail_if(parser.script_urls != REQUIRED_SCRIPT_ORDER, f"classic scriptの読み込み順は {REQUIRED_SCRIPT_ORDER} を維持してください", errors)
     fail_if(parser.module_script_urls != ["/src/main.jsx"], "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
-    fail_if((ROOT / "stats.js").exists(), "React移行後はstats.jsを残さないでください", errors)
-    fail_if((ROOT / "privacy-reset.js").exists(), "React移行後はprivacy-reset.jsを残さないでください", errors)
+    for removed_file in ("stats.js", "privacy-reset.js", "backup.js", "legacy/interop/progress-backup.js"):
+        fail_if((ROOT / removed_file).exists(), f"React移行後は{removed_file}を残さないでください", errors)
 
     theme_bootstrap_attrs = parser.script_attributes.get("theme-bootstrap.js", {})
     fail_if("defer" in theme_bootstrap_attrs, "theme-bootstrap.js は初期描画前に実行してください", errors)
@@ -200,14 +197,22 @@ def main():
             "30日アクティビティ集計をReact featureへ維持してください", errors)
 
     backup_panel_source = BACKUP_PANEL_PATH.read_text(encoding="utf-8")
+    backup_hook_source = BACKUP_HOOK_PATH.read_text(encoding="utf-8")
     privacy_reset_source = PRIVACY_RESET_HOOK_PATH.read_text(encoding="utf-8")
     for element_id in (
+        "backup-export-button", "backup-import-button", "backup-undo-button", "backup-file-input", "backup-status",
         "data-reset-button", "data-reset-confirm", "data-reset-confirm-button", "data-reset-cancel-button", "data-reset-status",
     ):
         fail_if(f'id="{element_id}"' not in backup_panel_source,
                 f"React backup panelに#{element_id}を維持してください", errors)
-    fail_if("usePrivacyResetControl" not in backup_panel_source,
-            "端末データ削除UIはReact hookを利用してください", errors)
+    fail_if("useBackupControl" not in backup_panel_source,
+            "バックアップUIはReact backup hookを利用してください", errors)
+    fail_if("RECOVERY_STORAGE_KEY = 'one.restoreRecovery.v1'" not in backup_hook_source,
+            "復元ポイント保存キーの互換性を維持してください", errors)
+    fail_if("ONE_REACT_PROGRESS_OVERVIEW?.restoreBackupData" not in backup_hook_source,
+            "バックアップ復元はprogress adapter経由で既存状態を更新してください", errors)
+    fail_if("ONE_REACT_TIMER_CONTROLS?.selectMinutes" not in backup_hook_source,
+            "バックアップ復元はtimer adapter経由でタイマー時間を更新してください", errors)
     fail_if("PRIVACY_RESET_KEYS = new Set([" not in privacy_reset_source,
             "削除対象キーはReact hook内の明示Setで管理してください", errors)
 
@@ -219,6 +224,7 @@ def main():
         wake_lock_hook,
         completion_effects_hook,
         daily_goal_hook,
+        backup_hook_source,
         privacy_reset_source,
     ])
     storage_keys = set(re.findall(r"['\"](one\.[A-Za-z0-9.]+)['\"]", storage_source))

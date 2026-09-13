@@ -24,9 +24,7 @@ jobs:
           node --check app.js
           node --check legacy/interop/timer.js
           node --check legacy/interop/settings-progress.js
-          node --check legacy/interop/progress-backup.js
           node --check tab-guard.js
-          node --check backup.js
           node --check shortcuts.js
           node --check scripts/timer_state_behavior_checks.js
 
@@ -100,10 +98,4 @@ jobs:
         run: python3 scripts/privacy_reset_storage_checks.py
 
       - name: Reject common secret material
-        shell: bash
-        run: |
-          if grep -RIE --exclude-dir=.git --exclude=quality.yml \
-            '(BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,})' .; then
-            echo 'Potential secret material detected.' >&2
-            exit 1
-          fi
+        run: python3 scripts/secret_checks.py

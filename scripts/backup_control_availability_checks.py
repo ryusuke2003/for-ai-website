@@ -2,7 +2,8 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-SOURCE = (ROOT / "backup.js").read_text(encoding="utf-8")
+SOURCE = (ROOT / "src" / "features" / "backup" / "useBackupControl.js").read_text(encoding="utf-8")
+INTEROP_SOURCE = (ROOT / "legacy" / "interop" / "settings-progress.js").read_text(encoding="utf-8")
 
 
 def fail(message):
@@ -23,140 +24,71 @@ def require(condition, message):
 
 
 def main():
-    require(
-        "function hasActiveTimerContext()" in SOURCE,
-        "現在タブのタイマー状態判定はタイマー専用の名前にしてください",
-    )
-    require(
-        "hasActiveDailyTaskContext" not in SOURCE,
-        "削除済みタスク機能の互換名をバックアップ処理へ残さないでください",
-    )
+    require(not (ROOT / "backup.js").exists(), "復元可否判定をclassic backup.jsへ戻さないでください")
+    require("function hasActiveTimerContext(state)" in SOURCE, "現在タブのタイマー状態判定をReact stateから行ってください")
+    require("globalThis.ONE_TAB_COORDINATION = Object.freeze" in INTEROP_SOURCE,
+            "既存tab guardの調停状態だけを小さなinterop APIで公開してください")
+    require("hasActiveStoredTimer()" in INTEROP_SOURCE,
+            "別タブのアクティブタイマー判定をtab guard側に維持してください")
 
-    can_restore = section(
-        "function canRestoreBackup()",
-        "function setBackupStatus",
-    )
-    require(
-        "hasActiveTimerContext()" in can_restore,
-        "現在タブの進行中・一時停止中・完了待ち状態では復元を許可しないでください",
-    )
-    require(
-        "readTimerState()" in can_restore and "readStoredSessionId()" in can_restore,
-        "別タブのアクティブなタイマー状態も復元可否へ含めてください",
-    )
-    require(
-        "isTimerStateActive(storedState)" in can_restore,
-        "保存済みタイマー状態は共通判定で確認してください",
-    )
+    can_restore = section("function canRestoreBackup()", "function refreshBackupControlAvailability")
+    require("hasActiveTimerContext(timerStateRef.current)" in can_restore,
+            "現在タブの進行中・一時停止中・完了待ち状態では復元を許可しないでください")
+    require("ONE_TAB_COORDINATION?.hasActiveStoredTimer?.()" in can_restore,
+            "別タブのアクティブタイマー状態も復元可否へ含めてください")
+    require("tabCoordinationAvailable()" in can_restore,
+            "保存障害やタブ間調停不可時は復元を許可しないでください")
 
-    controls = section(
-        "function refreshBackupControlAvailability",
-        "function refreshRecoveryAvailability",
-    )
-
-    require(
-        "tabCoordinationEnabled && !storageAccessFailed" in controls,
-        "復元可否はタブ間調停と保存障害の両方を確認してください",
-    )
+    controls = section("function refreshBackupControlAvailability", "function refreshRecoveryAvailability")
     storage_position = controls.find("const storageAvailable")
     can_restore_position = controls.find("canRestoreBackup()")
-    post_failure_position = controls.find("if (storageAccessFailed)", can_restore_position)
-    import_disable_position = controls.find("backupImportButton.disabled = !restoreAvailable;")
-    require(
-        min(storage_position, can_restore_position, post_failure_position, import_disable_position) >= 0,
-        "復元UIの事前判定に必要な処理が見つかりません",
-    )
-    require(
-        storage_position < can_restore_position < post_failure_position < import_disable_position,
-        "復元UIは保存可否→タイマー状態→読込後の保存障害→UI反映の順で判定してください",
-    )
-    require(
-        "blockedByActiveTimer = !restoreAvailable && !storageAccessFailed;" in controls,
-        "タイマー状態による復元不可と保存障害を区別してください",
-    )
-    require(
-        "backupImportButton.disabled = !restoreAvailable;" in controls,
-        "安全に復元できない場合は復元ボタンを無効化してください",
-    )
-    require(
-        "backupFileInput.disabled = !restoreAvailable;" in controls,
-        "安全に復元できない場合はファイル入力も無効化してください",
-    )
-    require(
-        "backupUndoButton.disabled = true;" in controls,
-        "安全に復元できない場合はUndoも無効化してください",
-    )
-    require(
-        "集中タイマーの進行中・一時停止中・未記録完了中は復元できません。JSON書き出しは利用できます。" in controls,
-        "タイマー状態で復元不可の場合は理由とJSON書き出し可を案内してください",
-    )
-    require(
-        "安全な復元に必要な端末保存・タブ間調停を利用できないため、JSON書き出しだけ利用できます。" in controls,
-        "保存・調停不可の場合は従来の救出案内を維持してください",
-    )
-    require(
-        "backupExportButton.disabled" not in SOURCE,
-        "復元不可でも救出用JSON書き出しは無効化しないでください",
-    )
+    failure_position = controls.find("if (storageAccessFailedRef.current)")
+    import_disable_position = controls.find("setImportDisabled(!restoreAvailable)")
+    require(min(storage_position, can_restore_position, failure_position, import_disable_position) >= 0,
+            "復元UIの事前判定に必要な処理が見つかりません")
+    require(storage_position < can_restore_position < failure_position < import_disable_position,
+            "復元UIは保存可否→タイマー状態→保存障害→UI反映の順で判定してください")
+    require("blockedByActiveTimer = !restoreAvailable && !storageAccessFailedRef.current;" in controls,
+            "タイマー状態による復元不可と保存障害を区別してください")
+    require("setUndoDisabled(true)" in controls, "安全に復元できない場合はUndoも無効化してください")
+    require("集中タイマーの進行中・一時停止中・未記録完了中は復元できません。JSON書き出しは利用できます。" in controls,
+            "タイマー状態で復元不可の場合は理由とJSON書き出し可を案内してください")
+    require("安全な復元に必要な端末保存・タブ間調停を利用できないため、JSON書き出しだけ利用できます。" in controls,
+            "保存・調停不可の場合は救出案内を維持してください")
+    require("exportDisabled" not in SOURCE, "復元不可でも救出用JSON書き出しは無効化しないでください")
 
     recovery = section("function refreshRecoveryAvailability", "function exportBackup")
-    require(
-        "refreshBackupControlAvailability({ announce: true })" in recovery,
-        "復元用保存を読む前に復元UIの利用可否を確認し、利用不可なら案内してください",
-    )
+    require("refreshBackupControlAvailability({ announce: true })" in recovery,
+            "復元用保存を読む前に復元UIの利用可否を確認してください")
+    require("setUndoHidden(!matchesRestoredState)" in recovery,
+            "現在状態と復元ポイントが一致する場合だけUndoを表示してください")
 
     import_body = section("async function importBackup", "function undoLastRestore")
-    require(
-        "refreshBackupControlAvailability({ announce: true })" in import_body,
-        "復元処理の入口でも保存・調停・タイマー状態を再確認してください",
-    )
-    require(
-        "if (!canRestoreBackup())" in import_body,
-        "ファイル読込中に状態が変わった場合も復元を中止してください",
-    )
+    require("refreshBackupControlAvailability({ announce: true })" in import_body,
+            "復元処理の入口でも保存・調停・タイマー状態を再確認してください")
+    require(import_body.count("if (!canRestoreBackup())") >= 2,
+            "ファイル読込・確認中に状態が変わった場合も復元を中止してください")
+    require("restoreGuard !== currentRestoreGuard()" in import_body,
+            "確認中の別タブ更新をguardで検出してください")
 
-    undo_body = section("function undoLastRestore", "backupExportButton.addEventListener")
-    require(
-        "refreshBackupControlAvailability({ announce: true })" in undo_body,
-        "Undo処理の入口でも保存・調停・タイマー状態を再確認してください",
-    )
+    undo_body = section("function undoLastRestore", "useEffect(() => {")
+    require("refreshBackupControlAvailability({ announce: true })" in undo_body,
+            "Undo処理の入口でも保存・調停・タイマー状態を再確認してください")
+    require("!canRestoreBackup() || currentRestoreGuard() !== expectedGuard" in undo_body,
+            "Undo確認中のタイマー・記録変更も検出してください")
 
-    storage_handler = section(
-        "window.addEventListener('storage', (event) => {",
-        "window.addEventListener('one:storage-error'",
-    )
-    require(
-        "STORAGE_KEYS.timer" in storage_handler and "refreshRecoveryAvailability();" in storage_handler,
-        "別タブのタイマー状態変更で復元UIを再評価してください",
-    )
+    require("window.addEventListener('storage', handleStorage);" in SOURCE,
+            "別タブの記録・タイマー・復元ポイント変更で復元UIを再評価してください")
+    require("window.addEventListener('one:storage-error', handleStorageError);" in SOURCE,
+            "保存障害時に復元UIを即時無効化してください")
+    require("window.addEventListener('pageshow', handlePageShow);" in SOURCE,
+            "BFCache復帰時も復元UIを再評価してください")
+    require("document.visibilityState === 'visible'" in SOURCE,
+            "前面復帰時に復元UIを再評価してください")
+    require("refreshRecoveryAvailability();\n  }, [timerState, progressState, storageFailed]);" in SOURCE,
+            "Reactのタイマー・進捗状態変更でも復元可否を追従させてください")
 
-    storage_error_handler = section(
-        "window.addEventListener('one:storage-error', () => {",
-        "startButton.addEventListener('click'",
-    )
-    require(
-        "refreshBackupControlAvailability({ announce: true });" in storage_error_handler,
-        "保存障害時に復元UIを即時無効化して案内してください",
-    )
-
-    for control in (
-        "startButton.addEventListener('click', refreshRecoveryAvailability);",
-        "resetButton.addEventListener('click', refreshRecoveryAvailability);",
-        "doneButton.addEventListener('click', refreshRecoveryAvailability);",
-        "discardButton.addEventListener('click', refreshRecoveryAvailability);",
-    ):
-        require(control in SOURCE, "現在タブのタイマー状態変更後に復元UIを再評価してください")
-    require(
-        "presetButtons.forEach((button) => button.addEventListener('click', refreshRecoveryAvailability));" in SOURCE,
-        "タイマー時間変更後も復元UIを再評価してください",
-    )
-
-    require(
-        SOURCE.rstrip().endswith("refreshRecoveryAvailability();"),
-        "初期表示でも復元UIの利用可否を反映してください",
-    )
-
-    print("Backup restore controls proactively follow storage, coordination, and active timer state while rescue export remains available.")
+    print("React backup restore controls follow storage, coordination, and active timer state while export remains available.")
 
 
 if __name__ == "__main__":

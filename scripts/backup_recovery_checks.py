@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-BACKUP_PATH = ROOT / "backup.js"
+BACKUP_PATH = ROOT / "src" / "features" / "backup" / "useBackupControl.js"
 
 
 def require(condition, message):
@@ -22,6 +22,7 @@ def section(source, start_marker, end_marker):
 
 def main():
     source = BACKUP_PATH.read_text(encoding="utf-8")
+    require(not (ROOT / "backup.js").exists(), "バックアップruntimeをclassic backup.jsへ戻さないでください")
 
     require("function parseRecoveryPoint(raw)" in source, "復元ポイントの検証処理を共通化してください")
     require("function readValidRecoveryRaw()" in source, "既存の有効なUndo情報を退避してください")
@@ -58,7 +59,7 @@ def main():
     remove_recovery = section(
         source,
         "function removeRecoveryPoint()",
-        "function refreshRecoveryAvailability()",
+        "function canRestoreBackup()",
     )
     remove_pos = remove_recovery.find("localStorage.removeItem(RECOVERY_STORAGE_KEY);")
     verify_pos = remove_recovery.find("localStorage.getItem(RECOVERY_STORAGE_KEY) === null")
@@ -69,7 +70,7 @@ def main():
     require("return false;" in remove_recovery, "Undo情報を安全に削除できなければ失敗を返してください")
 
     import_start = source.find("async function importBackup(file)")
-    import_end = source.find("\nfunction undoLastRestore()", import_start)
+    import_end = source.find("\n  function undoLastRestore()", import_start)
     if import_start < 0 or import_end < 0:
         raise SystemExit("ERROR: importBackup() の範囲を確認できません")
 
@@ -93,16 +94,15 @@ def main():
             raise SystemExit(f"ERROR: importBackup() の復元/巻き戻し順序が不正です: {token}")
         last_position = position
 
-    if "removeRecoveryPoint();" in import_source:
-        raise SystemExit("ERROR: 復元失敗時に以前のUndo情報まで無条件削除しないでください")
-
+    require("removeRecoveryPoint();" not in import_source,
+            "復元失敗時に以前のUndo情報まで無条件削除しないでください")
     require(
-        "const recoveryRestored = rollbackSucceeded\n      && restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);" in import_source,
+        "const recoveryRestored = rollbackSucceeded\n        && restorePreviousRecoveryPoint(savedRecoveryRaw, previousRecoveryRaw);" in import_source,
         "記録本体の巻き戻し確認後だけ以前のUndo情報を復元してください",
     )
 
     undo_start = source.find("function undoLastRestore()")
-    undo_end = source.find("backupExportButton.addEventListener", undo_start)
+    undo_end = source.find("\n  useEffect(() => {", undo_start)
     if undo_start < 0 or undo_end < 0:
         raise SystemExit("ERROR: undoLastRestore() の範囲を確認できません")
     undo_source = source[undo_start:undo_end]
@@ -118,7 +118,7 @@ def main():
     require(failure_message > failure_check, "Undo情報を削除できなかった場合は利用者へ明示してください")
     require(success_message > failure_message, "Undo情報の削除確認後だけ完全成功を表示してください")
 
-    print("Backup recovery storage failures are reported without confusing concurrency mismatches with API failures.")
+    print("React backup recovery preserves verified one-generation undo and rollback safety.")
 
 
 if __name__ == "__main__":

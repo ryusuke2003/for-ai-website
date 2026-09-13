@@ -4,7 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 APP_PATH = ROOT / "app.js"
 TAB_GUARD_PATH = ROOT / "tab-guard.js"
-BACKUP_PATH = ROOT / "backup.js"
+BACKUP_HOOK_PATH = ROOT / "src" / "features" / "backup" / "useBackupControl.js"
 
 
 def section(source, start_marker, end_marker):
@@ -25,7 +25,7 @@ def require(condition, message):
 def main():
     app = APP_PATH.read_text(encoding="utf-8")
     tab_guard = TAB_GUARD_PATH.read_text(encoding="utf-8")
-    backup = BACKUP_PATH.read_text(encoding="utf-8")
+    backup = BACKUP_HOOK_PATH.read_text(encoding="utf-8")
 
     require("const MAX_DONE_COUNT_BYTES = 32;" in app, "累計回数の保存値にサイズ上限を設けてください")
     require("const DONE_COUNT_PATTERN = /^(0|[1-9]\\d{0,15})$/;" in app, "累計回数は正規化された10進整数だけを受け付けてください")
@@ -56,10 +56,12 @@ def main():
     )
     require("refreshGuardProgressFromStorage()" not in disabled_branch, "端末保存不可時にメモリ上の進捗を保存値で上書きしないでください")
 
-    backup_reader = section(backup, "function readStoredDoneCount()", "function historyTotal")
-    require("return readDoneCount();" in backup_reader, "バックアップも共通の累計値リーダーを使ってください")
+    backup_reader = section(backup, "function readStoredDoneCount()", "function readHistory()")
+    require("parseDoneCount(safeRead(DONE_COUNT_STORAGE_KEY, '0'))" in backup_reader,
+            "Reactバックアップも同じ形式・safe integer検証を通した累計値だけを使ってください")
+    require(not (ROOT / "backup.js").exists(), "削除済みclassic backup.jsを戻さないでください")
 
-    print("Progress storage guards preserve in-memory counts while keeping tab-guard refreshes claim-specific.")
+    print("Progress storage guards preserve in-memory counts while React backup validates stored counts independently.")
 
 
 if __name__ == "__main__":

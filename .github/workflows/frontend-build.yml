@@ -31,10 +31,8 @@ jobs:
         run: |
           test -f dist/legacy/interop/timer.js
           test -f dist/legacy/interop/settings-progress.js
-          test -f dist/legacy/interop/progress-backup.js
           grep -q 'legacy/interop/timer.js' dist/index.html
           grep -q 'legacy/interop/settings-progress.js' dist/index.html
-          grep -q 'legacy/interop/progress-backup.js' dist/index.html
           for old in \
             react-timer-state-source.js \
             react-secondary-state-source.js \
@@ -46,7 +44,10 @@ jobs:
             react-backup-panel-bridge.js \
             custom-timer.js \
             daily-goal-progress.js \
-            stats.js; do
+            stats.js \
+            privacy-reset.js \
+            backup.js \
+            legacy/interop/progress-backup.js; do
             if test -e "dist/$old"; then exit 1; fi
             if grep -q "$old" dist/index.html; then exit 1; fi
           done
