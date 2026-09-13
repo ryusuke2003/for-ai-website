@@ -1,6 +1,6 @@
 # React / Tailwind 構成整理方針
 
-ONE は vanilla JavaScript から React へ段階移行してきたため、移行用の互換レイヤーとフォールバックDOMが残っています。機能を壊さずにこの足場を外してから、Tailwind移行を再開します。
+ONE は vanilla JavaScript から React へ段階移行してきたため、移行用の互換レイヤーと classic runtime が残っています。機能を壊さずに足場を外してから、Tailwind移行を再開します。
 
 ## 現在
 
@@ -12,7 +12,8 @@ ONE は vanilla JavaScript から React へ段階移行してきたため、移�
 - React管理UIから `MutationObserver` ベースの状態同期は撤去済み
 - timer / progress / backup のReactコードは `src/features/*` に集約
 - Reactとclassic JavaScriptの互換処理は `legacy/interop/` の3ファイルに集約
-- `index.html` 自体がReact entryとinterop scriptの読み込み順を定義し、ViteのHTML文字列置換は使わない
+- `index.html` 自体がReact entryとclassic scriptの読み込み順を定義する
+- production向けclassic scriptは `index.html` から自動検出してVite/Rollupのassetとして出力する
 - Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
 - タイマー保存形式、複数タブ排他、通知権限、Wake Lock、バックアップのロールバックなどの安全性ロジックは維持する
 
@@ -31,15 +32,23 @@ Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止し�
 3. **Cleanup 3: feature / interop 単位へ整理**（完了）
    - timer / progress / backup のコンポーネントと購読hookを `src/features/*` へ移動
    - ルート直下に散らばっていた8個の `react-*-bridge.js` / `react-*-state-source.js` を3個の `legacy/interop/*.js` へ集約
-4. **Cleanup 4A: `index.html` をViteの正本にする**（この段階）
+4. **Cleanup 4A: `index.html` をViteの正本にする**（完了）
    - `injectReactEntry()` を削除
    - React entry、interop、React有効化用data属性を `index.html` に直接記述
-   - classic scriptとmodule entryをstatic checkで別々に検証する
-5. **Cleanup 4B: legacy copy / フォールバックDOMを縮小**
-   - `copyLegacyScripts()` を廃止できる配置へclassic JavaScriptを移す
-   - 直接 `index.html` を開くための互換を終了する
-   - classic JavaScriptの機能ロジックを `src/features/*` 側へ段階的に移し、`legacy/interop/` 自体を削除する
-6. **Tailwind移行を再開**
+5. **Cleanup 4B: classic script出力を `index.html` 基準にする**（完了）
+   - `legacyScripts` の手書き一覧を削除
+   - `copyFile()` によるbuild後コピーを廃止
+   - classic scriptを `index.html` から自動検出してasset出力
+6. **Cleanup 4C: フォールバックDOMをruntime scaffoldへ縮小**（この段階）
+   - `index.html` に重複していた画面全体の旧UIを削除
+   - classic runtimeが初期化時に参照する最小DOMだけを非表示scaffoldとして一時的に残す
+   - React mount後はscaffoldごと置き換える
+   - `index.html` の直接オープンをユーザー向けfallbackとして扱わない
+7. **Cleanup 4D: classic runtime / interopを機能単位で廃止**
+   - ルート直下のclassic JavaScriptを `src/features/*` 側へ移す
+   - `legacy/interop/` を段階的に削除
+   - 最終的に `index.html` を `#root` とVite entry中心へする
+8. **Tailwind移行を再開**
    - 7B: タイマーUI
    - 7C: 集中記録・統計・バックアップUI
    - 7D: テーマ色・フォーカス・レスポンシブと旧CSS整理
@@ -85,19 +94,24 @@ legacy/interop/
 
 これらはclassic JavaScriptが保持する既存状態・イベント経路をReactへ公開するための一時的なアダプターです。複数タブ排他、完了記録、バックアップ検証などの既存の安全な処理を迂回せず、既存ボタンへの操作委譲と `useSyncExternalStore` 用のsnapshot/event公開だけを担当します。
 
-Cleanup 4Aでは、これらをVite pluginが文字列置換でHTMLへ差し込む方式をやめ、読み込み順を `index.html` だけ見れば把握できるようにします。実装本体の移動・廃止はCleanup 4B以降で行います。
+## legacy runtime scaffold
+
+Cleanup 4C以降、`index.html` の `#root` には画面の完成形を重複して書きません。残すのは、classic scriptが起動時に `querySelector()` で取得する要素と初期状態だけを持つ `#legacy-runtime-scaffold` です。
+
+scaffoldは `hidden` かつ `aria-hidden="true"` で、ユーザー向けUIではありません。classic scriptが既存の状態機械・保存・複数タブ制御を初期化した後、Reactが `#root` を描画してscaffoldを置き換えます。classic側が保持した要素参照はその後も互換レイヤー経由の状態ソースとして使います。
+
+この形にすることで、React UIと `index.html` の旧UIを二重管理せずに、classic runtimeを廃止するまでの安全な中間状態を保てます。
 
 ## `index.html` とViteの役割
 
 `index.html` は次の責務を持ちます。
 
 - CSPと基本meta情報
-- classic JavaScriptの読み込み順
-- 一時的なinterop scriptの読み込み順
+- classic JavaScript / interopの読み込み順
 - `/src/main.jsx` のmodule entry
-- legacy初期化に必要なフォールバックDOM
+- classic初期化に必要な最小runtime scaffold
 
-Vite側はTailwind pluginと、まだ残るclassic JavaScriptをproduction出力へコピーする処理だけを担当します。HTMLの書き換えは行いません。
+Vite側はTailwind pluginと、`index.html` に書かれたclassic scriptをproduction assetとして出力する処理を担当します。HTML文字列の差し替えやclassic script一覧の二重管理は行いません。
 
 ## 残すテストの考え方
 
@@ -113,4 +127,4 @@ Vite側はTailwind pluginと、まだ残るclassic JavaScriptをproduction出力
 
 ## 整理後の目標
 
-Cleanup 4B完了時には、`index.html` を `#root` とViteエントリ中心の通常構成へさらに縮小し、ルート直下のclassic JavaScriptと `legacy/interop/` を段階的に廃止します。その後にTailwind Step 7B以降を再開します。
+Cleanup 4D完了時には、`index.html` を `#root` とViteエントリ中心の通常構成へ寄せ、ルート直下のclassic JavaScriptと `legacy/interop/` を廃止します。その後にTailwind Step 7B以降を再開します。

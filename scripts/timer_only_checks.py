@@ -3,6 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 INDEX_SOURCE = (ROOT / "index.html").read_text(encoding="utf-8")
+REACT_APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 APP_SOURCE = (ROOT / "app.js").read_text(encoding="utf-8")
 SHORTCUTS_SOURCE = (ROOT / "shortcuts.js").read_text(encoding="utf-8")
 STORAGE_SOURCE = (ROOT / "storage-status.js").read_text(encoding="utf-8")
@@ -15,8 +16,9 @@ def require(condition, message):
 
 
 def main():
-    for token in ('id="task-input"', 'class="card task-card"', 'task-character-count'):
-        require(token not in INDEX_SOURCE, f"廃止したタスク入力UIを残さないでください: {token}")
+    rendered_ui_source = INDEX_SOURCE + "\n" + REACT_APP_SOURCE
+    for token in ('id="task-input"', 'task-character-count', 'task-card'):
+        require(token not in rendered_ui_source, f"廃止したタスク入力UIを残さないでください: {token}")
 
     for token in ('taskInput', 'STORAGE_KEYS.task', 'STORAGE_KEYS.taskDate', 'loadDailyTask', 'hasActiveDailyTaskContext'):
         require(token not in APP_SOURCE, f"app.js に廃止したタスク処理を残さないでください: {token}")
@@ -32,17 +34,17 @@ def main():
 
     require('<title>ONE — 集中タイマー</title>' in INDEX_SOURCE, "ページタイトルをタイマー用途に合わせてください")
 
-    timer_step = INDEX_SOURCE.find('<span class="step">01</span>')
-    timer_title = INDEX_SOURCE.find('id="timer-title"')
-    done_step = INDEX_SOURCE.find('<span class="step">02</span>')
-    done_title = INDEX_SOURCE.find('id="done-title"')
-    backup_step = INDEX_SOURCE.find('<span class="step">03</span>')
-    backup_title = INDEX_SOURCE.find('id="backup-title"')
+    timer_step = REACT_APP_SOURCE.find('<span className="step">01</span>')
+    timer_title = REACT_APP_SOURCE.find('id="timer-title"')
+    done_step = REACT_APP_SOURCE.find('<span className="step">02</span>')
+    done_title = REACT_APP_SOURCE.find('id="done-title"')
+    backup_step = REACT_APP_SOURCE.find('<span className="step">03</span>')
+    backup_title = REACT_APP_SOURCE.find('id="backup-title"')
 
     require(-1 not in (timer_step, timer_title, done_step, done_title, backup_step, backup_title),
-            "タイマー・集中記録・バックアップの3ステップを維持してください")
+            "React UIでタイマー・集中記録・バックアップの3ステップを維持してください")
     require(timer_step < timer_title < done_step < done_title < backup_step < backup_title,
-            "タイマー→集中記録→バックアップの順で表示してください")
+            "React UIはタイマー→集中記録→バックアップの順で表示してください")
 
     print("Timer-only checks passed: task planning is removed while timer, records, and legacy cleanup remain.")
 
