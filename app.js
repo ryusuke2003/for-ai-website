@@ -1,4 +1,3 @@
-const taskInput = document.querySelector('#task-input');
 const timer = document.querySelector('#timer');
 const timerCard = document.querySelector('.timer-card');
 const timerStatus = document.querySelector('#timer-status');
@@ -22,8 +21,6 @@ const MAX_DONE_COUNT_BYTES = 32;
 const DONE_COUNT_PATTERN = /^(0|[1-9]\d{0,15})$/;
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 const STORAGE_KEYS = {
-  task: 'one.task',
-  taskDate: 'one.taskDate.v1',
   count: 'one.doneCount',
   timer: 'one.timer.v1',
   history: 'one.history.v1',
@@ -95,54 +92,6 @@ function isValidDateKey(key) {
   return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day;
 }
 
-function hasActiveDailyTaskContext() {
-  const fullDuration = selectedMinutes * 60;
-  return timerId !== null
-    || completionReady
-    || (remainingSeconds > 0 && remainingSeconds < fullDuration);
-}
-
-function loadDailyTask({ preserveActiveSession = false, preserveLocalTask = false } = {}) {
-  if (storageAccessFailed) return;
-
-  const today = dateKey();
-  const storedTask = safeRead(STORAGE_KEYS.task).slice(0, 120);
-  if (storageAccessFailed) return;
-
-  const storedTaskDate = safeRead(STORAGE_KEYS.taskDate);
-  if (storageAccessFailed) return;
-
-  if (
-    preserveLocalTask
-    && (
-      (storedTaskDate === today && document.activeElement === taskInput)
-      || (preserveActiveSession && hasActiveDailyTaskContext())
-    )
-  ) {
-    return;
-  }
-
-  if (!storedTaskDate) {
-    taskInput.value = storedTask;
-    safeWrite(STORAGE_KEYS.taskDate, today);
-    return;
-  }
-
-  if (storedTaskDate === today) {
-    taskInput.value = storedTask;
-    return;
-  }
-
-  if (preserveActiveSession && hasActiveDailyTaskContext()) {
-    taskInput.value = storedTask;
-    return;
-  }
-
-  taskInput.value = '';
-  safeWrite(STORAGE_KEYS.task, '');
-  safeWrite(STORAGE_KEYS.taskDate, today);
-}
-
 function normalizeHistory(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
 
@@ -209,7 +158,7 @@ function renderTimer() {
   const formatted = formatTime(remainingSeconds);
   timer.textContent = formatted;
   timer.setAttribute('aria-label', `残り時間 ${formatted}`);
-  document.title = timerId ? `${formatted} — ONE` : 'ONE — 今日やる一つだけ';
+  document.title = timerId ? `${formatted} — ONE` : 'ONE — 集中タイマー';
 }
 
 function saveTimerState() {
@@ -306,7 +255,7 @@ function startTimer() {
   endAt = Date.now() + remainingSeconds * 1000;
   timerId = window.setInterval(tick, 250);
   setStartButton('一時停止', true);
-  setTimerFeedback('集中中。今の一つだけに集中。', 'running');
+  setTimerFeedback('集中中。終了までこの時間に集中。', 'running');
   saveTimerState();
   tick();
 }
@@ -463,7 +412,6 @@ function renderHistory() {
 
 function refreshDateSensitiveUi() {
   if (renderedDateKey !== dateKey()) renderHistory();
-  loadDailyTask({ preserveActiveSession: true, preserveLocalTask: true });
 }
 
 function incrementFocusHistory(key = dateKey()) {
@@ -480,15 +428,7 @@ function loadState() {
   renderHistory();
   setFocusMode(safeRead(STORAGE_KEYS.focusMode) === '1', { persist: false, announce: false });
   restoreTimerState();
-  loadDailyTask({ preserveActiveSession: true });
 }
-
-taskInput.addEventListener('focus', refreshDateSensitiveUi);
-taskInput.addEventListener('beforeinput', refreshDateSensitiveUi);
-taskInput.addEventListener('input', () => {
-  safeWrite(STORAGE_KEYS.task, taskInput.value.slice(0, 120));
-  safeWrite(STORAGE_KEYS.taskDate, dateKey());
-});
 
 startButton.addEventListener('click', toggleTimer);
 resetButton.addEventListener('click', resetTimer);
