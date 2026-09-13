@@ -1,8 +1,8 @@
 import { registerTimerRuntime, tabGuardActions } from './tabGuard.js';
+import { timerStateGuard } from './timerStateGuard.js';
 
 const DEFAULT_MINUTES = 25;
 const TICK_INTERVAL_MS = 250;
-const TIMER_STORAGE_KEY = 'one.timer.v1';
 const DATE_KEY_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 const listeners = new Set();
@@ -12,15 +12,10 @@ function reportStorageFailure() {
   window.dispatchEvent(new Event('one:storage-error'));
 }
 
-function timerGuard() {
-  return globalThis.ONE_TIMER_STATE_GUARD;
-}
-
 function validTimerMinutes(minutes) {
-  const guard = timerGuard();
-  const min = Number.isInteger(guard?.minMinutes) ? guard.minMinutes : 1;
-  const max = Number.isInteger(guard?.maxMinutes) ? guard.maxMinutes : 180;
-  return Number.isInteger(minutes) && minutes >= min && minutes <= max;
+  return Number.isInteger(minutes)
+    && minutes >= timerStateGuard.minMinutes
+    && minutes <= timerStateGuard.maxMinutes;
 }
 
 function dateKey(date = new Date()) {
@@ -39,9 +34,8 @@ function isValidDateKey(key) {
 
 function readStoredTimerState() {
   try {
-    const guard = timerGuard();
-    const raw = localStorage.getItem(guard?.storageKey ?? TIMER_STORAGE_KEY);
-    return guard?.parse?.(raw) ?? null;
+    const raw = localStorage.getItem(timerStateGuard.storageKey);
+    return timerStateGuard.parse(raw);
   } catch {
     reportStorageFailure();
     return null;
@@ -62,7 +56,7 @@ function storageShape(value) {
 function persistTimerState(value) {
   const payload = JSON.stringify(storageShape(value));
   try {
-    localStorage.setItem(timerGuard()?.storageKey ?? TIMER_STORAGE_KEY, payload);
+    localStorage.setItem(timerStateGuard.storageKey, payload);
     return true;
   } catch {
     reportStorageFailure();

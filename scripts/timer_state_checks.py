@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-BOOTSTRAP_PATH = ROOT / "timer-bootstrap.js"
+TIMER_GUARD_PATH = ROOT / "src" / "features" / "timer" / "timerStateGuard.js"
 TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
 TIMER_STATE_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useTimerState.js"
 TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
@@ -14,7 +14,7 @@ EXPECTED_LIMIT = 10_000
 def read_limit(source):
     match = re.search(r"const MAX_BYTES = ([0-9_]+);", source)
     if not match:
-        raise SystemExit("ERROR: timer-bootstrap.js の MAX_BYTES が見つかりません")
+        raise SystemExit("ERROR: timerStateGuard.js の MAX_BYTES が見つかりません")
     return int(match.group(1).replace("_", ""))
 
 
@@ -32,26 +32,32 @@ def require(condition, message):
 
 
 def main():
-    bootstrap_source = BOOTSTRAP_PATH.read_text(encoding="utf-8")
+    timer_guard_source = TIMER_GUARD_PATH.read_text(encoding="utf-8")
     timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
     timer_state_hook = TIMER_STATE_HOOK_PATH.read_text(encoding="utf-8")
     timer_display = TIMER_DISPLAY_PATH.read_text(encoding="utf-8")
 
-    require(read_limit(bootstrap_source) == EXPECTED_LIMIT,
+    require(not (ROOT / "timer-bootstrap.js").exists(),
+            "タイマー保存値の検証器をclassic timer-bootstrap.jsへ戻さないでください")
+    require(read_limit(timer_guard_source) == EXPECTED_LIMIT,
             f"タイマー保存状態の上限は {EXPECTED_LIMIT} にしてください")
 
-    parse_position = bootstrap_source.find("JSON.parse(raw)")
-    size_guard_position = bootstrap_source.find("raw.length > MAX_BYTES")
+    parse_position = timer_guard_source.find("JSON.parse(raw)")
+    size_guard_position = timer_guard_source.find("raw.length > MAX_BYTES")
     require(parse_position >= 0 and 0 <= size_guard_position < parse_position,
-            "timer-bootstrap.js は JSON.parse より前にサイズ上限を確認してください")
-    require("document.querySelector('#custom-preset')" not in bootstrap_source,
-            "保存形式bootstrapへhidden timer DOM処理を戻さないでください")
+            "timerStateGuard.js は JSON.parse より前にサイズ上限を確認してください")
+    require("document.querySelector('#custom-preset')" not in timer_guard_source,
+            "保存形式guardへhidden timer DOM処理を戻さないでください")
+    require("export const timerStateGuard = Object.freeze" in timer_guard_source,
+            "タイマー状態検証器はES moduleとして公開してください")
 
     read_stored = source_range(timer_store, "function readStoredTimerState()", "function storageShape")
-    require("guard?.parse?.(raw)" in read_stored,
-            "Reactタイマーストアは共通検証器で保存状態を復元してください")
+    require("timerStateGuard.parse(raw)" in read_stored,
+            "Reactタイマーストアはmodule検証器で保存状態を復元してください")
     require("JSON.parse(raw)" not in read_stored,
             "Reactタイマーストアで保存状態を独自にJSON.parseしないでください")
+    require("import { timerStateGuard } from './timerStateGuard.js';" in timer_store,
+            "ReactタイマーストアはtimerStateGuardを直接importしてください")
 
     initial = source_range(timer_store, "function initialTimerState()", "let currentState")
     for token in (
@@ -113,7 +119,7 @@ def main():
     require(not (ROOT / "custom-timer.js").exists(),
             "React移行後はclassic custom-timer.jsを残さないでください")
 
-    print("Timer storage validation, restore, controls, progress, end time, and title are React-store owned.")
+    print("Timer storage validation is module-owned while restore, controls, progress, end time, and title stay React-store owned.")
 
 
 if __name__ == "__main__":
