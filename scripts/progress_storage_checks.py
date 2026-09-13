@@ -2,7 +2,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parent.parent
-APP_PATH = ROOT / "app.js"
+STORE_PATH = ROOT / "src" / "features" / "progress" / "progressStore.js"
 TAB_GUARD_PATH = ROOT / "tab-guard.js"
 BACKUP_HOOK_PATH = ROOT / "src" / "features" / "backup" / "useBackupControl.js"
 
@@ -23,36 +23,43 @@ def require(condition, message):
 
 
 def main():
-    app = APP_PATH.read_text(encoding="utf-8")
+    store = STORE_PATH.read_text(encoding="utf-8")
     tab_guard = TAB_GUARD_PATH.read_text(encoding="utf-8")
     backup = BACKUP_HOOK_PATH.read_text(encoding="utf-8")
 
-    require("const MAX_DONE_COUNT_BYTES = 32;" in app, "累計回数の保存値にサイズ上限を設けてください")
-    require("const DONE_COUNT_PATTERN = /^(0|[1-9]\\d{0,15})$/;" in app, "累計回数は正規化された10進整数だけを受け付けてください")
+    require(not (ROOT / "app.js").exists(), "進捗保存runtimeをapp.jsへ戻さないでください")
+    require("const MAX_DONE_COUNT_BYTES = 32;" in store, "累計回数の保存値にサイズ上限を設けてください")
+    require("const DONE_COUNT_PATTERN = /^(0|[1-9]\\d{0,15})$/;" in store,
+            "累計回数は正規化された10進整数だけを受け付けてください")
 
-    parser = section(app, "function parseDoneCount(raw)", "function readDoneCount()")
+    parser = section(store, "export function parseDoneCount(raw)", "function readDoneCount()")
     size_guard = parser.find("raw.length > MAX_DONE_COUNT_BYTES")
     pattern_guard = parser.find("DONE_COUNT_PATTERN.test(raw)")
     number_parse = parser.find("Number(raw)")
-    require(size_guard >= 0 and pattern_guard >= 0 and number_parse >= 0, "parseDoneCount() の検証処理が不足しています")
-    require(size_guard < number_parse and pattern_guard < number_parse, "累計回数は数値化する前にサイズと形式を検証してください")
-    require("Number.isSafeInteger(count)" in parser, "累計回数はsafe integerだけを受け付けてください")
+    require(size_guard >= 0 and pattern_guard >= 0 and number_parse >= 0,
+            "parseDoneCount() の検証処理が不足しています")
+    require(size_guard < number_parse and pattern_guard < number_parse,
+            "累計回数は数値化する前にサイズと形式を検証してください")
+    require("Number.isSafeInteger(count)" in parser,
+            "累計回数はsafe integerだけを受け付けてください")
 
-    load_state = section(app, "function loadProgressState()", "document.addEventListener('visibilitychange'")
-    require("doneCount.textContent = String(readDoneCount());" in load_state,
+    initial = section(store, "function initialState()", "let currentState")
+    require("const doneCount = readDoneCount();" in initial,
             "初期表示は共通の累計値リーダーを使ってください")
+    require("const history = readHistory();" in initial,
+            "初期表示は検証済み履歴を使ってください")
 
     record_handler = section(tab_guard, "function recordPendingCompletion()", "function discardPendingCompletion()")
-    require("const current = parseDoneCount(doneCount.textContent);" in record_handler,
-            "保存不可時もメモリ上の累計を基準に加算してください")
-    require("doneCount.textContent = String(next);" in record_handler,
-            "保存確認前に現在タブの累計を維持してください")
+    require("progressRuntime.incrementInMemory?.(completedOn)" in record_handler,
+            "保存不可時もReact store上の進捗を先に更新してください")
+    require("progressRuntime.persistDoneCountAtLeast?.(progressUpdate.nextCount)" in record_handler,
+            "タイマー消費確認後に累計を保存してください")
+    require("progressRuntime.persistHistoryEntryAtLeast?.(" in record_handler,
+            "累計保存確認後に日次履歴を保存してください")
 
     guard_progress_refresh = section(tab_guard, "function refreshGuardProgressFromStorage()", "function setCrossTabFeedback")
-    require("const storedDoneCount = readDoneCount();" in guard_progress_refresh,
-            "tab-guardのclaim固有再読込も共通の累計値リーダーを使ってください")
-    require("doneCount.textContent = String(storedDoneCount);" in guard_progress_refresh,
-            "claim固有再読込では検証済みの累計値だけを画面へ反映してください")
+    require("progressRuntime.refreshFromStorage?.() === true" in guard_progress_refresh,
+            "tab-guardのclaim固有再読込はReact storeへ委譲してください")
 
     claim = section(tab_guard, "function claimPendingCompletion()", "function verifyCompletionConsumedState()")
     disabled_branch = claim.split("if (!localSessionId)", 1)[0]
@@ -68,7 +75,7 @@ def main():
             "Reactバックアップも同じ形式・safe integer検証を通した累計値だけを使ってください")
     require(not (ROOT / "backup.js").exists(), "削除済みclassic backup.jsを戻さないでください")
 
-    print("Progress storage guards preserve in-memory counts while React timer completion and backup validate storage.")
+    print("React progress store preserves in-memory counts while completion and backup validate persisted progress.")
 
 
 if __name__ == "__main__":
