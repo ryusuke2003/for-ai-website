@@ -1,0 +1,36 @@
+name: Generate Cargo lock
+
+on:
+  push:
+    branches: [feat/macos-menu-bar]
+
+permissions:
+  contents: write
+
+jobs:
+  generate-lock:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+
+      - name: Generate Cargo.lock
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+
+      - name: Commit lockfile and push temporary tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src-tauri/Cargo.lock
+          git commit -m "tray-icon依存をCargo.lockへ反映"
+          tag_name="generated-tray-lock-${GITHUB_RUN_ID}"
+          git tag "$tag_name"
+          git push origin "refs/tags/$tag_name"
+          echo "GENERATED_TAG=$tag_name"
