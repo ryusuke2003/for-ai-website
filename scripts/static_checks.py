@@ -12,6 +12,7 @@ THEME_COMPONENT_PATH = ROOT / "src" / "components" / "ThemeSwitcher.jsx"
 TIMER_SETTINGS_PATH = ROOT / "src" / "features" / "timer" / "TimerSettings.jsx"
 TIMER_DISPLAY_PATH = ROOT / "src" / "features" / "timer" / "TimerDisplay.jsx"
 TIMER_STORE_PATH = ROOT / "src" / "features" / "timer" / "timerStore.js"
+TIMER_GUARD_PATH = ROOT / "src" / "features" / "timer" / "timerStateGuard.js"
 CUSTOM_TIMER_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCustomTimerControl.js"
 WAKE_LOCK_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
 COMPLETION_EFFECTS_HOOK_PATH = ROOT / "src" / "features" / "timer" / "useCompletionEffectsControl.js"
@@ -24,7 +25,6 @@ PRIVACY_RESET_HOOK_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyRese
 
 REQUIRED_SCRIPT_ORDER = [
     "theme-bootstrap.js",
-    "timer-bootstrap.js",
 ]
 
 
@@ -86,7 +86,7 @@ def main():
             "React entryは /src/main.jsx のmodule scriptを1つだけにしてください", errors)
 
     for removed_file in (
-        "tab-guard.js", "app.js", "stats.js", "privacy-reset.js", "backup.js", "shortcuts.js",
+        "timer-bootstrap.js", "tab-guard.js", "app.js", "stats.js", "privacy-reset.js", "backup.js", "shortcuts.js",
         "legacy/interop/timer.js", "legacy/interop/settings-progress.js", "legacy/interop/progress-backup.js",
     ):
         fail_if((ROOT / removed_file).exists(), f"React移行後は{removed_file}を残さないでください", errors)
@@ -117,6 +117,7 @@ def main():
             script_sources.append(script_path.read_text(encoding="utf-8"))
 
     timer_store = TIMER_STORE_PATH.read_text(encoding="utf-8")
+    timer_guard = TIMER_GUARD_PATH.read_text(encoding="utf-8")
     progress_store = PROGRESS_STORE_PATH.read_text(encoding="utf-8")
     required_timer_boundary_flow = """if (remainingSeconds <= 0) {
     finishTimer();
@@ -128,6 +129,10 @@ def main():
             "0秒到達時は一時停止より先にfinishTimerへ流してください", errors)
     fail_if("window.dispatchEvent(new Event('one:storage-error'));" not in timer_store,
             "タイマー保存失敗時は全体へ通知してください", errors)
+    fail_if("import { timerStateGuard } from './timerStateGuard.js';" not in timer_store,
+            "タイマー保存値の検証器はES moduleから直接importしてください", errors)
+    fail_if("export const timerStateGuard = Object.freeze" not in timer_guard,
+            "タイマー保存値の検証器をmodule APIとして維持してください", errors)
     fail_if("tabGuardActions.beforeStart(currentState)" not in timer_store,
             "タイマー開始前にmoduleの複数タブ調停を通してください", errors)
     fail_if("registerTimerRuntime(timerRuntime)" not in timer_store,
@@ -237,6 +242,7 @@ def main():
 
     storage_source = "\n".join([
         *script_sources,
+        timer_guard,
         timer_store,
         progress_store,
         storage_component,
