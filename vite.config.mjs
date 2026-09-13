@@ -6,6 +6,7 @@ const legacyScripts = [
   'theme-bootstrap.js',
   'timer-bootstrap.js',
   'app.js',
+  'react-timer-controls-bridge.js',
   'storage-status.js',
   'completion-sound.js',
   'wake-lock.js',
@@ -25,7 +26,14 @@ function injectReactEntry() {
     enforce: 'pre',
     transformIndexHtml(html) {
       return html
-        .replace('<html lang="ja">', '<html lang="ja" data-react-theme="1">')
+        .replace(
+          '<html lang="ja">',
+          '<html lang="ja" data-react-theme="1" data-react-timer-controls="1">',
+        )
+        .replace(
+          '<script src="app.js" defer></script>',
+          '<script src="app.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
+        )
         .replace(
           '<script type="module" data-vite-entry="/src/main.jsx"></script>',
           '<script type="module" src="/src/main.jsx"></script>',
