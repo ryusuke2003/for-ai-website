@@ -1,0 +1,32 @@
+name: Generate Cargo.lock
+
+on:
+  push:
+    branches: [chore/add-cargo-lock]
+
+permissions:
+  contents: read
+
+jobs:
+  generate:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+
+      - name: Generate Cargo.lock
+        run: cargo generate-lockfile --manifest-path src-tauri/Cargo.toml
+
+      - name: Print Cargo.lock
+        shell: bash
+        run: |
+          echo '---CARGO_LOCK_BASE64_BEGIN---'
+          python3 -c "import base64; print(base64.b64encode(open('src-tauri/Cargo.lock','rb').read()).decode())"
+          echo '---CARGO_LOCK_BASE64_END---'
