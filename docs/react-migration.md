@@ -1,81 +1,67 @@
-# React / Tailwind 段階移行方針
+# React / Tailwind 構成整理方針
 
-ONE は既存のタイマー・記録機能を壊さないことを優先し、UI → 状態同期 → CSS基盤の順で段階移行します。
+ONE は vanilla JavaScript から React へ段階移行してきたため、現在は移行用の bridge / state source / 複数root / フォールバックDOMが残っています。機能を壊さずにこの足場を外してから、Tailwind移行を再開します。
 
 ## 現在
 
 - React 19.3.0 / React DOM 19.3.0
 - Vite 8.3.0
 - Tailwind CSS 4.3.3 / `@tailwindcss/vite` 4.3.3
-- `src/main.jsx` をReactエントリーポイントとして使用
-- Hero / Footer / ThemeSwitcher / タイマーUI / 集中記録・統計UI / バックアップUIはReact管理
-- React管理UIの外部状態購読は `useSyncExternalStore` ベースへ統一
-- DOM変化を監視する `MutationObserver` bridge はReact管理UIから撤去
-- 保存形式、タイマー状態機械、複数タブ排他、通知権限、Wake Lock、バックアップのロールバックなど安全性ロジックは既存vanilla JavaScriptを正として維持
-- TailwindはPreflightを無効にした状態で段階導入し、既存CSSとの衝突を避ける
-- 初回描画のちらつきを防ぐ `theme-bootstrap.js` はCSSより前に残す
+- React管理UIの状態購読は `useSyncExternalStore` ベースへ統一済み
+- React管理UIから `MutationObserver` ベースの状態同期は撤去済み
+- Tailwind Step 7Aとして Hero / Footer / ThemeSwitcher のutility化まで完了
+- タイマー保存形式、複数タブ排他、通知権限、Wake Lock、バックアップのロールバックなどの安全性ロジックは維持する
 
-## 移行順
+## いったん止めるもの
 
-1. **表示専用領域** — Hero / Footer（完了）
-2. **表示テーマ** — ThemeSwitcher と保存・別タブ同期（完了）
-3. **タイマーUI**（完了）
-   - 3A: 開始・一時停止 / リセット / 集中表示
-   - 3B: 残り時間 / 進捗 / 状態 / 終了予定時刻
-   - 3C: 時間プリセット / 自由設定 / 完了音・通知・画面維持
-4. **集中記録・統計UI**（完了）
-   - 4A: 記録 / 破棄、今日 / 今週 / 連続日 / 累計
-   - 4B: 今日の目標、直近7日 / 30日の可視化
-5. **バックアップ・データ削除UI** — JSON書き出し / 復元 / Undo / 端末データ削除（完了）
-6. **状態管理のReact統合**（完了）
-   - 6A: タイマー表示・主操作を共有状態ソースへ統合
-   - 6B: タイマー設定・集中記録サマリーを外部状態購読へ統合
-   - 6C: 目標・可視化 / バックアップUIも外部状態購読へ統合し、残ったDOM監視と旧タスク互換を削除
-7. **Tailwind CSS移行**
-   - 7A: Tailwind基盤導入 + Hero / Footer / ThemeSwitcherのレイアウト・タイポグラフィをutility化（この段階）
-   - 7B: タイマーUIをutility化
-   - 7C: 集中記録・統計・バックアップUIをutility化
-   - 7D: テーマ色・フォーカス・レスポンシブ指定をTailwind側へ統合し、旧CSS依存を削減
+Tailwind Step 7B以降は、React構成の大掃除が終わるまで停止します。移行用DOM構造と旧CSSを同時に触ると回帰原因を切り分けにくいためです。
 
-## Step 6: React状態境界
+## 大掃除の順番
 
-`react-timer-state-source.js`、`react-secondary-state-source.js`、`react-remaining-state-source.js` が既存ロジックの状態を安定したスナップショットとして公開し、React側は `useSyncExternalStore` で購読します。
+1. **Cleanup 1: 移行用の足場を削除**（この段階）
+   - `react_migration_checks.py` など、過去の移行形を固定するだけの検査を削除
+   - 機能・セキュリティ・保存・複数タブ・バックアップの振る舞いテストは維持
+2. **Cleanup 2: `App.jsx` + 単一React root**
+   - 複数の `createRoot()` と `wrapSiblingRange()` を廃止
+   - React管理UIを1つのコンポーネントツリーへまとめる
+3. **Cleanup 3: bridge / state source を feature 単位へ整理**
+   - `react-*-bridge.js` / `react-*-state-source.js` を段階的に廃止
+   - タイマー、記録、バックアップのロジックを `src/features/*` へ移す
+   - 安全性ロジックは書き換えず、まず配置と依存方向を整理する
+4. **Cleanup 4: `index.html` / Vite構成を簡素化**
+   - legacy script injection / copy を削減
+   - 直接 `index.html` を開くためのフォールバック互換を終了し、通常のViteアプリ構成へ寄せる
+   - 最終的に `#root` + `/src/main.jsx` を中心とする構成へする
+5. **Tailwind移行を再開**
+   - 7B: タイマーUI
+   - 7C: 集中記録・統計・バックアップUI
+   - 7D: テーマ色・フォーカス・レスポンシブと旧CSS整理
 
-これにより、React管理UIのためだけにDOMを監視する `MutationObserver` は不要になりました。操作bridgeは、複数タブ排他やバックアップの安全性ロジックを迂回しないよう、既存のイベント経路への委譲と必要なフォーカス転送だけを担当します。
+## 残すテストの考え方
 
-## 残す vanilla JavaScript
+移行手順そのものを固定するテストは削除します。一方で、次の振る舞いは今後もCIで守ります。
 
-ReactへUIと購読境界を移しても、次のロジックは安全性のため無理にReactへ書き直しません。
-
-- タイマーの時刻計算と保存形式
+- タイマー状態と復元
 - 複数タブの所有権・二重記録防止
-- 通知権限と完了音の一回実行制御
-- Screen Wake Lock制御
-- 履歴・目標・バックアップの入力検証
-- 復元前退避、保存確認、失敗時ロールバック
-- 端末データ削除と別タブ通知
+- 日付境界と履歴
+- 完了音 / 通知 / Wake Lock
+- バックアップ検証、復元前退避、ロールバック
+- 保存障害時のフォールバック
+- CSP、フォーカス、秘密情報混入防止
 
-これらはReactから既存の安全な操作経路を呼び出し、状態だけをイベント駆動で購読します。
+## 整理後の目標構成
 
-## Step 7A: Tailwind基盤
+```text
+src/
+├── App.jsx
+├── main.jsx
+├── components/
+├── features/
+│   ├── timer/
+│   ├── progress/
+│   └── backup/
+├── hooks/
+└── styles/
+```
 
-Tailwind CSS 4.3.3と公式Vite pluginを導入し、`src/tailwind.css` をReactエントリから読み込みます。
-
-既存画面へTailwind Preflightを一度に適用すると、button / input / headingなどのリセットが既存CSSへ広く影響します。そのため7Aでは `tailwindcss/theme.css` と `tailwindcss/utilities.css` だけを読み込み、Preflightは明示的に無効化します。
-
-最初のutility化対象は副作用の小さい `HeroIntro`、`AppFooter`、`ThemeSwitcher` のレイアウト・余白・タイポグラフィです。色やテーマ切替の既存セレクタはまだ残し、ライト / ダーク / 自動テーマの挙動を同時に書き換えません。
-
-`styles.css` / `timer-progress.css` は直接 `index.html` を開くフォールバックと未移行領域のため、この段階では削除しません。後続PRで機能単位にTailwindへ寄せてから削減します。
-
-## 移行ルール
-
-- 1つのPRで責務を広げすぎない
-- 既存の保存形式と複数タブ排他をUI/CSS移行と同時に変更しない
-- DOMを状態ソースにする `MutationObserver` bridgeを使わない
-- Reactの外部状態購読は安定したsnapshotを返す
-- 操作は安全性ロジックを迂回しない
-- Tailwind移行中はPreflightによる全体リセットを避ける
-- `dangerouslySetInnerHTML` は使わない
-- 各段階でQuality checks、`npm audit --audit-level=moderate`、Vite production buildを通す
-
-Viteを通さず `index.html` を開いた場合は従来のフォールバックHTML・既存CSS・既存スクリプトを維持します。Vite経由ではReactとTailwind utilityを段階的に使用します。
+ルート直下にある多数の `react-*.js` と legacy script は、Cleanup 2〜4で安全に減らしていきます。
