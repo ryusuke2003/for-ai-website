@@ -19,7 +19,7 @@ import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
 import { TodoPageWithActions } from './features/todo/TodoPageWithActions.jsx';
-import { buildTrayTimelineMarks } from './features/todo/trayTimelineMarks.js';
+import { buildTrayTimelineMarks, shouldHideTrayTimelineMarkLabel } from './features/todo/trayTimelineMarks.js';
 
 const BREAK_MINUTES = 5;
 const TODO_STORAGE_KEY = 'one.todos.v2';
@@ -203,6 +203,7 @@ function TrayTodoPanel({ onShowTimer }) {
               {range.marks.map((minute) => {
                 const top = (minute - range.first) * range.scale;
                 const endpoint = minute === range.first || minute === range.last;
+                const hideLabel = !endpoint && shouldHideTrayTimelineMarkLabel(minute, currentMinute, range.scale);
                 const labelTransform = minute === range.first
                   ? 'translateY(8px)'
                   : minute === range.last
@@ -211,12 +212,14 @@ function TrayTodoPanel({ onShowTimer }) {
 
                 return (
                   <div className="absolute left-0 right-0" key={minute} style={{ top: `${top}px` }} aria-hidden="true">
-                    <span
-                      className="absolute left-3 text-[0.68rem] font-bold text-[var(--one-subtle)]"
-                      style={{ transform: labelTransform }}
-                    >
-                      {formatMinute(minute)}
-                    </span>
+                    {hideLabel ? null : (
+                      <span
+                        className="absolute left-3 text-[0.68rem] font-bold text-[var(--one-subtle)]"
+                        style={{ transform: labelTransform }}
+                      >
+                        {formatMinute(minute)}
+                      </span>
+                    )}
                     <span className={`absolute left-[62px] right-0 border-t ${endpoint ? 'border-[var(--one-border)]' : 'border-dashed border-[var(--one-border-soft)]'}`} />
                   </div>
                 );
