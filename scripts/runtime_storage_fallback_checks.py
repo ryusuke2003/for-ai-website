@@ -3,7 +3,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = (ROOT / "tab-guard.js").read_text(encoding="utf-8")
-STORAGE_STATUS_SOURCE = (ROOT / "storage-status.js").read_text(encoding="utf-8")
+APP_SOURCE = (ROOT / "src" / "App.jsx").read_text(encoding="utf-8")
 
 
 def function_body(name, next_name):
@@ -57,24 +57,34 @@ def main():
         "タブ間保存プローブの書込不一致・削除不一致・API例外は全体の保存障害へ通知してください",
     )
 
-    health_probe = section(STORAGE_STATUS_SOURCE, "function probeLocalStorage()", "function removeLegacyTaskData()")
+    health_probe = section(APP_SOURCE, "function probeLocalStorage()", "function removeLegacyTaskData()")
     write_pos = health_probe.find("localStorage.setItem(STORAGE_HEALTH_PROBE_KEY, token)")
     verify_write_pos = health_probe.find("const persisted = localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === token")
     reject_write_pos = health_probe.find("if (!persisted)", verify_write_pos)
     remove_pos = health_probe.find("localStorage.removeItem(STORAGE_HEALTH_PROBE_KEY)", reject_write_pos)
-    verify_remove_pos = health_probe.find("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) !== null", remove_pos)
+    verify_remove_pos = health_probe.find("localStorage.getItem(STORAGE_HEALTH_PROBE_KEY) === null", remove_pos)
     require(
         min(write_pos, verify_write_pos, reject_write_pos, remove_pos, verify_remove_pos) >= 0,
-        "端末保存プローブは書込・読戻し・不一致拒否・削除・削除確認まで行ってください",
+        "React端末保存プローブは書込・読戻し・不一致拒否・削除・削除確認まで行ってください",
     )
     require(
         write_pos < verify_write_pos < reject_write_pos < remove_pos < verify_remove_pos,
-        "端末保存プローブは書込→読戻し→不一致拒否→削除→削除確認の順にしてください",
+        "React端末保存プローブは書込→読戻し→不一致拒否→削除→削除確認の順にしてください",
     )
-    require(
-        health_probe.count("reportStorageFailure();") >= 3,
-        "端末保存プローブの書込不一致・削除不一致・API例外は全体の保存障害へ通知してください",
-    )
+
+    legacy_cleanup = section(APP_SOURCE, "function removeLegacyTaskData()", "function reportStorageHealthFailure()")
+    require("LEGACY_TASK_STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));" in legacy_cleanup,
+            "旧タスク保存値を既知キー単位で削除してください")
+    require("LEGACY_TASK_STORAGE_KEYS.every((key) => localStorage.getItem(key) === null)" in legacy_cleanup,
+            "旧タスク保存値の削除後は読み戻して確認してください")
+
+    health_status = section(APP_SOURCE, "function StorageHealthStatus()", "function TimerSection()")
+    require("window.addEventListener('one:storage-error', handleStorageError);" in health_status,
+            "React端末保存表示は実行中の保存障害を購読してください")
+    require("probeLocalStorage();" in health_status, "React初期化時に端末保存を確認してください")
+    require("removeLegacyTaskData();" in health_status, "端末保存が利用可能なら旧タスク保存値を掃除してください")
+    require("reportStorageHealthFailure();" in health_status,
+            "端末保存確認または旧データ掃除に失敗したら既存の保存障害イベントへ通知してください")
 
     refresh = function_body("refreshGuardProgressFromStorage", "stopCrossTabAction")
     count_read = refresh.find("const storedDoneCount = readDoneCount();")
@@ -101,7 +111,7 @@ def main():
     stale_check = stale.find("if (storageCoordinationUnavailable()) return false;", stale_read)
     require(stale_read >= 0 and stale_check > stale_read, "再開時の古いタブ判定は保存読込後の障害を確認してください")
 
-    print("Runtime storage fallback checks passed with verified storage probe cleanup and tab coordination fallbacks.")
+    print("Runtime storage fallback checks passed with React storage health and tab coordination fallbacks.")
 
 
 if __name__ == "__main__":
