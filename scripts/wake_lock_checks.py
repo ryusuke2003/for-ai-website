@@ -5,7 +5,7 @@ ROOT = Path(__file__).resolve().parent.parent
 HOOK_PATH = ROOT / "src" / "features" / "timer" / "useWakeLockControl.js"
 SETTINGS_PATH = ROOT / "src" / "features" / "timer" / "TimerSettings.jsx"
 INDEX_PATH = ROOT / "index.html"
-PRIVACY_RESET_PATH = ROOT / "privacy-reset.js"
+PRIVACY_RESET_PATH = ROOT / "src" / "features" / "backup" / "usePrivacyResetControl.js"
 
 
 def require(condition, message):
