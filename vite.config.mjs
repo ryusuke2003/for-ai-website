@@ -23,21 +23,23 @@ const legacyScripts = [
 function injectReactEntry() {
   return {
     name: 'inject-react-entry',
-    enforce: 'pre',
-    transformIndexHtml(html) {
-      return html
-        .replace(
-          '<html lang="ja">',
-          '<html lang="ja" data-react-theme="1" data-react-timer-controls="1">',
-        )
-        .replace(
-          '<script src="app.js" defer></script>',
-          '<script src="app.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
-        )
-        .replace(
-          '<script type="module" data-vite-entry="/src/main.jsx"></script>',
-          '<script type="module" src="/src/main.jsx"></script>',
-        );
+    transformIndexHtml: {
+      order: 'pre',
+      handler(html) {
+        return html
+          .replace(
+            '<html lang="ja">',
+            '<html lang="ja" data-react-theme="1" data-react-timer-controls="1">',
+          )
+          .replace(
+            '<script src="app.js" defer></script>',
+            '<script src="app.js" defer></script>\n  <script src="react-timer-controls-bridge.js" defer></script>',
+          )
+          .replace(
+            '<script type="module" data-vite-entry="/src/main.jsx"></script>',
+            '<script type="module" src="/src/main.jsx"></script>',
+          );
+      },
     },
   };
 }
