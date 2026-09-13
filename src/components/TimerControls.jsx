@@ -1,47 +1,38 @@
-import { useEffect, useRef, useState } from 'react';
-
-const DEFAULT_STATE = {
-  startLabel: 'スタート',
-  startPressed: false,
-  startDisabled: false,
-  resetDisabled: false,
-  focusLabel: '集中表示',
-  focusPressed: false,
-  focusAriaLabel: '集中表示に切り替える',
-};
-
-function readBridgeState() {
-  return globalThis.ONE_REACT_TIMER_CONTROLS?.snapshot?.() ?? DEFAULT_STATE;
-}
+import { useEffect, useRef } from 'react';
+import { useTimerState } from '../state/useTimerState.js';
 
 function invokeBridge(action) {
   globalThis.ONE_REACT_TIMER_CONTROLS?.[action]?.();
 }
 
+function startLabelFor(state) {
+  if (state.running) return '一時停止';
+
+  const fullDuration = Math.max(1, state.selectedMinutes * 60);
+  if (state.remainingSeconds > 0 && state.remainingSeconds < fullDuration) return '再開';
+  if (state.remainingSeconds === 0) return 'もう一度';
+  return 'スタート';
+}
+
 export function TimerControls() {
-  const [state, setState] = useState(readBridgeState);
+  const state = useTimerState();
   const startRef = useRef(null);
   const focusRef = useRef(null);
 
   useEffect(() => {
-    function handleState(event) {
-      setState(event.detail ?? readBridgeState());
-    }
-
     function handleFocus(event) {
       if (event.detail?.control === 'start') startRef.current?.focus();
       if (event.detail?.control === 'focus') focusRef.current?.focus();
     }
 
-    window.addEventListener('one:timer-controls-state', handleState);
     window.addEventListener('one:timer-controls-focus', handleFocus);
-    setState(readBridgeState());
-
     return () => {
-      window.removeEventListener('one:timer-controls-state', handleState);
       window.removeEventListener('one:timer-controls-focus', handleFocus);
     };
   }, []);
+
+  const focusLabel = state.focusMode ? '通常表示' : '集中表示';
+  const focusAriaLabel = state.focusMode ? '通常表示に戻る' : '集中表示に切り替える';
 
   return (
     <>
@@ -50,18 +41,18 @@ export function TimerControls() {
         id="start-button"
         type="button"
         aria-keyshortcuts="Space"
-        aria-pressed={state.startPressed}
-        disabled={state.startDisabled}
+        aria-pressed={state.running}
+        disabled={state.completionReady}
         ref={startRef}
         onClick={() => invokeBridge('start')}
       >
-        {state.startLabel}
+        {startLabelFor(state)}
       </button>
       <button
         className="secondary"
         id="reset-button"
         type="button"
-        disabled={state.resetDisabled}
+        disabled={state.completionReady}
         onClick={() => invokeBridge('reset')}
       >
         リセット
@@ -70,13 +61,13 @@ export function TimerControls() {
         className="secondary"
         id="focus-mode-button"
         type="button"
-        aria-pressed={state.focusPressed}
+        aria-pressed={state.focusMode}
         aria-keyshortcuts="F Escape"
-        aria-label={state.focusAriaLabel}
+        aria-label={focusAriaLabel}
         ref={focusRef}
         onClick={() => invokeBridge('toggleFocus')}
       >
-        {state.focusLabel}
+        {focusLabel}
       </button>
     </>
   );
