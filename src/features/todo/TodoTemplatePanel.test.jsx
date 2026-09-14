@@ -62,7 +62,13 @@ describe('Todo template panel', () => {
 
     expect(screen.queryByRole('dialog', { name: 'テンプレートを編集' })).toBeNull();
     expect(screen.getByText('A-1過去問')).not.toBeNull();
-    expect(screen.getByText('30分 · ドラッグして時間割へ')).not.toBeNull();
+    const templateCard = screen.getByLabelText('A-1過去問テンプレートをドラッグ');
+    const templateDetails = templateCard.querySelector('strong + span');
+    expect(Array.from(templateDetails.children).map((line) => line.textContent)).toEqual([
+      '30分',
+      '時間割にドラッグ',
+    ]);
+    expect(Array.from(templateDetails.children).every((line) => line.classList.contains('block'))).toBe(true);
 
     expect(JSON.parse(localStorage.getItem(TEMPLATE_STORAGE_KEY))).toEqual([
       { id: 'study-template', text: 'A-1過去問', duration: 30 },

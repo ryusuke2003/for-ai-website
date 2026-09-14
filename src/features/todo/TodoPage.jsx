@@ -611,7 +611,10 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
           >
             <div className="min-w-0 flex-1 select-none">
               <strong className="block truncate text-[0.86rem]">{template.text}</strong>
-              <span className="mt-0.5 block text-[0.72rem] font-bold text-[var(--one-muted)]">{template.duration}分 · ドラッグして時間割へ</span>
+              <span className="mt-0.5 block text-[0.72rem] font-bold text-[var(--one-muted)]">
+                <span className="block">{template.duration}分</span>
+                <span className="block">時間割にドラッグ</span>
+              </span>
             </div>
             <span className="shrink-0 select-none text-[0.72rem] font-bold text-[var(--one-muted)]" aria-hidden="true">⋮⋮</span>
             <button
