@@ -1,13 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeTodoWithoutOverlap } from './todoSchedule.js';
+import {
+  initialTimelineAnchorMinute,
+  minuteFromTimelinePointer,
+  TODO_TIMELINE_MINUTE_STEP,
+  TODO_TIMELINE_PX_PER_HOUR,
+} from './todoTimelinePosition.js';
+import { currentMinuteOfDay, useCurrentMinute } from './useCurrentMinute.js';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
 const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 const TEMPLATE_STORAGE_KEY = 'one.todoTemplates.v1';
 const DRAG_MIME = 'application/x-one-todo';
-const MINUTE_STEP = 5;
+const MINUTE_STEP = TODO_TIMELINE_MINUTE_STEP;
 const DAY_MINUTES = 24 * 60;
-const PX_PER_HOUR = 300;
+const PX_PER_HOUR = TODO_TIMELINE_PX_PER_HOUR;
 const TIMELINE_HEIGHT = 24 * PX_PER_HOUR;
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SUBCARD_CLASS = 'rounded-3xl border border-[var(--one-border)] bg-[var(--one-stat-bg)] p-5 max-[560px]:rounded-[20px] max-[560px]:p-4';
@@ -707,25 +714,38 @@ function TimelineTask({ todo, onToggle, onEdit, onRemove, onDragStart }) {
   );
 }
 
+function CurrentTimeIndicator() {
+  const { currentMinute } = useCurrentMinute();
+  const currentTime = formatMinuteOfDay(currentMinute);
+
+  return (
+    <div
+      className="pointer-events-none absolute left-[62px] right-0 z-20"
+      style={{ top: `${(currentMinute / 60) * PX_PER_HOUR}px` }}
+      data-testid="todo-current-time-line"
+    >
+      <span className="absolute left-0 right-0 border-t-2 border-[var(--one-fg)] opacity-30" aria-hidden="true" />
+      <time className="absolute left-2 -translate-y-1/2 whitespace-nowrap rounded-full bg-[var(--one-primary-bg)] px-2 py-1 text-[0.68rem] font-extrabold leading-none text-[var(--one-primary-fg)]" dateTime={currentTime}>
+        現在 {currentTime}
+      </time>
+    </div>
+  );
+}
+
 function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onMoveTask, onToggle, onEdit, onRemove }) {
   const viewportRef = useRef(null);
-  const currentMinute = useMemo(() => {
-    const now = new Date();
-    return now.getHours() * 60 + now.getMinutes();
-  }, []);
+  const initialCurrentMinute = useRef(currentMinuteOfDay()).current;
+  const initialAnchorMinute = useRef(initialTimelineAnchorMinute(todos, initialCurrentMinute)).current;
 
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
-    const firstMinute = todos[0]?.startMinute ?? currentMinute;
-    viewport.scrollTop = Math.max(0, ((firstMinute - 60) / 60) * PX_PER_HOUR);
-  }, []);
+    viewport.scrollTop = Math.max(0, ((initialAnchorMinute - 60) / 60) * PX_PER_HOUR);
+  }, [initialAnchorMinute]);
 
   function minuteFromDrop(event, taskDuration) {
     const rect = event.currentTarget.getBoundingClientRect();
-    const y = clamp(event.clientY - rect.top, 0, TIMELINE_HEIGHT);
-    const minute = snapMinutes((y / PX_PER_HOUR) * 60);
-    return clamp(minute, 0, DAY_MINUTES - taskDuration);
+    return minuteFromTimelinePointer(event.clientY, rect.top, taskDuration);
   }
 
   function handleDrop(event) {
@@ -788,7 +808,7 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
             );
           })}
 
-          <div className="pointer-events-none absolute left-[62px] right-0 z-[5] border-t-2 border-[var(--one-fg)] opacity-20" style={{ top: `${(currentMinute / 60) * PX_PER_HOUR}px` }} aria-hidden="true" />
+          <CurrentTimeIndicator />
 
           {todos.map((todo) => (
             <TimelineTask

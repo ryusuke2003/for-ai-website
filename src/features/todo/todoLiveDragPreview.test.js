@@ -1,12 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { hasTodoOverlap } from './todoSchedule.js';
 import { buildLivePreviewSchedule } from './todoLiveDragPreview.js';
+import { buildDropTimePreview, minuteFromTimelinePointer } from './todoTimelinePosition.js';
 
 function todo(id, startMinute, duration = 30) {
   return { id, startMinute, duration };
 }
 
 describe('buildLivePreviewSchedule', () => {
+  it('ポインター位置を5分刻みのドロップ時刻へ変換する', () => {
+    expect(minuteFromTimelinePointer(14 * 300 + 27 * 5, 0, 25)).toBe(14 * 60 + 25);
+    expect(minuteFromTimelinePointer(24 * 300, 0, 25)).toBe(24 * 60 - 25);
+  });
+
+  it('ドロップ候補の時刻範囲と表示位置を作る', () => {
+    expect(buildDropTimePreview(14 * 60 + 25, 25)).toEqual({
+      range: '14:25–14:50',
+      top: 4327,
+      height: 121,
+    });
+  });
+
   it('下へドラッグ中は衝突する予定をリアルタイム配置用に後ろへ押す', () => {
     const todos = [todo('a', 18 * 60), todo('b', 18 * 60 + 30), todo('c', 19 * 60)];
     const preview = buildLivePreviewSchedule(
