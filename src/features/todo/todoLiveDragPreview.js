@@ -1,23 +1,19 @@
 import { placeTodoWithoutOverlap } from './todoSchedule.js';
+import {
+  buildDropTimePreview,
+  minuteFromTimelinePointer,
+  TODO_TIMELINE_PX_PER_HOUR,
+} from './todoTimelinePosition.js';
 
 const TIMELINE_SELECTOR = '[data-testid="todo-timeline"]';
 const TIME_RANGE_PREFIX = 'todo-time-range-';
-const PX_PER_HOUR = 300;
-const MINUTE_STEP = 5;
 const DAY_MINUTES = 24 * 60;
 const PREVIEW_TRANSITION = 'transform 120ms ease';
 
 let started = false;
 let activeDrag = null;
 let previewedElements = new Set();
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function snapMinutes(value) {
-  return Math.round(value / MINUTE_STEP) * MINUTE_STEP;
-}
+let dropTimePreview = null;
 
 function parseClock(value) {
   const match = /^(\d{2}):(\d{2})$/.exec(String(value).trim());
@@ -109,18 +105,48 @@ export function buildLivePreviewSchedule(todos, candidate, desiredStartMinute) {
   return placeTodoWithoutOverlap(todos, previewCandidate, desiredStartMinute, direction);
 }
 
-function resetPreview() {
+function resetTaskPreview() {
   for (const element of previewedElements) {
     element.style.transform = '';
   }
   previewedElements = new Set();
 }
 
+function resetPreview() {
+  resetTaskPreview();
+  dropTimePreview?.remove();
+  dropTimePreview = null;
+}
+
 function desiredStartMinute(event, timeline, duration) {
   const rect = timeline.getBoundingClientRect();
-  const y = clamp(event.clientY - rect.top, 0, 24 * PX_PER_HOUR);
-  const minute = snapMinutes((y / PX_PER_HOUR) * 60);
-  return clamp(minute, 0, DAY_MINUTES - duration);
+  return minuteFromTimelinePointer(event.clientY, rect.top, duration);
+}
+
+function showDropTimePreview(timeline, startMinute, duration, canPlace) {
+  const preview = buildDropTimePreview(startMinute, duration);
+  if (!dropTimePreview || dropTimePreview.parentElement !== timeline) {
+    dropTimePreview?.remove();
+    dropTimePreview = document.createElement('div');
+    dropTimePreview.className = 'pointer-events-none absolute left-[72px] right-3 z-30 rounded-2xl border-2 border-dashed border-[var(--one-control-border)] bg-[var(--one-active-bg)] px-2 py-1 shadow-[var(--one-card-shadow)]';
+    dropTimePreview.dataset.testid = 'todo-drop-time-preview';
+    dropTimePreview.setAttribute('role', 'status');
+    dropTimePreview.setAttribute('aria-live', 'polite');
+
+    const label = document.createElement('span');
+    label.className = 'inline-flex whitespace-nowrap rounded-full bg-[var(--one-primary-bg)] px-2 py-1 text-[0.72rem] font-extrabold leading-none text-[var(--one-primary-fg)]';
+    dropTimePreview.append(label);
+    timeline.append(dropTimePreview);
+  }
+
+  const indicator = dropTimePreview;
+  indicator.style.top = `${preview.top}px`;
+  indicator.style.height = `${preview.height}px`;
+  indicator.style.opacity = canPlace ? '0.92' : '0.6';
+
+  const label = indicator.firstElementChild;
+  const nextLabel = canPlace ? `ここで離すと ${preview.range}` : 'この位置には配置できません';
+  if (label.textContent !== nextLabel) label.textContent = nextLabel;
 }
 
 function applyPreview(timeline, event) {
@@ -131,7 +157,8 @@ function applyPreview(timeline, event) {
   const desiredStart = desiredStartMinute(event, timeline, activeDrag.duration);
   const preview = buildLivePreviewSchedule(todos, activeDrag, desiredStart);
 
-  resetPreview();
+  resetTaskPreview();
+  showDropTimePreview(timeline, desiredStart, activeDrag.duration, Boolean(preview));
   if (!preview) return;
 
   const previewById = new Map(preview.map((todo) => [todo.id, todo]));
@@ -140,7 +167,7 @@ function applyPreview(timeline, event) {
     const next = previewById.get(todo.id);
     if (!next || next.startMinute === todo.startMinute) continue;
 
-    const offset = ((next.startMinute - todo.startMinute) / 60) * PX_PER_HOUR;
+    const offset = ((next.startMinute - todo.startMinute) / 60) * TODO_TIMELINE_PX_PER_HOUR;
     article.style.transition = PREVIEW_TRANSITION;
     article.style.transform = `translateY(${offset}px)`;
     previewedElements.add(article);
@@ -148,7 +175,11 @@ function applyPreview(timeline, event) {
 }
 
 function resetAfterDrop() {
-  requestAnimationFrame(() => resetPreview());
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => resetPreview());
+    return;
+  }
+  resetPreview();
 }
 
 export function startTodoLiveDragPreview() {

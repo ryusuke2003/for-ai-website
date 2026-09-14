@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoPage } from './TodoPage.jsx';
+import { startTodoLiveDragPreview } from './todoLiveDragPreview.js';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
 const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
@@ -24,6 +25,16 @@ function dataTransfer({ rejectCustomType = false } = {}) {
 
 function dropAt(element, transfer, clientY) {
   const event = new MouseEvent('drop', {
+    bubbles: true,
+    cancelable: true,
+    clientY,
+  });
+  Object.defineProperty(event, 'dataTransfer', { value: transfer });
+  fireEvent(element, event);
+}
+
+function dragOverAt(element, transfer, clientY) {
+  const event = new MouseEvent('dragover', {
     bubbles: true,
     cancelable: true,
     clientY,
@@ -125,6 +136,7 @@ describe('TodoPage', () => {
   });
 
   it('テンプレートをタイムラインへドロップしてTodoを作成できる', () => {
+    startTodoLiveDragPreview();
     render(<TodoPage />);
 
     fireEvent.change(screen.getByRole('textbox', { name: 'テンプレート名' }), {
@@ -149,9 +161,13 @@ describe('TodoPage', () => {
     });
 
     fireEvent.dragStart(draggableTemplate, { dataTransfer: transfer });
-    dropAt(timeline, transfer, 9 * 300);
+    dragOverAt(timeline, transfer, 9 * 300);
+    expect(screen.getByRole('status').textContent).toBe('ここで離すと 09:00–09:25');
+    dragOverAt(timeline, transfer, 9 * 300 + 28 * 5);
+    expect(screen.getByRole('status').textContent).toBe('ここで離すと 09:30–09:55');
+    dropAt(timeline, transfer, 9 * 300 + 28 * 5);
 
-    expect(screen.getByRole('article', { name: '09:00 暗記問題' })).not.toBeNull();
+    expect(screen.getByRole('article', { name: '09:30 暗記問題' })).not.toBeNull();
   });
 
   it('短いTodoでも開始時刻と終了時刻を横に表示する', () => {

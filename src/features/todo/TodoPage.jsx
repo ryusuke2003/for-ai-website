@@ -1,13 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { placeTodoWithoutOverlap } from './todoSchedule.js';
+import {
+  minuteFromTimelinePointer,
+  TODO_TIMELINE_MINUTE_STEP,
+  TODO_TIMELINE_PX_PER_HOUR,
+} from './todoTimelinePosition.js';
 
 const TODO_STORAGE_KEY = 'one.todos.v2';
 const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 const TEMPLATE_STORAGE_KEY = 'one.todoTemplates.v1';
 const DRAG_MIME = 'application/x-one-todo';
-const MINUTE_STEP = 5;
+const MINUTE_STEP = TODO_TIMELINE_MINUTE_STEP;
 const DAY_MINUTES = 24 * 60;
-const PX_PER_HOUR = 300;
+const PX_PER_HOUR = TODO_TIMELINE_PX_PER_HOUR;
 const TIMELINE_HEIGHT = 24 * PX_PER_HOUR;
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SUBCARD_CLASS = 'rounded-3xl border border-[var(--one-border)] bg-[var(--one-stat-bg)] p-5 max-[560px]:rounded-[20px] max-[560px]:p-4';
@@ -723,9 +728,7 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
 
   function minuteFromDrop(event, taskDuration) {
     const rect = event.currentTarget.getBoundingClientRect();
-    const y = clamp(event.clientY - rect.top, 0, TIMELINE_HEIGHT);
-    const minute = snapMinutes((y / PX_PER_HOUR) * 60);
-    return clamp(minute, 0, DAY_MINUTES - taskDuration);
+    return minuteFromTimelinePointer(event.clientY, rect.top, taskDuration);
   }
 
   function handleDrop(event) {
