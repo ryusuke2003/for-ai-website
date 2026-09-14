@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { TodoPage } from './TodoPage.jsx';
 
@@ -52,6 +52,52 @@ describe('TodoPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'テストを書くを削除' }));
     expect(screen.getByText('時間を決めて追加するか、タスクを予定表へドラッグできます。')).not.toBeNull();
+  });
+
+  it('編集モーダルでタスク名・開始時刻・所要時間を変更して保存できる', () => {
+    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
+      { id: 'edit-me', text: 'A-1過去問', completed: false, startMinute: 11 * 60 + 5, duration: 25 },
+    ]));
+
+    render(<TodoPage />);
+    fireEvent.click(screen.getByRole('button', { name: 'A-1過去問を編集' }));
+
+    const dialog = screen.getByRole('dialog', { name: '予定を編集' });
+    fireEvent.change(within(dialog).getByRole('textbox', { name: 'タスク名' }), {
+      target: { value: 'A-1復習' },
+    });
+    fireEvent.click(within(dialog).getByRole('button', { name: '開始・分を進める' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'かかる時間を進める' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '変更を保存' }));
+
+    expect(screen.queryByRole('dialog', { name: '予定を編集' })).toBeNull();
+    expect(screen.getByRole('article', { name: '11:10 A-1復習' })).not.toBeNull();
+    expect(screen.getByText('11:10–11:40')).not.toBeNull();
+    expect(JSON.parse(localStorage.getItem(TODO_STORAGE_KEY))[0]).toMatchObject({
+      id: 'edit-me',
+      text: 'A-1復習',
+      startMinute: 11 * 60 + 10,
+      duration: 30,
+    });
+  });
+
+  it('編集で時間が重なる場合は後続Todoを押し出して重複を防ぐ', () => {
+    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
+      { id: 'first', text: '前半', completed: false, startMinute: 10 * 60, duration: 25 },
+      { id: 'second', text: '後半', completed: false, startMinute: 10 * 60 + 30, duration: 25 },
+    ]));
+
+    render(<TodoPage />);
+    fireEvent.click(screen.getByRole('button', { name: '前半を編集' }));
+
+    const dialog = screen.getByRole('dialog', { name: '予定を編集' });
+    fireEvent.click(within(dialog).getByRole('button', { name: 'かかる時間を進める' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'かかる時間を進める' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: '変更を保存' }));
+
+    expect(screen.getByText('10:00–10:35')).not.toBeNull();
+    expect(screen.getByRole('article', { name: '10:35 後半' })).not.toBeNull();
+    expect(screen.getByText('10:35–11:00')).not.toBeNull();
   });
 
   it('時間ピッカーをホイール操作で変更できる', () => {
