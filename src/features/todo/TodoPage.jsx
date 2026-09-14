@@ -370,6 +370,106 @@ function TodoEditModal({ todo, onCancel, onSave }) {
   );
 }
 
+function TemplateEditModal({ template, onCancel, onSave }) {
+  const [text, setText] = useState(template.text);
+  const [duration, setDuration] = useState(template.duration);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onCancel();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    onSave({
+      ...template,
+      text: trimmed.slice(0, 120),
+      duration,
+    });
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
+    >
+      <div
+        className="w-full max-w-[520px] rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-5 shadow-[var(--one-card-shadow)] max-[560px]:rounded-[22px]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="template-edit-title"
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="m-0 text-[0.72rem] font-extrabold tracking-[0.1em] text-[var(--one-subtle)]">EDIT TEMPLATE</p>
+            <h2 id="template-edit-title" className="mb-0 mt-1 text-[1.2rem]">テンプレートを編集</h2>
+          </div>
+          <button
+            className="rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.76rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]"
+            type="button"
+            onClick={onCancel}
+          >
+            閉じる
+          </button>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="mb-1.5 block text-[0.72rem] font-extrabold tracking-[0.08em] text-[var(--one-subtle)]" htmlFor="template-edit-text">テンプレート名を編集</label>
+            <input
+              ref={inputRef}
+              id="template-edit-text"
+              className="w-full rounded-2xl border border-[var(--one-control-border-soft)] bg-[var(--one-input-bg)] px-4 py-3.5 font-semibold text-[var(--one-fg)]"
+              type="text"
+              maxLength={120}
+              autoComplete="off"
+              value={text}
+              onChange={(event) => setText(event.target.value)}
+            />
+          </div>
+
+          <WheelSelect
+            label="編集するテンプレートの所要時間"
+            value={duration}
+            options={DURATIONS}
+            format={(value) => `${value}分`}
+            onChange={setDuration}
+          />
+
+          <div className="flex justify-end gap-2.5">
+            <button
+              className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.8rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]"
+              type="button"
+              onClick={onCancel}
+            >
+              キャンセル
+            </button>
+            <button
+              className="rounded-full border border-[var(--one-control-border)] bg-[var(--one-primary-bg)] px-5 py-2 text-[0.8rem] font-extrabold text-[var(--one-primary-fg)] disabled:opacity-40"
+              type="submit"
+              disabled={text.trim().length === 0}
+            >
+              変更を保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TodoComposer({ draft, setDraft, startMinute, setStartMinute, duration, setDuration, onAdd }) {
   function handleSubmit(event) {
     event.preventDefault();
@@ -432,6 +532,8 @@ function TodoComposer({ draft, setDraft, startMinute, setStartMinute, duration, 
 function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
   const [text, setText] = useState('');
   const [duration, setDuration] = useState(25);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const editingTemplate = templates.find((template) => template.id === editingTemplateId) ?? null;
 
   function saveTemplate(event) {
     event.preventDefault();
@@ -445,8 +547,23 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
     setText('');
   }
 
+  function saveTemplateEdit(nextTemplate) {
+    const trimmed = nextTemplate.text.trim();
+    if (!trimmed) return false;
+
+    const normalizedDuration = normalizeDuration(nextTemplate.duration);
+    setTemplates((current) => current.map((template) => (
+      template.id === nextTemplate.id
+        ? { ...template, text: trimmed.slice(0, 120), duration: normalizedDuration }
+        : template
+    )));
+    setEditingTemplateId(null);
+    return true;
+  }
+
   function removeTemplate(id) {
     setTemplates((current) => current.filter((template) => template.id !== id));
+    if (editingTemplateId === id) setEditingTemplateId(null);
   }
 
   return (
@@ -507,6 +624,15 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
               使う
             </button>
             <button
+              className="shrink-0 rounded-full border-0 bg-transparent px-2 py-1 text-[0.7rem] font-extrabold text-[var(--one-muted)] opacity-70 hover:text-[var(--one-fg)] group-hover:opacity-100"
+              type="button"
+              aria-label={`${template.text}テンプレートを編集`}
+              draggable={false}
+              onClick={() => setEditingTemplateId(template.id)}
+            >
+              編集
+            </button>
+            <button
               className="shrink-0 rounded-full border-0 bg-transparent px-2 py-1 text-[0.7rem] font-extrabold text-[var(--one-muted)] opacity-60 hover:text-[var(--one-fg)] group-hover:opacity-100"
               type="button"
               aria-label={`${template.text}テンプレートを削除`}
@@ -518,6 +644,15 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
           </div>
         ))}
       </div>
+
+      {editingTemplate ? (
+        <TemplateEditModal
+          key={editingTemplate.id}
+          template={editingTemplate}
+          onCancel={() => setEditingTemplateId(null)}
+          onSave={saveTemplateEdit}
+        />
+      ) : null}
     </aside>
   );
 }
