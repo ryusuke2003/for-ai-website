@@ -254,6 +254,122 @@ function TimeAndDurationPicker({ startMinute, duration, onStartMinuteChange, onD
   );
 }
 
+function TodoEditModal({ todo, onCancel, onSave }) {
+  const [text, setText] = useState(todo.text);
+  const [startMinute, setStartMinute] = useState(todo.startMinute);
+  const [duration, setDuration] = useState(todo.duration);
+  const [error, setError] = useState('');
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') onCancel();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onCancel]);
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    const trimmed = text.trim();
+    if (!trimmed) return;
+
+    const saved = onSave({
+      ...todo,
+      text: trimmed.slice(0, 120),
+      startMinute,
+      duration,
+    });
+    if (!saved) {
+      setError('この時間では予定を重ならずに配置できません。時刻か所要時間を調整してください。');
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4 backdrop-blur-[2px]"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onCancel();
+      }}
+    >
+      <div
+        className="w-full max-w-[560px] rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-5 shadow-[var(--one-card-shadow)] max-[560px]:rounded-[22px]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="todo-edit-title"
+      >
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <p className="m-0 text-[0.72rem] font-extrabold tracking-[0.1em] text-[var(--one-subtle)]">EDIT TASK</p>
+            <h2 id="todo-edit-title" className="mb-0 mt-1 text-[1.2rem]">予定を編集</h2>
+          </div>
+          <button
+            className="rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.76rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]"
+            type="button"
+            onClick={onCancel}
+          >
+            閉じる
+          </button>
+        </div>
+
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="mb-1.5 block text-[0.72rem] font-extrabold tracking-[0.08em] text-[var(--one-subtle)]" htmlFor="todo-edit-text">タスク名</label>
+            <input
+              ref={inputRef}
+              id="todo-edit-text"
+              className="w-full rounded-2xl border border-[var(--one-control-border-soft)] bg-[var(--one-input-bg)] px-4 py-3.5 font-semibold text-[var(--one-fg)]"
+              type="text"
+              maxLength={120}
+              autoComplete="off"
+              value={text}
+              onChange={(event) => {
+                setText(event.target.value);
+                setError('');
+              }}
+            />
+          </div>
+
+          <TimeAndDurationPicker
+            startMinute={startMinute}
+            duration={duration}
+            onStartMinuteChange={(value) => {
+              setStartMinute(value);
+              setError('');
+            }}
+            onDurationChange={(value) => {
+              setDuration(value);
+              setError('');
+            }}
+          />
+
+          {error ? <p className="m-0 text-[0.78rem] font-bold text-[var(--one-fg)]" role="alert">{error}</p> : null}
+
+          <div className="flex justify-end gap-2.5">
+            <button
+              className="rounded-full border border-[var(--one-border)] bg-transparent px-4 py-2 text-[0.8rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]"
+              type="button"
+              onClick={onCancel}
+            >
+              キャンセル
+            </button>
+            <button
+              className="rounded-full border border-[var(--one-control-border)] bg-[var(--one-primary-bg)] px-5 py-2 text-[0.8rem] font-extrabold text-[var(--one-primary-fg)] disabled:opacity-40"
+              type="submit"
+              disabled={text.trim().length === 0}
+            >
+              変更を保存
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 function TodoComposer({ draft, setDraft, startMinute, setStartMinute, duration, setDuration, onAdd }) {
   function handleSubmit(event) {
     event.preventDefault();
@@ -406,7 +522,7 @@ function TemplatePanel({ templates, setTemplates, onUseTemplate }) {
   );
 }
 
-function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
+function TimelineTask({ todo, onToggle, onEdit, onRemove, onDragStart }) {
   const top = (todo.startMinute / 60) * PX_PER_HOUR;
   const naturalHeight = (todo.duration / 60) * PX_PER_HOUR;
   const compact = todo.duration === MINUTE_STEP;
@@ -436,7 +552,16 @@ function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
           </span>
         </div>
         <span className="shrink-0 text-[0.68rem] font-bold text-[var(--one-muted)]" aria-hidden="true">⋮⋮</span>
-        <button className="shrink-0 rounded-full border-0 bg-transparent px-1.5 py-1 text-[0.68rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]" type="button" aria-label={`${todo.text}を削除`} onClick={onRemove}>
+        <button
+          className="shrink-0 rounded-full border-0 bg-transparent px-1.5 py-1 text-[0.68rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]"
+          type="button"
+          aria-label={`${todo.text}を編集`}
+          draggable={false}
+          onClick={onEdit}
+        >
+          編集
+        </button>
+        <button className="shrink-0 rounded-full border-0 bg-transparent px-1.5 py-1 text-[0.68rem] font-extrabold text-[var(--one-muted)] hover:text-[var(--one-fg)]" type="button" aria-label={`${todo.text}を削除`} draggable={false} onClick={onRemove}>
           削除
         </button>
       </div>
@@ -444,7 +569,7 @@ function TimelineTask({ todo, onToggle, onRemove, onDragStart }) {
   );
 }
 
-function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onMoveTask, onToggle, onRemove }) {
+function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onMoveTask, onToggle, onEdit, onRemove }) {
   const viewportRef = useRef(null);
   const currentMinute = useMemo(() => {
     const now = new Date();
@@ -458,11 +583,11 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
     viewport.scrollTop = Math.max(0, ((firstMinute - 60) / 60) * PX_PER_HOUR);
   }, []);
 
-  function minuteFromDrop(event, duration) {
+  function minuteFromDrop(event, taskDuration) {
     const rect = event.currentTarget.getBoundingClientRect();
     const y = clamp(event.clientY - rect.top, 0, TIMELINE_HEIGHT);
     const minute = snapMinutes((y / PX_PER_HOUR) * 60);
-    return clamp(minute, 0, DAY_MINUTES - duration);
+    return clamp(minute, 0, DAY_MINUTES - taskDuration);
   }
 
   function handleDrop(event) {
@@ -532,6 +657,7 @@ function DailyTimeline({ todos, templates, draft, draftDuration, onCreateAt, onM
               key={todo.id}
               todo={todo}
               onToggle={() => onToggle(todo.id)}
+              onEdit={() => onEdit(todo.id)}
               onRemove={() => onRemove(todo.id)}
               onDragStart={(event) => dragPayload(event, { kind: 'task', id: todo.id })}
             />
@@ -554,6 +680,7 @@ export function TodoPage() {
   const [draft, setDraft] = useState('');
   const [startMinute, setStartMinute] = useState(defaultStartMinute);
   const [duration, setDuration] = useState(25);
+  const [editingTodoId, setEditingTodoId] = useState(null);
 
   useEffect(() => {
     writeStoredArray(TODO_STORAGE_KEY, todos);
@@ -567,6 +694,7 @@ export function TodoPage() {
     () => [...todos].sort((left, right) => left.startMinute - right.startMinute || left.id.localeCompare(right.id)),
     [todos],
   );
+  const editingTodo = todos.find((todo) => todo.id === editingTodoId) ?? null;
   const remainingCount = sortedTodos.filter((todo) => !todo.completed).length;
   const completedCount = sortedTodos.length - remainingCount;
 
@@ -621,6 +749,34 @@ export function TodoPage() {
     return true;
   }
 
+  function saveTodoEdit(nextTodo) {
+    const task = todos.find((todo) => todo.id === nextTodo.id);
+    if (!task) return false;
+
+    const trimmed = nextTodo.text.trim();
+    if (!trimmed) return false;
+
+    const normalizedDuration = normalizeDuration(nextTodo.duration);
+    const normalizedStart = clamp(
+      normalizeStartMinute(nextTodo.startMinute, task.startMinute),
+      0,
+      DAY_MINUTES - normalizedDuration,
+    );
+    const candidate = {
+      ...task,
+      text: trimmed.slice(0, 120),
+      startMinute: normalizedStart,
+      duration: normalizedDuration,
+    };
+    const direction = normalizedStart < task.startMinute ? 'backward' : 'forward';
+    const placed = placeTodoWithoutOverlap(todos, candidate, normalizedStart, direction);
+    if (!placed) return false;
+
+    setTodos(placed);
+    setEditingTodoId(null);
+    return true;
+  }
+
   function toggleTodo(id) {
     setTodos((current) => current.map((todo) => (
       todo.id === id ? { ...todo, completed: !todo.completed } : todo
@@ -629,6 +785,7 @@ export function TodoPage() {
 
   function removeTodo(id) {
     setTodos((current) => current.filter((todo) => todo.id !== id));
+    if (editingTodoId === id) setEditingTodoId(null);
   }
 
   function clearCompleted() {
@@ -675,12 +832,22 @@ export function TodoPage() {
             onCreateAt={createFromDrop}
             onMoveTask={moveTodo}
             onToggle={toggleTodo}
+            onEdit={setEditingTodoId}
             onRemove={removeTodo}
           />
         </div>
 
         <TemplatePanel templates={templates} setTemplates={setTemplates} onUseTemplate={useTemplate} />
       </div>
+
+      {editingTodo ? (
+        <TodoEditModal
+          key={editingTodo.id}
+          todo={editingTodo}
+          onCancel={() => setEditingTodoId(null)}
+          onSave={saveTodoEdit}
+        />
+      ) : null}
     </section>
   );
 }
