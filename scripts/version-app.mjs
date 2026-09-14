@@ -37,16 +37,35 @@ export function cargoUpdateArguments(manifestPath, nextVersion, packageName = CA
   ];
 }
 
+export function formatCargoUpdateError(error) {
+  const stderr = error && typeof error === 'object' && 'stderr' in error
+    ? error.stderr
+    : null;
+  const cargoDetail = typeof stderr === 'string'
+    ? stderr.trim()
+    : Buffer.isBuffer(stderr)
+      ? stderr.toString('utf8').trim()
+      : '';
+
+  if (cargoDetail) return `cargo update failed:\n${cargoDetail}`;
+  const fallback = error instanceof Error ? error.message : String(error);
+  return `cargo update failed: ${fallback}`;
+}
+
 function updateCargoLock({ rootDir, manifestPath, nextVersion }) {
-  execFileSync(
-    'cargo',
-    cargoUpdateArguments(manifestPath, nextVersion),
-    {
-      cwd: rootDir,
-      encoding: 'utf8',
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
+  try {
+    execFileSync(
+      'cargo',
+      cargoUpdateArguments(manifestPath, nextVersion),
+      {
+        cwd: rootDir,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    );
+  } catch (error) {
+    throw new Error(formatCargoUpdateError(error), { cause: error });
+  }
 }
 
 export function bumpPatchVersion({ rootDir = process.cwd(), runCargo } = {}) {

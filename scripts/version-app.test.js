@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   bumpPatchVersion,
   cargoUpdateArguments,
+  formatCargoUpdateError,
   incrementPatchVersion,
   readLockedPackageVersion,
   replaceCargoPackageVersion,
@@ -67,6 +68,15 @@ describe('version-app', () => {
       '--precise',
       '0.1.2',
     ]);
+  });
+
+  it('Cargo失敗時はstderrをトラブルシュート用に整形する', () => {
+    expect(formatCargoUpdateError({ stderr: 'error: package ID specification did not match\n' })).toBe(
+      'cargo update failed:\nerror: package ID specification did not match',
+    );
+    expect(formatCargoUpdateError(new Error('cargo command could not start'))).toBe(
+      'cargo update failed: cargo command could not start',
+    );
   });
 
   it('patch versionを上げてTauri設定・Cargo.toml・Cargo.lockを同期する', () => {
