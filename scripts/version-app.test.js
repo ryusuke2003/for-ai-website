@@ -1,5 +1,41 @@
-import { describe, expect, it } from 'vitest';
-import { incrementPatchVersion, readLockedPackageVersion, replaceCargoPackageVersion } from './version-app.mjs';
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  bumpPatchVersion,
+  cargoUpdateArguments,
+  incrementPatchVersion,
+  readLockedPackageVersion,
+  replaceCargoPackageVersion,
+} from './version-app.mjs';
+
+const temporaryDirectories = [];
+
+function createVersionFixture() {
+  const rootDir = mkdtempSync(join(tmpdir(), 'version-app-test-'));
+  const tauriDir = join(rootDir, 'src-tauri');
+  mkdirSync(tauriDir);
+  writeFileSync(join(tauriDir, 'tauri.conf.json'), `${JSON.stringify({ version: '0.1.1' }, null, 2)}\n`);
+  writeFileSync(join(tauriDir, 'Cargo.toml'), '[package]\nname = "one-desktop"\nversion = "0.1.0"\n');
+  writeFileSync(join(tauriDir, 'Cargo.lock'), 'version = 4\n\n[[package]]\nname = "one-desktop"\nversion = "0.1.0"\n');
+  temporaryDirectories.push(rootDir);
+  return rootDir;
+}
+
+function readVersionFiles(rootDir) {
+  return {
+    tauriConfig: readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8'),
+    cargoToml: readFileSync(join(rootDir, 'src-tauri/Cargo.toml'), 'utf8'),
+    cargoLock: readFileSync(join(rootDir, 'src-tauri/Cargo.lock'), 'utf8'),
+  };
+}
+
+afterEach(() => {
+  for (const directory of temporaryDirectories.splice(0)) {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 describe('version-app', () => {
   it('patch versionを1つ上げる', () => {
@@ -19,5 +55,61 @@ describe('version-app', () => {
   it('Cargo.lockからone-desktopのversionを取得する', () => {
     const source = '[[package]]\nname = "one-desktop"\nversion = "0.1.2"\ndependencies = [\n "tauri",\n]\n';
     expect(readLockedPackageVersion(source)).toBe('0.1.2');
+  });
+
+  it('Cargo自身で対象packageだけを指定versionへ更新する引数を組み立てる', () => {
+    expect(cargoUpdateArguments('/tmp/app/Cargo.toml', '0.1.2')).toEqual([
+      'update',
+      '--manifest-path',
+      '/tmp/app/Cargo.toml',
+      '--package',
+      'one-desktop',
+      '--precise',
+      '0.1.2',
+    ]);
+  });
+
+  it('patch versionを上げてTauri設定・Cargo.toml・Cargo.lockを同期する', () => {
+    const rootDir = createVersionFixture();
+
+    const result = bumpPatchVersion({
+      rootDir,
+      runCargo: ({ cargoLockPath, nextVersion }) => {
+        const current = readFileSync(cargoLockPath, 'utf8');
+        writeFileSync(cargoLockPath, current.replace('version = "0.1.0"', `version = "${nextVersion}"`));
+      },
+    });
+
+    expect(result).toEqual({ currentVersion: '0.1.1', nextVersion: '0.1.2' });
+    expect(JSON.parse(readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8')).version).toBe('0.1.2');
+    expect(readFileSync(join(rootDir, 'src-tauri/Cargo.toml'), 'utf8')).toContain('version = "0.1.2"');
+    expect(readLockedPackageVersion(readFileSync(join(rootDir, 'src-tauri/Cargo.lock'), 'utf8'))).toBe('0.1.2');
+  });
+
+  it('Cargo処理が失敗した場合は3ファイルすべてを実行前の状態へ戻す', () => {
+    const rootDir = createVersionFixture();
+    const originalFiles = readVersionFiles(rootDir);
+
+    expect(() => bumpPatchVersion({
+      rootDir,
+      runCargo: ({ cargoLockPath }) => {
+        writeFileSync(cargoLockPath, 'partially updated lockfile\n');
+        throw new Error('cargo update failed');
+      },
+    })).toThrow('cargo update failed');
+
+    expect(readVersionFiles(rootDir)).toEqual(originalFiles);
+  });
+
+  it('Cargo.lockが期待したversionにならなければ失敗して3ファイルを戻す', () => {
+    const rootDir = createVersionFixture();
+    const originalFiles = readVersionFiles(rootDir);
+
+    expect(() => bumpPatchVersion({
+      rootDir,
+      runCargo: () => {},
+    })).toThrow('Cargo.lock version did not update to 0.1.2 (actual: 0.1.0)');
+
+    expect(readVersionFiles(rootDir)).toEqual(originalFiles);
   });
 });

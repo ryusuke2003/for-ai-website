@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
+const CARGO_PACKAGE_NAME = 'one-desktop';
 
 export function incrementPatchVersion(version) {
   const match = VERSION_PATTERN.exec(version);
@@ -24,6 +25,30 @@ export function readLockedPackageVersion(source, packageName = 'one-desktop') {
   return match?.[1] ?? null;
 }
 
+export function cargoUpdateArguments(manifestPath, nextVersion, packageName = CARGO_PACKAGE_NAME) {
+  return [
+    'update',
+    '--manifest-path',
+    manifestPath,
+    '--package',
+    packageName,
+    '--precise',
+    nextVersion,
+  ];
+}
+
+function updateCargoLock({ rootDir, manifestPath, nextVersion }) {
+  execFileSync(
+    'cargo',
+    cargoUpdateArguments(manifestPath, nextVersion),
+    {
+      cwd: rootDir,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+}
+
 export function bumpPatchVersion({ rootDir = process.cwd(), runCargo } = {}) {
   const tauriConfigPath = resolve(rootDir, 'src-tauri/tauri.conf.json');
   const cargoTomlPath = resolve(rootDir, 'src-tauri/Cargo.toml');
@@ -36,22 +61,21 @@ export function bumpPatchVersion({ rootDir = process.cwd(), runCargo } = {}) {
   const currentVersion = tauriConfig.version;
   const nextVersion = incrementPatchVersion(currentVersion);
 
-  const executeCargo = runCargo ?? (() => {
-    execFileSync(
-      'cargo',
-      ['metadata', '--manifest-path', 'src-tauri/Cargo.toml', '--format-version', '1', '--no-deps'],
-      { cwd: rootDir, stdio: 'inherit' },
-    );
-  });
+  const executeCargo = runCargo ?? updateCargoLock;
 
   try {
     tauriConfig.version = nextVersion;
     writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
     writeFileSync(cargoTomlPath, replaceCargoPackageVersion(originalCargoToml, nextVersion));
 
-    executeCargo();
+    executeCargo({
+      rootDir,
+      manifestPath: cargoTomlPath,
+      cargoLockPath,
+      nextVersion,
+    });
 
-    const lockedVersion = readLockedPackageVersion(readFileSync(cargoLockPath, 'utf8'));
+    const lockedVersion = readLockedPackageVersion(readFileSync(cargoLockPath, 'utf8'), CARGO_PACKAGE_NAME);
     if (lockedVersion !== nextVersion) {
       throw new Error(`Cargo.lock version did not update to ${nextVersion} (actual: ${lockedVersion ?? 'missing'})`);
     }
