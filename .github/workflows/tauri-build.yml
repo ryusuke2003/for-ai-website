@@ -112,8 +112,11 @@ jobs:
           fi
 
           test_key="$RUNNER_TEMP/tauri-updater-test.key"
-          npm run tauri -- signer generate --ci --write-keys "$test_key"
-          npm run tauri -- signer sign --private-key-path "$test_key" --password "" "$updater_path"
+          test_key_password="tauri-updater-smoke-test"
+          npm run tauri -- signer generate --ci --password "$test_key_password" --write-keys "$test_key"
+          TAURI_SIGNING_PRIVATE_KEY_PATH="$test_key" \
+            TAURI_SIGNING_PRIVATE_KEY_PASSWORD="$test_key_password" \
+            npm run tauri -- signer sign "$updater_path"
           if [ ! -f "$updater_path.sig" ]; then
             echo "Updater signature was not generated during PR smoke test" >&2
             exit 1
@@ -128,10 +131,15 @@ jobs:
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
           if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
             echo "TAURI_SIGNING_PRIVATE_KEY is required for updater releases." >&2
+            exit 1
+          fi
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY_PASSWORD is required for updater releases." >&2
             exit 1
           fi
           npm run tauri -- build --bundles app --no-sign \

@@ -40,12 +40,14 @@ git push origin v0.1.2
 
 Updater搭載版では、メニューバーのタイマーアイコンを右クリックし、更新項目から新しいバージョンをインストールできます。起動時にGitHub Releaseの `latest.json` を確認し、新しい版があれば更新項目を有効にします。
 
-Updaterの配布物には専用署名が必要です。最初のUpdater対応リリースを作る前に、RepositoryのActions secretへ次を登録してください。
+Updaterの配布物には専用署名が必要です。最初のUpdater対応リリースを作る前に、RepositoryのActions secretsへ次を登録してください。
 
 - Name: `TAURI_SIGNING_PRIVATE_KEY`
 - Value: Tauri Updater用の秘密鍵
+- Name: `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`
+- Value: 秘密鍵を生成したときに設定したパスワード
 
-秘密鍵はリポジトリへコミットせず、紛失しないよう別途バックアップします。公開鍵は `src-tauri/tauri.conf.json` に置きます。
+秘密鍵とパスワードはリポジトリへコミットせず、紛失しないよう別途バックアップします。公開鍵は `src-tauri/tauri.conf.json` に置きます。タグのbuildでは両方のsecretが設定済みかを署名前に検証し、Tauri CLIには環境変数経由で渡します。
 
 現在インストール済みのUpdater非搭載版から、最初のUpdater搭載版への移行だけは手動で `timer-macos.zip` を取得してアプリ本体を置き換える必要があります。それ以降はアプリ内Updaterを利用できます。
 
