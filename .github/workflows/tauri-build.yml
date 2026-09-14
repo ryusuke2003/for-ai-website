@@ -49,6 +49,24 @@ jobs:
           workspaces: "./src-tauri -> target"
           cache-on-failure: true
 
+      - name: Test version patch command with Cargo
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          version_test_dir="$(mktemp -d)"
+          trap 'rm -rf "$version_test_dir"' EXIT
+          mkdir -p "$version_test_dir/scripts" "$version_test_dir/src-tauri"
+          cp package.json "$version_test_dir/package.json"
+          cp scripts/version-app.mjs "$version_test_dir/scripts/version-app.mjs"
+          cp src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json src-tauri/build.rs "$version_test_dir/src-tauri/"
+          cp -R src-tauri/src "$version_test_dir/src-tauri/src"
+          (
+            cd "$version_test_dir"
+            npm run version:patch
+            cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
+          )
+
       - name: Install frontend dependencies from lockfile
         run: npm ci --no-audit --no-fund
 

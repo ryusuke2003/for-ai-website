@@ -14,7 +14,7 @@ npm run version:patch
 - `src-tauri/Cargo.toml`
 - `src-tauri/Cargo.lock`
 
-`Cargo.lock` の同期には `cargo metadata` を使うため、Rust toolchainが必要です。途中で失敗した場合は3ファイルを実行前の内容へ戻します。
+`Cargo.lock` の同期には、対象packageと更新後のversionを限定した `cargo update` を使うため、Rust toolchainが必要です。依存関係全体は更新しません。途中で失敗した場合は3ファイルを実行前の内容へ戻します。
 
 更新後は差分を確認してPRへ含めます。
 
