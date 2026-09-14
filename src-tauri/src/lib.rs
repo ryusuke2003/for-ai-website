@@ -352,8 +352,8 @@ pub fn run() {
                         match install_available_update(&app_handle).await {
                             Ok(true) => app_handle.restart(),
                             Ok(false) => {
-                                let _ = update_item.set_text("最新版です");
-                                let _ = update_item.set_enabled(false);
+                                let _ = update_item.set_text("最新版です（再確認）");
+                                let _ = update_item.set_enabled(true);
                             }
                             Err(error) => {
                                 eprintln!("failed to install update: {error}");
@@ -394,8 +394,8 @@ pub fn run() {
                     let _ = update_item_for_check.set_enabled(true);
                 }
                 Ok(None) => {
-                    let _ = update_item_for_check.set_text("最新版です");
-                    let _ = update_item_for_check.set_enabled(false);
+                    let _ = update_item_for_check.set_text("最新版です（再確認）");
+                    let _ = update_item_for_check.set_enabled(true);
                 }
                 Err(error) => {
                     eprintln!("failed to check for updates: {error}");

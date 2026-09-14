@@ -18,6 +18,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Detect updater packaging changes
+        id: updater_changes
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          if git diff --name-only "$BASE_SHA" HEAD -- \
+            .github/workflows/tauri-build.yml \
+            src-tauri \
+            | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -68,7 +86,7 @@ jobs:
           )
 
       - name: Install frontend dependencies from lockfile
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || steps.updater_changes.outputs.changed == 'true'
         run: npm ci --no-audit --no-fund
 
       - name: Verify Cargo.lock is synchronized
@@ -77,6 +95,29 @@ jobs:
       - name: Check Tauri Rust code on pull requests
         if: github.event_name == 'pull_request'
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked
+
+      - name: Smoke test updater artifacts on pull requests
+        if: github.event_name == 'pull_request' && steps.updater_changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run tauri -- build --bundles app --no-sign \
+            --config '{"bundle":{"createUpdaterArtifacts":true}}' \
+            -- --locked
+
+          updater_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          if [ -z "$updater_path" ]; then
+            echo "Updater bundle was not generated during PR smoke test" >&2
+            exit 1
+          fi
+
+          test_key="$RUNNER_TEMP/tauri-updater-test.key"
+          npm run tauri -- signer generate --ci --write-keys "$test_key"
+          npm run tauri -- signer sign --private-key-path "$test_key" --password "" "$updater_path"
+          if [ ! -f "$updater_path.sig" ]; then
+            echo "Updater signature was not generated during PR smoke test" >&2
+            exit 1
+          fi
 
       - name: Build Tauri app bundle for macOS with locked dependencies
         if: github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/v')
@@ -96,6 +137,13 @@ jobs:
           npm run tauri -- build --bundles app --no-sign \
             --config '{"bundle":{"createUpdaterArtifacts":true}}' \
             -- --locked
+
+          updater_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          if [ -z "$updater_path" ]; then
+            echo "Updater bundle was not generated" >&2
+            exit 1
+          fi
+          npm run tauri -- signer sign "$updater_path"
 
       - name: Archive macOS app bundle
         if: github.event_name != 'pull_request'
