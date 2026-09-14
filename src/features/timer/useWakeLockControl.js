@@ -44,7 +44,7 @@ function writeWakeLockPreference(enabled) {
 
 function defaultStatus({ enabled, active }) {
   if (!WAKE_LOCK_SUPPORTED) return 'このブラウザでは集中中の画面維持を利用できません。';
-  if (!enabled) return '画面維持はオフです。オンにすると集中中だけ画面のスリープを抑えます。';
+  if (!enabled) return '画面維持はオフです。オンにすると集中時だけ画面のスリープを抑えます。';
   if (active) return '集中中の画面維持を有効にしています。';
   return '画面維持はオンです。タイマー開始中だけ有効になります。';
 }
