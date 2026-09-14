@@ -18,6 +18,24 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Detect updater packaging changes
+        id: updater_changes
+        if: github.event_name == 'pull_request'
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          if git diff --name-only "$BASE_SHA" HEAD -- \
+            .github/workflows/tauri-build.yml \
+            src-tauri \
+            | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
@@ -68,7 +86,7 @@ jobs:
           )
 
       - name: Install frontend dependencies from lockfile
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' || steps.updater_changes.outputs.changed == 'true'
         run: npm ci --no-audit --no-fund
 
       - name: Verify Cargo.lock is synchronized
@@ -78,9 +96,54 @@ jobs:
         if: github.event_name == 'pull_request'
         run: cargo check --manifest-path src-tauri/Cargo.toml --locked
 
+      - name: Smoke test updater artifacts on pull requests
+        if: github.event_name == 'pull_request' && steps.updater_changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm run tauri -- build --bundles app --no-sign \
+            --config '{"bundle":{"createUpdaterArtifacts":true}}' \
+            -- --locked
+
+          updater_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          if [ -z "$updater_path" ]; then
+            echo "Updater bundle was not generated during PR smoke test" >&2
+            exit 1
+          fi
+
+          test_key="$RUNNER_TEMP/tauri-updater-test.key"
+          npm run tauri -- signer generate --ci --write-keys "$test_key"
+          npm run tauri -- signer sign --private-key-path "$test_key" --password "" "$updater_path"
+          if [ ! -f "$updater_path.sig" ]; then
+            echo "Updater signature was not generated during PR smoke test" >&2
+            exit 1
+          fi
+
       - name: Build Tauri app bundle for macOS with locked dependencies
-        if: github.event_name != 'pull_request'
+        if: github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/v')
         run: npm run tauri -- build --bundles app --no-sign -- --locked
+
+      - name: Build release with updater artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
+            echo "TAURI_SIGNING_PRIVATE_KEY is required for updater releases." >&2
+            exit 1
+          fi
+          npm run tauri -- build --bundles app --no-sign \
+            --config '{"bundle":{"createUpdaterArtifacts":true}}' \
+            -- --locked
+
+          updater_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          if [ -z "$updater_path" ]; then
+            echo "Updater bundle was not generated" >&2
+            exit 1
+          fi
+          npm run tauri -- signer sign "$updater_path"
 
       - name: Archive macOS app bundle
         if: github.event_name != 'pull_request'
@@ -94,12 +157,48 @@ jobs:
           fi
           ditto -c -k --sequesterRsrc --keepParent "$app_path" timer-macos.zip
 
+      - name: Prepare updater artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          updater_path="$(find src-tauri/target/release/bundle/macos -maxdepth 1 -type f -name '*.app.tar.gz' -print -quit)"
+          if [ -z "$updater_path" ] || [ ! -f "$updater_path.sig" ]; then
+            echo "Updater bundle or signature was not generated" >&2
+            exit 1
+          fi
+
+          cp "$updater_path" timer-macos-updater.tar.gz
+          cp "$updater_path.sig" timer-macos-updater.tar.gz.sig
+
+          case "$(uname -m)" in
+            arm64) platform="darwin-aarch64" ;;
+            x86_64) platform="darwin-x86_64" ;;
+            *)
+              echo "Unsupported macOS architecture: $(uname -m)" >&2
+              exit 1
+              ;;
+          esac
+          printf '%s\n' "$platform" > updater-platform.txt
+
       - name: Upload macOS app artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: timer-macos-app
           path: timer-macos.zip
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Upload updater artifacts
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: timer-macos-updater
+          path: |
+            timer-macos-updater.tar.gz
+            timer-macos-updater.tar.gz.sig
+            updater-platform.txt
           if-no-files-found: error
           retention-days: 7
 
@@ -115,16 +214,57 @@ jobs:
         with:
           name: timer-macos-app
 
+      - name: Download updater artifacts
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: timer-macos-updater
+
+      - name: Create updater manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          version = tag.removeprefix("v")
+          repository = os.environ["GITHUB_REPOSITORY"]
+          platform = Path("updater-platform.txt").read_text(encoding="utf-8").strip()
+          signature = Path("timer-macos-updater.tar.gz.sig").read_text(encoding="utf-8").strip()
+          url = f"https://github.com/{repository}/releases/download/{tag}/timer-macos-updater.tar.gz"
+          manifest = {
+              "version": version,
+              "platforms": {
+                  platform: {
+                      "url": url,
+                      "signature": signature,
+                  }
+              },
+          }
+          Path("latest.json").write_text(
+              json.dumps(manifest, ensure_ascii=False, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Create or update GitHub Release
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          assets=(
+            timer-macos.zip
+            timer-macos-updater.tar.gz
+            timer-macos-updater.tar.gz.sig
+            latest.json
+          )
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" timer-macos.zip --clobber --repo "$GITHUB_REPOSITORY"
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber --repo "$GITHUB_REPOSITORY"
           else
-            gh release create "$GITHUB_REF_NAME" timer-macos.zip \
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --title "タイマー $GITHUB_REF_NAME" \
               --generate-notes

@@ -1,4 +1,5 @@
 use tauri_plugin_notification::NotificationExt;
+use tauri_plugin_updater::UpdaterExt;
 
 #[cfg(target_os = "macos")]
 use std::{
@@ -15,6 +16,8 @@ use tauri::{
 };
 
 const TRAY_ID: &str = "one-main-tray";
+#[cfg(target_os = "macos")]
+const UPDATE_MENU_ID: &str = "update";
 #[cfg(target_os = "macos")]
 const TRAY_WIDTH: f64 = 560.0;
 #[cfg(target_os = "macos")]
@@ -95,6 +98,37 @@ fn ensure_login_autostart() -> Result<(), String> {
 #[cfg(target_os = "macos")]
 fn launched_from_login() -> bool {
     env::args_os().any(|argument| argument.to_string_lossy() == AUTOSTART_ARGUMENT)
+}
+
+#[cfg(target_os = "macos")]
+async fn available_update_version(app: &AppHandle) -> Result<Option<String>, String> {
+    let update = app
+        .updater()
+        .map_err(|error| error.to_string())?
+        .check()
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(update.map(|update| update.version))
+}
+
+#[cfg(target_os = "macos")]
+async fn install_available_update(app: &AppHandle) -> Result<bool, String> {
+    let update = app
+        .updater()
+        .map_err(|error| error.to_string())?
+        .check()
+        .await
+        .map_err(|error| error.to_string())?;
+
+    let Some(update) = update else {
+        return Ok(false);
+    };
+
+    update
+        .download_and_install(|_, _| {}, || {})
+        .await
+        .map_err(|error| error.to_string())?;
+    Ok(true)
 }
 
 #[cfg(target_os = "macos")]
@@ -269,6 +303,7 @@ fn show_native_notification(
 pub fn run() {
     let builder = tauri::Builder::default()
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             set_tray_title,
             open_full_window,
@@ -289,8 +324,16 @@ pub fn run() {
         app.set_dock_visibility(false);
         app.manage(TrayWindowState::default());
 
+        let update_item = MenuItem::with_id(
+            app,
+            UPDATE_MENU_ID,
+            "アップデートを確認中…",
+            false,
+            None::<&str>,
+        )?;
         let quit_item = MenuItem::with_id(app, "quit", "タイマーを終了", true, None::<&str>)?;
-        let menu = Menu::with_items(app, &[&quit_item])?;
+        let menu = Menu::with_items(app, &[&update_item, &quit_item])?;
+        let update_item_for_menu = update_item.clone();
 
         let mut tray_builder = TrayIconBuilder::with_id(TRAY_ID)
             .menu(&menu)
@@ -298,7 +341,30 @@ pub fn run() {
             .icon_as_template(true)
             .title("")
             .tooltip("タイマー")
-            .on_menu_event(|app, event| {
+            .on_menu_event(move |app, event| {
+                if event.id().as_ref() == UPDATE_MENU_ID {
+                    let app_handle = app.clone();
+                    let update_item = update_item_for_menu.clone();
+                    let _ = update_item.set_text("更新中…");
+                    let _ = update_item.set_enabled(false);
+
+                    tauri::async_runtime::spawn(async move {
+                        match install_available_update(&app_handle).await {
+                            Ok(true) => app_handle.restart(),
+                            Ok(false) => {
+                                let _ = update_item.set_text("最新版です（再確認）");
+                                let _ = update_item.set_enabled(true);
+                            }
+                            Err(error) => {
+                                eprintln!("failed to install update: {error}");
+                                let _ = update_item.set_text("更新に失敗しました（再試行）");
+                                let _ = update_item.set_enabled(true);
+                            }
+                        }
+                    });
+                    return;
+                }
+
                 if event.id().as_ref() == "quit" {
                     app.exit(0);
                 }
@@ -318,6 +384,26 @@ pub fn run() {
         }
 
         tray_builder.build(app)?;
+
+        let app_handle_for_update = app.handle().clone();
+        let update_item_for_check = update_item.clone();
+        tauri::async_runtime::spawn(async move {
+            match available_update_version(&app_handle_for_update).await {
+                Ok(Some(version)) => {
+                    let _ = update_item_for_check.set_text(format!("v{version}に更新"));
+                    let _ = update_item_for_check.set_enabled(true);
+                }
+                Ok(None) => {
+                    let _ = update_item_for_check.set_text("最新版です（再確認）");
+                    let _ = update_item_for_check.set_enabled(true);
+                }
+                Err(error) => {
+                    eprintln!("failed to check for updates: {error}");
+                    let _ = update_item_for_check.set_text("アップデートを確認");
+                    let _ = update_item_for_check.set_enabled(true);
+                }
+            }
+        });
 
         if let Some(window) = app.get_webview_window("main") {
             let window_for_events = window.clone();
