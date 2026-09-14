@@ -676,7 +676,7 @@ function TimelineTask({ todo, onToggle, onEdit, onRemove, onDragStart }) {
 
   return (
     <article
-      className={`absolute left-[72px] right-3 z-10 cursor-grab overflow-hidden rounded-2xl border border-[var(--one-border-strong)] bg-[var(--one-card)] px-3 ${compact ? 'py-0.5' : 'py-2'} shadow-[var(--one-card-shadow)] active:cursor-grabbing ${todo.completed ? 'opacity-55' : ''}`}
+      className={`absolute left-[72px] right-3 z-10 cursor-grab overflow-hidden rounded-2xl border border-[var(--one-border-strong)] bg-[var(--one-card)] pl-20 pr-3 ${compact ? 'py-0.5' : 'py-2'} shadow-[var(--one-card-shadow)] active:cursor-grabbing ${todo.completed ? 'opacity-55' : ''}`}
       style={{ top: `${top + 2}px`, height: `${height}px` }}
       draggable
       onDragStart={onDragStart}
