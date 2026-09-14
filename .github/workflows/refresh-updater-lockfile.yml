@@ -5,15 +5,16 @@ on:
     branches: [feat/tauri-updater]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   lockfile:
-    if: github.actor != 'github-actions[bot]'
     runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
 
       - name: Setup Rust
         run: |
@@ -25,16 +26,10 @@ jobs:
       - name: Refresh and check Cargo.lock
         run: cargo check --manifest-path src-tauri/Cargo.toml
 
-      - name: Commit refreshed lockfile
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- src-tauri/Cargo.lock; then
-            echo "Cargo.lock is already synchronized."
-            exit 0
-          fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src-tauri/Cargo.lock
-          git commit -m "Tauri Updater依存をlockfileに反映"
-          git push
+      - name: Upload refreshed lockfile
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: updater-cargo-lock
+          path: src-tauri/Cargo.lock
+          if-no-files-found: error
+          retention-days: 1
