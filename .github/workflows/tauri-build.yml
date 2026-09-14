@@ -68,15 +68,22 @@ jobs:
           )
 
       - name: Install frontend dependencies from lockfile
+        if: github.event_name != 'pull_request'
         run: npm ci --no-audit --no-fund
 
       - name: Verify Cargo.lock is synchronized
         run: cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
 
+      - name: Check Tauri Rust code on pull requests
+        if: github.event_name == 'pull_request'
+        run: cargo check --manifest-path src-tauri/Cargo.toml --locked
+
       - name: Build Tauri app bundle for macOS with locked dependencies
+        if: github.event_name != 'pull_request'
         run: npm run tauri -- build --bundles app --no-sign -- --locked
 
       - name: Archive macOS app bundle
+        if: github.event_name != 'pull_request'
         shell: bash
         run: |
           set -euo pipefail
@@ -88,6 +95,7 @@ jobs:
           ditto -c -k --sequesterRsrc --keepParent "$app_path" timer-macos.zip
 
       - name: Upload macOS app artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: timer-macos-app
