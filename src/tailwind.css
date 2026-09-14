@@ -193,6 +193,32 @@
     margin-block: 0 !important;
   }
 
+  [aria-label="保存したテンプレート"] > div {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
+    grid-template-rows: 1fr 1fr;
+    column-gap: .5rem !important;
+    row-gap: 0 !important;
+  }
+
+  [aria-label="保存したテンプレート"] > div > :first-child,
+  [aria-label="保存したテンプレート"] > div > span[aria-hidden="true"],
+  [aria-label="保存したテンプレート"] > div > button[aria-label$="を入力欄で使う"] {
+    grid-row: 1 / 3;
+  }
+
+  [aria-label="保存したテンプレート"] > div > button[aria-label$="テンプレートを編集"] {
+    grid-column: 4;
+    grid-row: 1;
+    align-self: end;
+  }
+
+  [aria-label="保存したテンプレート"] > div > button[aria-label$="テンプレートを削除"] {
+    grid-column: 4;
+    grid-row: 2;
+    align-self: start;
+  }
+
   body.focus-mode .shell {
     display: grid;
     align-content: center;
