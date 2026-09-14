@@ -15,7 +15,7 @@ describe('useCurrentMinute', () => {
     expect(millisecondsUntilNextMinute(new Date(2026, 8, 14, 1, 30, 45, 250))).toBe(14_750);
   });
 
-  it('Tray Todoを開きっぱなしでも分境界ごとに現在時刻を更新する', () => {
+  it('画面を開きっぱなしでも分境界ごとに現在時刻を更新する', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 14, 1, 30, 30));
 
@@ -31,5 +31,19 @@ describe('useCurrentMinute', () => {
       vi.advanceTimersByTime(60_000);
     });
     expect(result.current.currentMinute).toBe(92);
+  });
+
+  it('画面へ戻ったときはタイマーを待たず現在時刻へ追いつく', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 14, 1, 30));
+
+    const { result } = renderHook(() => useCurrentMinute());
+    vi.setSystemTime(new Date(2026, 8, 14, 1, 35));
+
+    act(() => {
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    expect(result.current.currentMinute).toBe(95);
   });
 });

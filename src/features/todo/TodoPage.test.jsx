@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TodoPage } from './TodoPage.jsx';
 import { startTodoLiveDragPreview } from './todoLiveDragPreview.js';
 
@@ -46,6 +46,51 @@ function dragOverAt(element, transfer, clientY) {
 describe('TodoPage', () => {
   beforeEach(() => {
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('現在時刻線のラベルを分境界ごとに更新する', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 14, 11, 59, 30));
+
+    render(<TodoPage />);
+    expect(screen.getByTestId('todo-current-time-line').textContent).toContain('現在 11:59');
+
+    act(() => {
+      vi.advanceTimersByTime(30_000);
+    });
+
+    expect(screen.getByTestId('todo-current-time-line').textContent).toContain('現在 12:00');
+  });
+
+  it('初期表示では過去の完了済み予定を飛ばして次の未完了予定へ移動する', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 14, 12, 0));
+    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
+      { id: 'completed', text: '完了済み', completed: true, startMinute: 10 * 60 + 30, duration: 25 },
+      { id: 'next', text: '次の予定', completed: false, startMinute: 13 * 60, duration: 25 },
+    ]));
+
+    render(<TodoPage />);
+
+    const viewport = screen.getByTestId('todo-timeline').parentElement;
+    expect(viewport.scrollTop).toBe(((13 * 60 - 60) / 60) * 300);
+  });
+
+  it('次の未完了予定がなければ現在時刻へ移動する', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 14, 12, 0));
+    localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify([
+      { id: 'completed', text: '完了済み', completed: true, startMinute: 10 * 60 + 30, duration: 25 },
+    ]));
+
+    render(<TodoPage />);
+
+    const viewport = screen.getByTestId('todo-timeline').parentElement;
+    expect(viewport.scrollTop).toBe(((12 * 60 - 60) / 60) * 300);
   });
 
   it('時刻と所要時間を指定してTodoを追加し、完了と削除ができる', () => {

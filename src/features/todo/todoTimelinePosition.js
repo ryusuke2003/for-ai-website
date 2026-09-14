@@ -32,3 +32,12 @@ export function buildDropTimePreview(startMinute, duration) {
     height: Math.max(24, (duration / 60) * TODO_TIMELINE_PX_PER_HOUR - 4),
   };
 }
+
+export function initialTimelineAnchorMinute(todos, currentMinute) {
+  const nextIncompleteTodo = [...todos]
+    .filter((todo) => !todo.completed && todo.startMinute + todo.duration > currentMinute)
+    .sort((left, right) => left.startMinute - right.startMinute)[0];
+
+  if (!nextIncompleteTodo || nextIncompleteTodo.startMinute <= currentMinute) return currentMinute;
+  return nextIncompleteTodo.startMinute;
+}

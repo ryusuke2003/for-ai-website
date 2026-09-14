@@ -20,14 +20,21 @@ export function useCurrentMinute() {
 
   useEffect(() => {
     let intervalId = null;
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') refreshCurrentMinute();
+    };
     const timeoutId = window.setTimeout(() => {
       refreshCurrentMinute();
       intervalId = window.setInterval(refreshCurrentMinute, MINUTE_MS);
     }, millisecondsUntilNextMinute());
+    window.addEventListener('focus', refreshCurrentMinute);
+    document.addEventListener('visibilitychange', refreshWhenVisible);
 
     return () => {
       window.clearTimeout(timeoutId);
       if (intervalId !== null) window.clearInterval(intervalId);
+      window.removeEventListener('focus', refreshCurrentMinute);
+      document.removeEventListener('visibilitychange', refreshWhenVisible);
     };
   }, [refreshCurrentMinute]);
 
