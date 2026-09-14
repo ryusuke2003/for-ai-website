@@ -34,4 +34,23 @@ git tag -a v0.1.2 -m "v0.1.2"
 git push origin v0.1.2
 ```
 
-`v*` タグのpush後はGitHub ActionsがmacOS版をビルドし、`timer-macos.zip` をGitHub Releaseへ添付します。
+`v*` タグのpush後はGitHub ActionsがmacOS版をビルドし、手動インストール用の `timer-macos.zip` に加えて、Tauri Updater用のbundle・署名・`latest.json` をGitHub Releaseへ添付します。
+
+## アプリ内アップデート
+
+Updater搭載版では、メニューバーのタイマーアイコンを右クリックし、更新項目から新しいバージョンをインストールできます。起動時にGitHub Releaseの `latest.json` を確認し、新しい版があれば更新項目を有効にします。
+
+Updaterの配布物には専用署名が必要です。最初のUpdater対応リリースを作る前に、RepositoryのActions secretへ次を登録してください。
+
+- Name: `TAURI_SIGNING_PRIVATE_KEY`
+- Value: Tauri Updater用の秘密鍵
+
+秘密鍵はリポジトリへコミットせず、紛失しないよう別途バックアップします。公開鍵は `src-tauri/tauri.conf.json` に置きます。
+
+現在インストール済みのUpdater非搭載版から、最初のUpdater搭載版への移行だけは手動で `timer-macos.zip` を取得してアプリ本体を置き換える必要があります。それ以降はアプリ内Updaterを利用できます。
+
+## 既存データの引き継ぎ
+
+Updaterはアプリbundleを更新しますが、Todoやテンプレートの保存データを削除する処理は行いません。bundle identifier `com.ryusuke2003.one` と既存のlocalStorageキーを維持するため、現在のTodo・テンプレート・タイマー設定は同じ保存領域を引き続き利用します。
+
+データ形式やbundle identifierを将来変更する場合は、別途マイグレーションを用意してください。重要な記録がある場合は、更新前にアプリのバックアップ機能で控えを作成しておくと安全です。
