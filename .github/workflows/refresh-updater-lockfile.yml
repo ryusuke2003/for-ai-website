@@ -1,0 +1,39 @@
+name: Refresh updater lockfile
+
+on:
+  push:
+    branches: [feat/tauri-updater]
+
+permissions:
+  contents: write
+
+jobs:
+  lockfile:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Refresh and check Cargo.lock
+        run: cargo check --manifest-path src-tauri/Cargo.toml
+
+      - name: Commit refreshed lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- src-tauri/Cargo.lock; then
+            echo "Cargo.lock is already synchronized."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src-tauri/Cargo.lock
+          git commit -m "Tauri Updater依存をlockfileに再同期"
+          git push
