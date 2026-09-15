@@ -5,9 +5,11 @@ import {
   resetTodoSchedule,
   restoreTodoSchedule,
 } from './resetTodoSchedule.js';
+import { rolloverTodoDayIfNeeded } from './todoDayRollover.js';
 import { TodoPage } from './TodoPage.jsx';
 
 const ACTION_CLASS = 'rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.72rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]';
+const DAY_ROLLOVER_CHECK_INTERVAL_MS = 30_000;
 
 function TimelineHeaderActions({ version, restoreAvailable, onRestore, onReset }) {
   const [target, setTarget] = useState(null);
@@ -72,9 +74,32 @@ function TimelineHeaderActions({ version, restoreAvailable, onRestore, onReset }
 }
 
 export function TodoPageWithActions() {
-  const [version, setVersion] = useState(0);
+  const [version, setVersion] = useState(() => {
+    rolloverTodoDayIfNeeded();
+    return 0;
+  });
   const [status, setStatus] = useState('');
   const [restoreAvailable, setRestoreAvailable] = useState(canRestoreTodoSchedule);
+
+  useEffect(() => {
+    function checkDayRollover() {
+      if (!rolloverTodoDayIfNeeded()) return;
+
+      setVersion((current) => current + 1);
+      setRestoreAvailable(false);
+      setStatus('日付が変わったので、今日の予定を新しくしました。');
+    }
+
+    const intervalId = window.setInterval(checkDayRollover, DAY_ROLLOVER_CHECK_INTERVAL_MS);
+    window.addEventListener('focus', checkDayRollover);
+    document.addEventListener('visibilitychange', checkDayRollover);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener('focus', checkDayRollover);
+      document.removeEventListener('visibilitychange', checkDayRollover);
+    };
+  }, []);
 
   function resetTodaySchedule() {
     if (!resetTodoSchedule()) {
