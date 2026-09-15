@@ -10,9 +10,7 @@
 
 ## Preview
 
-<p align="center">
-  <img src="docs/assets/app-preview.jpg" width="900" alt="タイマーアプリの画面プレビュー" />
-</p>
+![タイマーアプリの画面プレビュー](https://raw.githubusercontent.com/ryusuke2003/for-ai-website/main/docs/assets/app-preview.jpg)
 
 ## このアプリについて
 
