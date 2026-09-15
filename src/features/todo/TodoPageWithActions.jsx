@@ -9,7 +9,7 @@ import { rolloverTodoDayIfNeeded } from './todoDayRollover.js';
 import { TodoPage } from './TodoPage.jsx';
 
 const ACTION_CLASS = 'rounded-full border border-[var(--one-border)] bg-transparent px-3 py-1.5 text-[0.72rem] font-extrabold text-[var(--one-muted)] transition hover:border-[var(--one-border-strong)] hover:text-[var(--one-fg)]';
-const DAY_ROLLOVER_CHECK_INTERVAL_MS = 30_000;
+const DAY_ROLLOVER_CHECK_INTERVAL_MS = 5 * 60_000;
 
 function TimelineHeaderActions({ version, restoreAvailable, onRestore, onReset }) {
   const [target, setTarget] = useState(null);
