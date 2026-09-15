@@ -10,7 +10,7 @@
 
 ## Preview
 
-![タイマーアプリの画面プレビュー](./docs/assets/app-preview.jpg)
+![タイマーアプリの画面プレビュー](https://github.com/ryusuke2003/for-ai-website/releases/download/v0.1.5/app-preview.png)
 
 ## このアプリについて
 
