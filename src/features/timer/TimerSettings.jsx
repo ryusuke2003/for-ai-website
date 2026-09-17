@@ -1,5 +1,4 @@
 import { useRef } from 'react';
-import { useCompletionEffectsControl } from './useCompletionEffectsControl.js';
 import { useCustomTimerControl } from './useCustomTimerControl.js';
 import { useTimerState } from './useTimerState.js';
 import { useWakeLockControl } from './useWakeLockControl.js';
@@ -17,10 +16,9 @@ function optionButtonClass(active) {
   return active ? `${OPTION_BUTTON_CLASS} ${ACTIVE_OPTION_CLASS}` : OPTION_BUTTON_CLASS;
 }
 
-export function TimerSettings() {
+export function TimerSettings({ completionEffects }) {
   const timerState = useTimerState();
   const customTimer = useCustomTimerControl(timerState.selectedMinutes, timerState.completionReady);
-  const completionEffects = useCompletionEffectsControl(timerState);
   const wakeLock = useWakeLockControl(timerState.running);
   const customMinutesRef = useRef(null);
 
