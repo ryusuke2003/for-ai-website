@@ -13,6 +13,8 @@ function createTimerState(overrides = {}) {
 }
 
 function installAudioContext() {
+  const oscillators = [];
+
   class FakeAudioContext {
     constructor() {
       this.state = 'running';
@@ -22,13 +24,17 @@ function installAudioContext() {
 
     resume = vi.fn().mockResolvedValue(undefined);
     close = vi.fn().mockResolvedValue(undefined);
-    createOscillator = vi.fn(() => ({
-      type: 'sine',
-      frequency: { setValueAtTime: vi.fn() },
-      connect: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn(),
-    }));
+    createOscillator = vi.fn(() => {
+      const oscillator = {
+        type: 'sine',
+        frequency: { setValueAtTime: vi.fn() },
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn(),
+      };
+      oscillators.push(oscillator);
+      return oscillator;
+    });
     createGain = vi.fn(() => ({
       gain: {
         setValueAtTime: vi.fn(),
@@ -42,6 +48,8 @@ function installAudioContext() {
     configurable: true,
     value: FakeAudioContext,
   });
+
+  return { oscillators };
 }
 
 function installNotification({ permission = 'granted' } = {}) {
@@ -75,6 +83,7 @@ function installNotification({ permission = 'granted' } = {}) {
 describe('useCompletionEffectsControl', () => {
   beforeEach(() => {
     vi.resetModules();
+    localStorage.clear();
     installAudioContext();
     installNotification();
     Object.defineProperty(document, 'visibilityState', {
@@ -90,6 +99,14 @@ describe('useCompletionEffectsControl', () => {
   });
 
   it('完了音を明示的にONにして保存する', async () => {
+    const { oscillators } = installAudioContext();
+    vi.resetModules();
+    installNotification();
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: { request: vi.fn(async (_name, callback) => callback()) },
+    });
+
     const { useCompletionEffectsControl } = await import('./useCompletionEffectsControl.js');
     const { result } = renderHook(() => useCompletionEffectsControl(createTimerState()));
 
@@ -98,6 +115,7 @@ describe('useCompletionEffectsControl', () => {
     expect(result.current.sound.pressed).toBe(true);
     expect(localStorage.getItem('one.completionSound.v1')).toBe('1');
     expect(result.current.sound.status).toContain('完了音');
+    expect(oscillators).toHaveLength(6);
   });
 
   it('完了通知のON操作で権限を要求し、許可時だけ保存する', async () => {
@@ -170,5 +188,39 @@ describe('useCompletionEffectsControl', () => {
 
     await waitFor(() => expect(locksRequest).toHaveBeenCalled());
     expect(localStorage.getItem('one.completionEffectClaim.v1')).not.toBeNull();
+  });
+
+  it('通知ONならタイマー画面が前面でも完了通知を出す', async () => {
+    localStorage.setItem('one.completionNotification.v1', '1');
+    const { instances } = installNotification({ permission: 'granted' });
+    vi.resetModules();
+    installAudioContext();
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: { request: vi.fn(async (_name, callback) => callback()) },
+    });
+
+    const { useCompletionEffectsControl } = await import('./useCompletionEffectsControl.js');
+    const endAt = Date.now() + 1000;
+    const running = createTimerState({
+      running: true,
+      remainingSeconds: 1,
+      endAt,
+    });
+    const { rerender } = renderHook(({ state }) => useCompletionEffectsControl(state), {
+      initialProps: { state: running },
+    });
+
+    rerender({
+      state: createTimerState({
+        running: false,
+        completionReady: true,
+        remainingSeconds: 0,
+        endAt: null,
+      }),
+    });
+
+    await waitFor(() => expect(instances).toHaveLength(1));
+    expect(instances[0].title).toBe('集中スプリント完了');
   });
 });

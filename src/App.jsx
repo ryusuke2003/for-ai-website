@@ -14,6 +14,7 @@ import { TimerControls } from './features/timer/TimerControls.jsx';
 import { TimerDisplay } from './features/timer/TimerDisplay.jsx';
 import { TimerSettings } from './features/timer/TimerSettings.jsx';
 import { TrayTimerPanel } from './features/timer/TrayTimerPanel.jsx';
+import { useCompletionEffectsControl } from './features/timer/useCompletionEffectsControl.js';
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
@@ -46,7 +47,7 @@ function SectionHeading({ step, id, children }) {
   );
 }
 
-function TimerSection({ focusMode }) {
+function TimerSection({ focusMode, completionEffects }) {
   const state = useTimerState();
   const breakMode = state.selectedMinutes === BREAK_MINUTES;
   useTimerShortcuts(focusMode.active, focusMode.toggle);
@@ -63,7 +64,7 @@ function TimerSection({ focusMode }) {
         <TimerControls focusModeActive={focusMode.active} onToggleFocusMode={focusMode.toggle} />
       </div>
       <p className={HINT_CLASS}>キーボード: Spaceで開始/一時停止 · Fで集中表示 · Escで解除</p>
-      <TimerSettings />
+      <TimerSettings completionEffects={completionEffects} />
       {breakMode ? <p className={HINT_CLASS}>5分プリセットは休憩用です。完了しても集中回数には加算されません。</p> : null}
     </section>
   );
@@ -258,6 +259,7 @@ function TrayTodoPanel({ onShowTimer }) {
 
 export function App() {
   const timerState = useTimerState();
+  const completionEffects = useCompletionEffectsControl(timerState);
   const focusMode = useFocusModeControl(timerState.completionReady);
   const [page, setPage] = useState(pageFromHash);
   useStorageHealthProbe();
@@ -309,7 +311,7 @@ export function App() {
         <TodoPageWithActions />
       ) : (
         <>
-          <TimerSection focusMode={focusMode} />
+          <TimerSection focusMode={focusMode} completionEffects={completionEffects} />
           <ProgressSection />
           <BackupSection />
           <FocusModeStatus status={focusMode.status} />

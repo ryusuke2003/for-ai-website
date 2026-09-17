@@ -178,8 +178,8 @@ async function claimCompletionEffect(completionKey, effect) {
 function soundDefaultStatus(enabled) {
   if (!SOUND_SUPPORTED) return 'このブラウザでは完了音を利用できません。';
   return enabled
-    ? '完了音はオンです。タイマーが0:00になったときだけ短く鳴ります。'
-    : '完了音はオフです。オンにすると短い試聴音が鳴ります。';
+    ? '完了音はオンです。タイマー完了時に、約2秒の6音チャイムが鳴ります。'
+    : '完了音はオフです。オンにすると完了音を試聴できます。';
 }
 
 function notificationDefaultStatus(enabled) {
@@ -188,7 +188,7 @@ function notificationDefaultStatus(enabled) {
     return '完了通知はブラウザ設定で拒否されています。利用するにはサイトの通知権限を変更してください。';
   }
   return enabled
-    ? '完了通知はオンです。タイマー完了時にこのタブが背景なら通知します。'
+    ? '完了通知はオンです。タイマー画面以外を見ているときも、タイマー完了を通知します。'
     : '完了通知はオフです。オンにするとブラウザの通知許可を確認します。';
 }
 
@@ -243,10 +243,14 @@ export function useCompletionEffectsControl(timerState) {
   const scheduleCompletionChime = useCallback((context) => {
     try {
       const tones = [
-        { frequency: 660, offset: 0, duration: 0.11 },
-        { frequency: 880, offset: 0.14, duration: 0.16 },
+        { frequency: 659.25, offset: 0, duration: 0.25, peak: 0.12 },
+        { frequency: 783.99, offset: 0.30, duration: 0.27, peak: 0.13 },
+        { frequency: 880, offset: 0.62, duration: 0.29, peak: 0.14 },
+        { frequency: 987.77, offset: 0.95, duration: 0.31, peak: 0.14 },
+        { frequency: 1046.5, offset: 1.30, duration: 0.33, peak: 0.15 },
+        { frequency: 1174.66, offset: 1.62, duration: 0.36, peak: 0.16 },
       ];
-      tones.forEach(({ frequency, offset, duration }) => {
+      tones.forEach(({ frequency, offset, duration, peak }) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         const start = context.currentTime + offset;
@@ -254,7 +258,7 @@ export function useCompletionEffectsControl(timerState) {
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(frequency, start);
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.035, start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(peak, start + 0.025);
         gain.gain.exponentialRampToValueAtTime(0.0001, end);
         oscillator.connect(gain);
         gain.connect(context.destination);
@@ -271,7 +275,6 @@ export function useCompletionEffectsControl(timerState) {
     notificationEnabledRef.current
     && NOTIFICATION_SUPPORTED
     && Notification.permission === 'granted'
-    && document.visibilityState !== 'visible'
   ), []);
 
   const showCompletionNotification = useCallback(() => {
@@ -327,8 +330,7 @@ export function useCompletionEffectsControl(timerState) {
       setSoundStatusOverride(null);
     }
 
-    function refreshNotification({ closeVisible = false } = {}) {
-      if (closeVisible && document.visibilityState === 'visible') closeActiveNotification();
+    function refreshNotification() {
       if (!NOTIFICATION_SUPPORTED || Notification.permission !== 'granted') {
         notificationEnabledRef.current = false;
         setNotificationEnabled(false);
@@ -346,12 +348,12 @@ export function useCompletionEffectsControl(timerState) {
     function refreshWhenVisible() {
       if (document.visibilityState !== 'visible') return;
       applyStoredSound();
-      refreshNotification({ closeVisible: true });
+      refreshNotification();
     }
 
     function handlePageShow() {
       applyStoredSound();
-      refreshNotification({ closeVisible: true });
+      refreshNotification();
     }
 
     function handleStorage(event) {
@@ -454,7 +456,7 @@ export function useCompletionEffectsControl(timerState) {
     }
     setSoundStatusOverride(
       persisted
-        ? '完了音をオンにしました。いまの短い音がタイマー完了時に鳴ります。'
+        ? '完了音をオンにしました。いまの音がタイマー完了時に鳴ります。'
         : '完了音をオンにしました。今のタブでは鳴りますが、このブラウザには設定を保存できませんでした。再読み込みすると以前の設定へ戻る可能性があります。',
     );
   }
@@ -501,7 +503,7 @@ export function useCompletionEffectsControl(timerState) {
     const persisted = persistPreference(COMPLETION_NOTIFICATION_STORAGE_KEY, true);
     setNotificationStatusOverride(
       persisted
-        ? '完了通知をオンにしました。このタブが背景のときだけタイマー完了を通知します。'
+        ? '完了通知をオンにしました。タイマー画面以外を見ているときも完了を通知します。'
         : '完了通知をオンにしました。今のタブでは利用できますが、このブラウザには設定を保存できませんでした。',
     );
   }
