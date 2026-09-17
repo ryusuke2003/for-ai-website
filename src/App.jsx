@@ -21,6 +21,7 @@ import { useTimerState } from './features/timer/useTimerState.js';
 import { TODO_STORAGE_KEY } from './features/todo/resetTodoSchedule.js';
 import { TodoPageWithActions } from './features/todo/TodoPageWithActions.jsx';
 import { buildTrayTimelineMarks, shouldHideTrayTimelineMarkLabel } from './features/todo/trayTimelineMarks.js';
+import { copyTextToClipboard, formatTrayTodoSchedule } from './features/todo/trayTodoCopy.js';
 import { readTrayTodos } from './features/todo/trayTodoStorage.js';
 import { useCurrentMinute } from './features/todo/useCurrentMinute.js';
 import { useStorageHealthProbe } from './storage/useStorageHealthProbe.js';
@@ -122,7 +123,9 @@ function TrayTodoPanel({ onShowTimer }) {
   const [todos, setTodos] = useState(readTrayTodos);
   const { currentMinute, refreshCurrentMinute } = useCurrentMinute();
   const [scrollRequest, setScrollRequest] = useState(0);
+  const [copyStatus, setCopyStatus] = useState('idle');
   const timelineRef = useRef(null);
+  const copyResetTimeoutRef = useRef(null);
 
   const range = useMemo(() => {
     if (todos.length === 0) return null;
@@ -140,6 +143,7 @@ function TrayTodoPanel({ onShowTimer }) {
     function handleTrayNavigation(event) {
       if (event.detail !== 'tray-todo') return;
       setTodos(readTrayTodos());
+      setCopyStatus('idle');
       refreshCurrentMinute();
       setScrollRequest((current) => current + 1);
     }
@@ -147,6 +151,12 @@ function TrayTodoPanel({ onShowTimer }) {
     window.addEventListener(TRAY_NAVIGATION_APPLIED_EVENT, handleTrayNavigation);
     return () => window.removeEventListener(TRAY_NAVIGATION_APPLIED_EVENT, handleTrayNavigation);
   }, [refreshCurrentMinute]);
+
+  useEffect(() => () => {
+    if (copyResetTimeoutRef.current !== null) {
+      window.clearTimeout(copyResetTimeoutRef.current);
+    }
+  }, []);
 
   useEffect(() => {
     const timeline = timelineRef.current;
@@ -163,12 +173,35 @@ function TrayTodoPanel({ onShowTimer }) {
   function toggleTodo(id) {
     const next = todos.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo);
     setTodos(next);
+    setCopyStatus('idle');
     try {
       localStorage.setItem(TODO_STORAGE_KEY, JSON.stringify(next));
     } catch {
       window.dispatchEvent(new Event('one:storage-error'));
     }
   }
+
+  async function copySchedule() {
+    const text = formatTrayTodoSchedule(todos);
+    if (!text) return;
+
+    const copied = await copyTextToClipboard(text);
+    setCopyStatus(copied ? 'copied' : 'error');
+
+    if (copyResetTimeoutRef.current !== null) {
+      window.clearTimeout(copyResetTimeoutRef.current);
+    }
+    copyResetTimeoutRef.current = window.setTimeout(() => {
+      setCopyStatus('idle');
+      copyResetTimeoutRef.current = null;
+    }, 2000);
+  }
+
+  const copyButtonLabel = copyStatus === 'copied'
+    ? 'コピーしました ✓'
+    : copyStatus === 'error'
+      ? 'コピーできませんでした'
+      : '時間割をコピー';
 
   return (
     <section className="min-h-screen bg-[var(--one-page)] p-4 text-[var(--one-fg)]">
@@ -235,6 +268,18 @@ function TrayTodoPanel({ onShowTimer }) {
         ) : (
           <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--one-border-strong)] px-6 text-center text-[0.82rem] font-bold text-[var(--one-muted)]">今日の予定はまだありません。</div>
         )}
+
+        <div className="mt-4 flex justify-center">
+          <button
+            className="rounded-full border border-[var(--one-border)] bg-[var(--one-active-bg)] px-4 py-2 text-[0.76rem] font-extrabold transition hover:border-[var(--one-border-strong)] disabled:cursor-not-allowed disabled:opacity-40"
+            type="button"
+            disabled={todos.length === 0}
+            aria-live="polite"
+            onClick={() => void copySchedule()}
+          >
+            {copyButtonLabel}
+          </button>
+        </div>
       </div>
     </section>
   );
