@@ -178,7 +178,7 @@ async function claimCompletionEffect(completionKey, effect) {
 function soundDefaultStatus(enabled) {
   if (!SOUND_SUPPORTED) return 'このブラウザでは完了音を利用できません。';
   return enabled
-    ? '完了音はオンです。タイマー完了時に、少し長めではっきりした音が鳴ります。'
+    ? '完了音はオンです。タイマー完了時に、約2秒の6音チャイムが鳴ります。'
     : '完了音はオフです。オンにすると完了音を試聴できます。';
 }
 
@@ -243,9 +243,12 @@ export function useCompletionEffectsControl(timerState) {
   const scheduleCompletionChime = useCallback((context) => {
     try {
       const tones = [
-        { frequency: 659.25, offset: 0, duration: 0.24, peak: 0.12 },
-        { frequency: 880, offset: 0.26, duration: 0.30, peak: 0.14 },
-        { frequency: 1046.5, offset: 0.58, duration: 0.42, peak: 0.15 },
+        { frequency: 659.25, offset: 0, duration: 0.25, peak: 0.12 },
+        { frequency: 783.99, offset: 0.30, duration: 0.27, peak: 0.13 },
+        { frequency: 880, offset: 0.62, duration: 0.29, peak: 0.14 },
+        { frequency: 987.77, offset: 0.95, duration: 0.31, peak: 0.14 },
+        { frequency: 1046.5, offset: 1.30, duration: 0.33, peak: 0.15 },
+        { frequency: 1174.66, offset: 1.62, duration: 0.36, peak: 0.16 },
       ];
       tones.forEach(({ frequency, offset, duration, peak }) => {
         const oscillator = context.createOscillator();
