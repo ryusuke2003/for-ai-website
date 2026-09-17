@@ -54,6 +54,7 @@ function readPreference(key) {
 function persistPreference(key, enabled) {
   const value = enabled ? '1' : '0';
   if (!writeStorage(key, value)) return false;
+
   const persisted = readStorage(key);
   if (persisted.ok && persisted.value === value) return true;
   if (persisted.ok) reportStorageFailure();
@@ -74,24 +75,44 @@ function createCompletionEffectClaimToken() {
       globalThis.crypto.getRandomValues(bytes);
       return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
     } catch {
-      // Claim tokens only need local uniqueness.
+      // The claim is not secret; local uniqueness is enough for the fallback.
     }
   }
+
   completionEffectFallbackCounter = (completionEffectFallbackCounter + 1) % 1_000_000;
   return `fallback-${Date.now().toString(36)}-${completionEffectFallbackCounter.toString(36)}`;
 }
 
+function isCompletionEffectClaimToken(value) {
+  return value === null
+    || (typeof value === 'string' && /^[a-z0-9-]{8,80}$/.test(value));
+}
+
 function parseCompletionEffectClaim(raw) {
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_COMPLETION_EFFECT_CLAIM_BYTES) return null;
+
   try {
     const value = JSON.parse(raw);
     if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
-    if (typeof value.key !== 'string' || !/^\d{10,16}:\d{1,3}$/.test(value.key)) return null;
-    if (!Number.isSafeInteger(value.updatedAt) || value.updatedAt <= 0) return null;
-    for (const field of ['soundClaim', 'notificationClaim']) {
-      const claim = value[field];
-      if (claim !== null && (typeof claim !== 'string' || !/^[a-z0-9-]{8,80}$/.test(claim))) return null;
+    if (
+      Object.keys(value).length !== 4
+      || !Object.hasOwn(value, 'key')
+      || !Object.hasOwn(value, 'soundClaim')
+      || !Object.hasOwn(value, 'notificationClaim')
+      || !Object.hasOwn(value, 'updatedAt')
+    ) {
+      return null;
     }
+    if (typeof value.key !== 'string' || !/^\d{10,16}:\d{1,3}$/.test(value.key)) return null;
+
+    const [endAtRaw, minutesRaw] = value.key.split(':');
+    const endAtValue = Number(endAtRaw);
+    const minutes = Number(minutesRaw);
+    if (!Number.isSafeInteger(endAtValue) || endAtValue <= 0) return null;
+    if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_TIMER_MINUTES) return null;
+    if (!isCompletionEffectClaimToken(value.soundClaim)) return null;
+    if (!isCompletionEffectClaimToken(value.notificationClaim)) return null;
+    if (!Number.isSafeInteger(value.updatedAt) || value.updatedAt <= 0) return null;
     return value;
   } catch {
     return null;
@@ -111,8 +132,13 @@ function completionEffectClaimPayload(completionKey, claimField, claimToken, pre
 }
 
 async function claimCompletionEffectWithStorage(completionKey, effect, { settle = false } = {}) {
-  const claimField = effect === 'sound' ? 'soundClaim' : effect === 'notification' ? 'notificationClaim' : null;
+  const claimField = effect === 'sound'
+    ? 'soundClaim'
+    : effect === 'notification'
+      ? 'notificationClaim'
+      : null;
   if (claimField === null) return false;
+
   const stored = readStorage(COMPLETION_EFFECT_CLAIM_STORAGE_KEY);
   if (!stored.ok) return true;
   const previousClaim = parseCompletionEffectClaim(stored.value);
@@ -121,7 +147,10 @@ async function claimCompletionEffectWithStorage(completionKey, effect, { settle 
   const claimToken = createCompletionEffectClaimToken();
   const payload = completionEffectClaimPayload(completionKey, claimField, claimToken, previousClaim);
   if (!writeStorage(COMPLETION_EFFECT_CLAIM_STORAGE_KEY, payload)) return true;
-  if (settle) await new Promise((resolve) => window.setTimeout(resolve, COMPLETION_EFFECT_FALLBACK_SETTLE_MS));
+
+  if (settle) {
+    await new Promise((resolve) => window.setTimeout(resolve, COMPLETION_EFFECT_FALLBACK_SETTLE_MS));
+  }
 
   const persisted = readStorage(COMPLETION_EFFECT_CLAIM_STORAGE_KEY);
   if (!persisted.ok) return true;
@@ -131,6 +160,7 @@ async function claimCompletionEffectWithStorage(completionKey, effect, { settle 
 
 async function claimCompletionEffect(completionKey, effect) {
   if (completionKey === null) return true;
+
   if (navigator.locks && typeof navigator.locks.request === 'function') {
     try {
       return await navigator.locks.request(
@@ -138,9 +168,10 @@ async function claimCompletionEffect(completionKey, effect) {
         () => claimCompletionEffectWithStorage(completionKey, effect),
       );
     } catch {
-      // Fall through to the storage-only best-effort claim.
+      // Fall through to a storage-only best-effort claim.
     }
   }
+
   return claimCompletionEffectWithStorage(completionKey, effect, { settle: true });
 }
 
@@ -303,6 +334,7 @@ export function useCompletionEffectsControl(timerState) {
         setNotificationStatusOverride(null);
         return;
       }
+
       const stored = readPreference(COMPLETION_NOTIFICATION_STORAGE_KEY);
       if (!stored.ok || stored.enabled === null) return;
       notificationEnabledRef.current = stored.enabled;
@@ -334,6 +366,7 @@ export function useCompletionEffectsControl(timerState) {
         );
         return;
       }
+
       if (event.key !== COMPLETION_NOTIFICATION_STORAGE_KEY) return;
       const nextEnabled = parsePreference(event.newValue);
       if (nextEnabled === null) return;
@@ -385,12 +418,14 @@ export function useCompletionEffectsControl(timerState) {
       && timerState.remainingSeconds === 0
     );
     if (!justCompleted) return;
+
     const completionKey = buildCompletionEffectKey(previous.endAt, previous.selectedMinutes);
     void runCompletionEffectsOnce(completionKey);
   }, [runCompletionEffectsOnce, timerState]);
 
   async function toggleSound() {
     if (!SOUND_SUPPORTED) return;
+
     if (soundEnabledRef.current) {
       soundEnabledRef.current = false;
       setSoundEnabled(false);
@@ -408,6 +443,7 @@ export function useCompletionEffectsControl(timerState) {
       setSoundStatusOverride('完了音を有効にできませんでした。タイマー機能はそのまま利用できます。');
       return;
     }
+
     soundEnabledRef.current = true;
     setSoundEnabled(true);
     const persisted = persistPreference(COMPLETION_SOUND_STORAGE_KEY, true);
@@ -424,6 +460,7 @@ export function useCompletionEffectsControl(timerState) {
 
   async function toggleNotification() {
     if (!NOTIFICATION_SUPPORTED) return;
+
     if (notificationEnabledRef.current) {
       notificationEnabledRef.current = false;
       setNotificationEnabled(false);
@@ -445,6 +482,7 @@ export function useCompletionEffectsControl(timerState) {
         permission = 'denied';
       }
     }
+
     if (permission !== 'granted') {
       notificationEnabledRef.current = false;
       setNotificationEnabled(false);
