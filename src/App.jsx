@@ -18,14 +18,14 @@ import { useCompletionEffectsControl } from './features/timer/useCompletionEffec
 import { useFocusModeControl } from './features/timer/useFocusModeControl.js';
 import { useTimerShortcuts } from './features/timer/useTimerShortcuts.js';
 import { useTimerState } from './features/timer/useTimerState.js';
+import { TODO_STORAGE_KEY } from './features/todo/resetTodoSchedule.js';
 import { TodoPageWithActions } from './features/todo/TodoPageWithActions.jsx';
 import { buildTrayTimelineMarks, shouldHideTrayTimelineMarkLabel } from './features/todo/trayTimelineMarks.js';
+import { readTrayTodos } from './features/todo/trayTodoStorage.js';
 import { useCurrentMinute } from './features/todo/useCurrentMinute.js';
 import { useStorageHealthProbe } from './storage/useStorageHealthProbe.js';
 
 const BREAK_MINUTES = 5;
-const TODO_STORAGE_KEY = 'one.todos.v2';
-const LEGACY_TODO_STORAGE_KEY = 'one.todos.v1';
 const CARD_CLASS = 'card my-4 rounded-3xl border border-[var(--one-border)] bg-[var(--one-card)] p-7 shadow-[var(--one-card-shadow)] backdrop-blur-[14px] max-[560px]:rounded-[20px] max-[560px]:p-[22px]';
 const SECTION_HEADING_CLASS = 'section-heading mb-5 flex items-baseline gap-3.5 text-left';
 const STEP_CLASS = 'text-[0.78rem] font-extrabold tracking-[0.12em] text-[var(--one-subtle)]';
@@ -112,24 +112,6 @@ function FocusModeStatus({ status }) {
   return <p id="focus-mode-status" className="sr-only" aria-live="polite">{status}</p>;
 }
 
-function readTrayTodos() {
-  try {
-    const raw = localStorage.getItem(TODO_STORAGE_KEY) ?? localStorage.getItem(LEGACY_TODO_STORAGE_KEY);
-    if (!raw) return [];
-    return JSON.parse(raw)
-      .filter((todo) => todo && typeof todo.id === 'string' && typeof todo.text === 'string')
-      .map((todo) => ({
-        ...todo,
-        completed: todo.completed === true,
-        startMinute: Number(todo.startMinute) || 0,
-        duration: Math.max(5, Number(todo.duration) || 25),
-      }))
-      .sort((left, right) => left.startMinute - right.startMinute || left.id.localeCompare(right.id));
-  } catch {
-    return [];
-  }
-}
-
 function formatMinute(value) {
   if (value >= 1440) return '24:00';
   const safe = Math.max(0, value);
@@ -157,6 +139,7 @@ function TrayTodoPanel({ onShowTimer }) {
   useEffect(() => {
     function handleTrayNavigation(event) {
       if (event.detail !== 'tray-todo') return;
+      setTodos(readTrayTodos());
       refreshCurrentMinute();
       setScrollRequest((current) => current + 1);
     }
