@@ -13,6 +13,8 @@ function createTimerState(overrides = {}) {
 }
 
 function installAudioContext() {
+  const oscillators = [];
+
   class FakeAudioContext {
     constructor() {
       this.state = 'running';
@@ -22,13 +24,17 @@ function installAudioContext() {
 
     resume = vi.fn().mockResolvedValue(undefined);
     close = vi.fn().mockResolvedValue(undefined);
-    createOscillator = vi.fn(() => ({
-      type: 'sine',
-      frequency: { setValueAtTime: vi.fn() },
-      connect: vi.fn(),
-      start: vi.fn(),
-      stop: vi.fn(),
-    }));
+    createOscillator = vi.fn(() => {
+      const oscillator = {
+        type: 'sine',
+        frequency: { setValueAtTime: vi.fn() },
+        connect: vi.fn(),
+        start: vi.fn(),
+        stop: vi.fn(),
+      };
+      oscillators.push(oscillator);
+      return oscillator;
+    });
     createGain = vi.fn(() => ({
       gain: {
         setValueAtTime: vi.fn(),
@@ -42,6 +48,8 @@ function installAudioContext() {
     configurable: true,
     value: FakeAudioContext,
   });
+
+  return { oscillators };
 }
 
 function installNotification({ permission = 'granted' } = {}) {
@@ -91,6 +99,14 @@ describe('useCompletionEffectsControl', () => {
   });
 
   it('完了音を明示的にONにして保存する', async () => {
+    const { oscillators } = installAudioContext();
+    vi.resetModules();
+    installNotification();
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: { request: vi.fn(async (_name, callback) => callback()) },
+    });
+
     const { useCompletionEffectsControl } = await import('./useCompletionEffectsControl.js');
     const { result } = renderHook(() => useCompletionEffectsControl(createTimerState()));
 
@@ -99,6 +115,7 @@ describe('useCompletionEffectsControl', () => {
     expect(result.current.sound.pressed).toBe(true);
     expect(localStorage.getItem('one.completionSound.v1')).toBe('1');
     expect(result.current.sound.status).toContain('完了音');
+    expect(oscillators).toHaveLength(6);
   });
 
   it('完了通知のON操作で権限を要求し、許可時だけ保存する', async () => {
