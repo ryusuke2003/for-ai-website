@@ -269,7 +269,7 @@ function TrayTodoPanel({ onShowTimer }) {
           <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-dashed border-[var(--one-border-strong)] px-6 text-center text-[0.82rem] font-bold text-[var(--one-muted)]">今日の予定はまだありません。</div>
         )}
 
-        <div className="mt-4 flex justify-center">
+        <div className="mt-4 flex justify-end">
           <button
             className="rounded-full border border-[var(--one-border)] bg-[var(--one-active-bg)] px-4 py-2 text-[0.76rem] font-extrabold transition hover:border-[var(--one-border-strong)] disabled:cursor-not-allowed disabled:opacity-40"
             type="button"
