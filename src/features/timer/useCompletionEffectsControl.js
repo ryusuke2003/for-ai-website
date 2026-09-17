@@ -54,7 +54,6 @@ function readPreference(key) {
 function persistPreference(key, enabled) {
   const value = enabled ? '1' : '0';
   if (!writeStorage(key, value)) return false;
-
   const persisted = readStorage(key);
   if (persisted.ok && persisted.value === value) return true;
   if (persisted.ok) reportStorageFailure();
@@ -75,44 +74,24 @@ function createCompletionEffectClaimToken() {
       globalThis.crypto.getRandomValues(bytes);
       return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join('');
     } catch {
-      // The claim is not secret; local uniqueness is enough for the fallback.
+      // Claim tokens only need local uniqueness.
     }
   }
-
   completionEffectFallbackCounter = (completionEffectFallbackCounter + 1) % 1_000_000;
   return `fallback-${Date.now().toString(36)}-${completionEffectFallbackCounter.toString(36)}`;
 }
 
-function isCompletionEffectClaimToken(value) {
-  return value === null
-    || (typeof value === 'string' && /^[a-z0-9-]{8,80}$/.test(value));
-}
-
 function parseCompletionEffectClaim(raw) {
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > MAX_COMPLETION_EFFECT_CLAIM_BYTES) return null;
-
   try {
     const value = JSON.parse(raw);
     if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
-    if (
-      Object.keys(value).length !== 4
-      || !Object.hasOwn(value, 'key')
-      || !Object.hasOwn(value, 'soundClaim')
-      || !Object.hasOwn(value, 'notificationClaim')
-      || !Object.hasOwn(value, 'updatedAt')
-    ) {
-      return null;
-    }
     if (typeof value.key !== 'string' || !/^\d{10,16}:\d{1,3}$/.test(value.key)) return null;
-
-    const [endAtRaw, minutesRaw] = value.key.split(':');
-    const endAtValue = Number(endAtRaw);
-    const minutes = Number(minutesRaw);
-    if (!Number.isSafeInteger(endAtValue) || endAtValue <= 0) return null;
-    if (!Number.isInteger(minutes) || minutes <= 0 || minutes > MAX_TIMER_MINUTES) return null;
-    if (!isCompletionEffectClaimToken(value.soundClaim)) return null;
-    if (!isCompletionEffectClaimToken(value.notificationClaim)) return null;
     if (!Number.isSafeInteger(value.updatedAt) || value.updatedAt <= 0) return null;
+    for (const field of ['soundClaim', 'notificationClaim']) {
+      const claim = value[field];
+      if (claim !== null && (typeof claim !== 'string' || !/^[a-z0-9-]{8,80}$/.test(claim))) return null;
+    }
     return value;
   } catch {
     return null;
@@ -132,13 +111,8 @@ function completionEffectClaimPayload(completionKey, claimField, claimToken, pre
 }
 
 async function claimCompletionEffectWithStorage(completionKey, effect, { settle = false } = {}) {
-  const claimField = effect === 'sound'
-    ? 'soundClaim'
-    : effect === 'notification'
-      ? 'notificationClaim'
-      : null;
+  const claimField = effect === 'sound' ? 'soundClaim' : effect === 'notification' ? 'notificationClaim' : null;
   if (claimField === null) return false;
-
   const stored = readStorage(COMPLETION_EFFECT_CLAIM_STORAGE_KEY);
   if (!stored.ok) return true;
   const previousClaim = parseCompletionEffectClaim(stored.value);
@@ -147,10 +121,7 @@ async function claimCompletionEffectWithStorage(completionKey, effect, { settle 
   const claimToken = createCompletionEffectClaimToken();
   const payload = completionEffectClaimPayload(completionKey, claimField, claimToken, previousClaim);
   if (!writeStorage(COMPLETION_EFFECT_CLAIM_STORAGE_KEY, payload)) return true;
-
-  if (settle) {
-    await new Promise((resolve) => window.setTimeout(resolve, COMPLETION_EFFECT_FALLBACK_SETTLE_MS));
-  }
+  if (settle) await new Promise((resolve) => window.setTimeout(resolve, COMPLETION_EFFECT_FALLBACK_SETTLE_MS));
 
   const persisted = readStorage(COMPLETION_EFFECT_CLAIM_STORAGE_KEY);
   if (!persisted.ok) return true;
@@ -160,7 +131,6 @@ async function claimCompletionEffectWithStorage(completionKey, effect, { settle 
 
 async function claimCompletionEffect(completionKey, effect) {
   if (completionKey === null) return true;
-
   if (navigator.locks && typeof navigator.locks.request === 'function') {
     try {
       return await navigator.locks.request(
@@ -168,18 +138,17 @@ async function claimCompletionEffect(completionKey, effect) {
         () => claimCompletionEffectWithStorage(completionKey, effect),
       );
     } catch {
-      // Fall through to a storage-only best-effort claim.
+      // Fall through to the storage-only best-effort claim.
     }
   }
-
   return claimCompletionEffectWithStorage(completionKey, effect, { settle: true });
 }
 
 function soundDefaultStatus(enabled) {
   if (!SOUND_SUPPORTED) return 'このブラウザでは完了音を利用できません。';
   return enabled
-    ? '完了音はオンです。タイマーが0:00になったときだけ短く鳴ります。'
-    : '完了音はオフです。オンにすると短い試聴音が鳴ります。';
+    ? '完了音はオンです。タイマー完了時に、少し長めではっきりした音が鳴ります。'
+    : '完了音はオフです。オンにすると完了音を試聴できます。';
 }
 
 function notificationDefaultStatus(enabled) {
@@ -188,7 +157,7 @@ function notificationDefaultStatus(enabled) {
     return '完了通知はブラウザ設定で拒否されています。利用するにはサイトの通知権限を変更してください。';
   }
   return enabled
-    ? '完了通知はオンです。タイマー完了時にこのタブが背景なら通知します。'
+    ? '完了通知はオンです。タイマー画面以外を見ているときも、タイマー完了を通知します。'
     : '完了通知はオフです。オンにするとブラウザの通知許可を確認します。';
 }
 
@@ -243,10 +212,11 @@ export function useCompletionEffectsControl(timerState) {
   const scheduleCompletionChime = useCallback((context) => {
     try {
       const tones = [
-        { frequency: 660, offset: 0, duration: 0.11 },
-        { frequency: 880, offset: 0.14, duration: 0.16 },
+        { frequency: 659.25, offset: 0, duration: 0.24, peak: 0.12 },
+        { frequency: 880, offset: 0.26, duration: 0.30, peak: 0.14 },
+        { frequency: 1046.5, offset: 0.58, duration: 0.42, peak: 0.15 },
       ];
-      tones.forEach(({ frequency, offset, duration }) => {
+      tones.forEach(({ frequency, offset, duration, peak }) => {
         const oscillator = context.createOscillator();
         const gain = context.createGain();
         const start = context.currentTime + offset;
@@ -254,7 +224,7 @@ export function useCompletionEffectsControl(timerState) {
         oscillator.type = 'sine';
         oscillator.frequency.setValueAtTime(frequency, start);
         gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.035, start + 0.015);
+        gain.gain.exponentialRampToValueAtTime(peak, start + 0.025);
         gain.gain.exponentialRampToValueAtTime(0.0001, end);
         oscillator.connect(gain);
         gain.connect(context.destination);
@@ -271,7 +241,6 @@ export function useCompletionEffectsControl(timerState) {
     notificationEnabledRef.current
     && NOTIFICATION_SUPPORTED
     && Notification.permission === 'granted'
-    && document.visibilityState !== 'visible'
   ), []);
 
   const showCompletionNotification = useCallback(() => {
@@ -327,15 +296,13 @@ export function useCompletionEffectsControl(timerState) {
       setSoundStatusOverride(null);
     }
 
-    function refreshNotification({ closeVisible = false } = {}) {
-      if (closeVisible && document.visibilityState === 'visible') closeActiveNotification();
+    function refreshNotification() {
       if (!NOTIFICATION_SUPPORTED || Notification.permission !== 'granted') {
         notificationEnabledRef.current = false;
         setNotificationEnabled(false);
         setNotificationStatusOverride(null);
         return;
       }
-
       const stored = readPreference(COMPLETION_NOTIFICATION_STORAGE_KEY);
       if (!stored.ok || stored.enabled === null) return;
       notificationEnabledRef.current = stored.enabled;
@@ -346,12 +313,12 @@ export function useCompletionEffectsControl(timerState) {
     function refreshWhenVisible() {
       if (document.visibilityState !== 'visible') return;
       applyStoredSound();
-      refreshNotification({ closeVisible: true });
+      refreshNotification();
     }
 
     function handlePageShow() {
       applyStoredSound();
-      refreshNotification({ closeVisible: true });
+      refreshNotification();
     }
 
     function handleStorage(event) {
@@ -367,7 +334,6 @@ export function useCompletionEffectsControl(timerState) {
         );
         return;
       }
-
       if (event.key !== COMPLETION_NOTIFICATION_STORAGE_KEY) return;
       const nextEnabled = parsePreference(event.newValue);
       if (nextEnabled === null) return;
@@ -419,14 +385,12 @@ export function useCompletionEffectsControl(timerState) {
       && timerState.remainingSeconds === 0
     );
     if (!justCompleted) return;
-
     const completionKey = buildCompletionEffectKey(previous.endAt, previous.selectedMinutes);
     void runCompletionEffectsOnce(completionKey);
   }, [runCompletionEffectsOnce, timerState]);
 
   async function toggleSound() {
     if (!SOUND_SUPPORTED) return;
-
     if (soundEnabledRef.current) {
       soundEnabledRef.current = false;
       setSoundEnabled(false);
@@ -444,7 +408,6 @@ export function useCompletionEffectsControl(timerState) {
       setSoundStatusOverride('完了音を有効にできませんでした。タイマー機能はそのまま利用できます。');
       return;
     }
-
     soundEnabledRef.current = true;
     setSoundEnabled(true);
     const persisted = persistPreference(COMPLETION_SOUND_STORAGE_KEY, true);
@@ -454,14 +417,13 @@ export function useCompletionEffectsControl(timerState) {
     }
     setSoundStatusOverride(
       persisted
-        ? '完了音をオンにしました。いまの短い音がタイマー完了時に鳴ります。'
+        ? '完了音をオンにしました。いまの音がタイマー完了時に鳴ります。'
         : '完了音をオンにしました。今のタブでは鳴りますが、このブラウザには設定を保存できませんでした。再読み込みすると以前の設定へ戻る可能性があります。',
     );
   }
 
   async function toggleNotification() {
     if (!NOTIFICATION_SUPPORTED) return;
-
     if (notificationEnabledRef.current) {
       notificationEnabledRef.current = false;
       setNotificationEnabled(false);
@@ -483,7 +445,6 @@ export function useCompletionEffectsControl(timerState) {
         permission = 'denied';
       }
     }
-
     if (permission !== 'granted') {
       notificationEnabledRef.current = false;
       setNotificationEnabled(false);
@@ -501,7 +462,7 @@ export function useCompletionEffectsControl(timerState) {
     const persisted = persistPreference(COMPLETION_NOTIFICATION_STORAGE_KEY, true);
     setNotificationStatusOverride(
       persisted
-        ? '完了通知をオンにしました。このタブが背景のときだけタイマー完了を通知します。'
+        ? '完了通知をオンにしました。タイマー画面以外を見ているときも完了を通知します。'
         : '完了通知をオンにしました。今のタブでは利用できますが、このブラウザには設定を保存できませんでした。',
     );
   }
