@@ -75,6 +75,7 @@ function installNotification({ permission = 'granted' } = {}) {
 describe('useCompletionEffectsControl', () => {
   beforeEach(() => {
     vi.resetModules();
+    localStorage.clear();
     installAudioContext();
     installNotification();
     Object.defineProperty(document, 'visibilityState', {
@@ -170,5 +171,39 @@ describe('useCompletionEffectsControl', () => {
 
     await waitFor(() => expect(locksRequest).toHaveBeenCalled());
     expect(localStorage.getItem('one.completionEffectClaim.v1')).not.toBeNull();
+  });
+
+  it('通知ONならタイマー画面が前面でも完了通知を出す', async () => {
+    localStorage.setItem('one.completionNotification.v1', '1');
+    const { instances } = installNotification({ permission: 'granted' });
+    vi.resetModules();
+    installAudioContext();
+    Object.defineProperty(navigator, 'locks', {
+      configurable: true,
+      value: { request: vi.fn(async (_name, callback) => callback()) },
+    });
+
+    const { useCompletionEffectsControl } = await import('./useCompletionEffectsControl.js');
+    const endAt = Date.now() + 1000;
+    const running = createTimerState({
+      running: true,
+      remainingSeconds: 1,
+      endAt,
+    });
+    const { rerender } = renderHook(({ state }) => useCompletionEffectsControl(state), {
+      initialProps: { state: running },
+    });
+
+    rerender({
+      state: createTimerState({
+        running: false,
+        completionReady: true,
+        remainingSeconds: 0,
+        endAt: null,
+      }),
+    });
+
+    await waitFor(() => expect(instances).toHaveLength(1));
+    expect(instances[0].title).toBe('集中スプリント完了');
   });
 });
