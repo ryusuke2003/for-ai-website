@@ -1,6 +1,6 @@
 [package]
 name = "one-desktop"
-version = "0.1.8"
+version = "0.1.9"
 description = "ONE focus timer desktop application"
 authors = ["ryusuke2003"]
 edition = "2021"
