@@ -11,6 +11,7 @@ import {
   incrementVersion,
   readLockedPackageVersion,
   replaceCargoPackageVersion,
+  setAppVersion,
 } from './version-app.mjs';
 
 const temporaryDirectories = [];
@@ -124,6 +125,41 @@ describe('version-app', () => {
     expect(JSON.parse(readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8')).version).toBe('0.2.0');
     expect(readFileSync(join(rootDir, 'src-tauri/Cargo.toml'), 'utf8')).toContain('version = "0.2.0"');
     expect(readLockedPackageVersion(readFileSync(join(rootDir, 'src-tauri/Cargo.lock'), 'utf8'))).toBe('0.2.0');
+  });
+
+  it('release tag由来のbase versionから次versionを計算できる', () => {
+    const rootDir = createVersionFixture();
+
+    const result = bumpVersion({
+      rootDir,
+      releaseType: 'patch',
+      baseVersion: '0.1.10',
+      runCargo: ({ cargoLockPath, nextVersion }) => {
+        const current = readFileSync(cargoLockPath, 'utf8');
+        writeFileSync(cargoLockPath, current.replace('version = "0.1.0"', `version = "${nextVersion}"`));
+      },
+    });
+
+    expect(result).toEqual({ currentVersion: '0.1.10', nextVersion: '0.1.11' });
+    expect(JSON.parse(readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8')).version).toBe('0.1.11');
+  });
+
+  it('指定versionへ直接同期できる', () => {
+    const rootDir = createVersionFixture();
+
+    const result = setAppVersion({
+      rootDir,
+      targetVersion: '1.4.2',
+      runCargo: ({ cargoLockPath, nextVersion }) => {
+        const current = readFileSync(cargoLockPath, 'utf8');
+        writeFileSync(cargoLockPath, current.replace('version = "0.1.0"', `version = "${nextVersion}"`));
+      },
+    });
+
+    expect(result).toEqual({ currentVersion: '0.1.1', nextVersion: '1.4.2' });
+    expect(JSON.parse(readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8')).version).toBe('1.4.2');
+    expect(readFileSync(join(rootDir, 'src-tauri/Cargo.toml'), 'utf8')).toContain('version = "1.4.2"');
+    expect(readLockedPackageVersion(readFileSync(join(rootDir, 'src-tauri/Cargo.lock'), 'utf8'))).toBe('1.4.2');
   });
 
   it('Cargo処理が失敗した場合は3ファイルすべてを実行前の状態へ戻す', () => {
