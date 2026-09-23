@@ -171,7 +171,7 @@ fn show_tray_window(app: &AppHandle, position: PhysicalPosition<f64>) {
 }
 
 #[cfg(target_os = "macos")]
-fn show_tray_context_menu(tray: &TrayIcon, menu: &Menu) {
+fn show_tray_context_menu<R: tauri::Runtime>(tray: &TrayIcon<R>, menu: &Menu<R>) {
     // tray-icon 0.24.x keeps NSMenu attached to NSStatusItem at rest.
     // macOS 27 then consumes left clicks before TrayIconEvent is delivered.
     // Keep the menu detached normally, and attach it only while presenting
@@ -182,7 +182,7 @@ fn show_tray_context_menu(tray: &TrayIcon, menu: &Menu) {
     }
 
     let show_result = tray.with_inner_tray_icon(|inner| inner.show_menu());
-    let detach_result = tray.set_menu::<Menu>(None);
+    let detach_result = tray.set_menu::<Menu<R>>(None);
 
     if let Err(error) = show_result {
         eprintln!("failed to show tray menu: {error}");
