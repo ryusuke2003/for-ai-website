@@ -171,15 +171,13 @@ GitHub Actionsでは主に次を確認します。
 <details>
 <summary><strong>GitHub Release / バージョン更新</strong></summary>
 
-`v` で始まるタグをpushすると、GitHub ActionsがmacOS `.app` をビルドし、ZIPをGitHub Releaseへ添付します。
+通常のリリースはGitHubの **Actions → Release → Run workflow** から実行します。branchを `main` にし、`patch` / `minor` / `major` を選ぶだけで、version更新commit、tag作成、macOS build、Updater署名、GitHub Release公開まで自動実行します。
 
-patch版を上げる場合:
+CLIからpatch版だけ更新する従来コマンドも残しています。
 
 ```sh
 npm run version:patch
 ```
-
-`src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` のバージョンをまとめて同期します。
 
 詳細: [`docs/release-versioning.md`](docs/release-versioning.md)
 
