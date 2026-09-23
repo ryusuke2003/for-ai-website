@@ -72,27 +72,19 @@ jobs:
           else
             latest_version="${latest_tag#v}"
 
-            base_version="$(node --input-type=module - "$source_version" "$latest_version" <<'NODE'
-            const [sourceVersion, latestVersion] = process.argv.slice(2);
-            const parse = (value) => value.split('.').map(Number);
-            const compare = (left, right) => {
-              const a = parse(left);
-              const b = parse(right);
-              for (let i = 0; i < 3; i += 1) {
-                if (a[i] !== b[i]) return a[i] - b[i];
-              }
-              return 0;
-            };
-            const candidates = [sourceVersion, latestVersion].filter(Boolean);
-            process.stdout.write(candidates.reduce((best, value) => compare(value, best) > 0 ? value : best));
-            NODE
+            # Keep the shell block simple: YAML indentation and nested shell heredocs
+            # are easy to break. GNU sort -V is available on ubuntu-latest.
+            base_version="$(
+              printf '%s\n%s\n' "$source_version" "$latest_version" |
+                awk 'NF' |
+                sort -V |
+                tail -n1
             )"
 
-            version="$(node --input-type=module - "$VERSION_BUMP" "$base_version" <<'NODE'
-            import { incrementVersion } from './scripts/version-app.mjs';
-            const [releaseType, baseVersion] = process.argv.slice(2);
-            process.stdout.write(incrementVersion(baseVersion, releaseType));
-            NODE
+            version="$(
+              node --input-type=module -e \
+                "import { incrementVersion } from './scripts/version-app.mjs'; process.stdout.write(incrementVersion(process.argv[2], process.argv[1]));" \
+                "$VERSION_BUMP" "$base_version"
             )"
             release_tag="v$version"
 
