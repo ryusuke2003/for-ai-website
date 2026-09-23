@@ -51,56 +51,65 @@ jobs:
           node-version: 22.22.2
           cache: npm
 
-      - name: Determine next release version and create tag
+      - name: Determine or resume release tag
         id: release
         shell: bash
         env:
           VERSION_BUMP: ${{ inputs.bump }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
           git fetch --tags --force
           source_version="$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); process.stdout.write(config.version)")"
           latest_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)"
-          latest_version="${latest_tag#v}"
 
-          base_version="$(node --input-type=module - "$source_version" "$latest_version" <<'NODE'
-          const [sourceVersion, latestVersion] = process.argv.slice(2);
-          const parse = (value) => value.split('.').map(Number);
-          const compare = (left, right) => {
-            const a = parse(left);
-            const b = parse(right);
-            for (let i = 0; i < 3; i += 1) {
-              if (a[i] !== b[i]) return a[i] - b[i];
-            }
-            return 0;
-          };
-          const candidates = [sourceVersion, latestVersion].filter(Boolean);
-          process.stdout.write(candidates.reduce((best, value) => compare(value, best) > 0 ? value : best));
-          NODE
-          )"
+          if [ -n "$latest_tag" ] && ! gh release view "$latest_tag" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            release_tag="$latest_tag"
+            version="${release_tag#v}"
+            release_ref="$(git rev-list -n 1 "$release_tag")"
+            echo "Resuming unpublished release tag $release_tag"
+          else
+            latest_version="${latest_tag#v}"
 
-          version="$(node --input-type=module - "$VERSION_BUMP" "$base_version" <<'NODE'
-          import { incrementVersion } from './scripts/version-app.mjs';
-          const [releaseType, baseVersion] = process.argv.slice(2);
-          process.stdout.write(incrementVersion(baseVersion, releaseType));
-          NODE
-          )"
-          release_tag="v$version"
+            base_version="$(node --input-type=module - "$source_version" "$latest_version" <<'NODE'
+            const [sourceVersion, latestVersion] = process.argv.slice(2);
+            const parse = (value) => value.split('.').map(Number);
+            const compare = (left, right) => {
+              const a = parse(left);
+              const b = parse(right);
+              for (let i = 0; i < 3; i += 1) {
+                if (a[i] !== b[i]) return a[i] - b[i];
+              }
+              return 0;
+            };
+            const candidates = [sourceVersion, latestVersion].filter(Boolean);
+            process.stdout.write(candidates.reduce((best, value) => compare(value, best) > 0 ? value : best));
+            NODE
+            )"
 
-          if git rev-parse -q --verify "refs/tags/$release_tag" > /dev/null; then
-            echo "Tag $release_tag already exists. Refusing to overwrite an existing release tag." >&2
-            exit 1
+            version="$(node --input-type=module - "$VERSION_BUMP" "$base_version" <<'NODE'
+            import { incrementVersion } from './scripts/version-app.mjs';
+            const [releaseType, baseVersion] = process.argv.slice(2);
+            process.stdout.write(incrementVersion(baseVersion, releaseType));
+            NODE
+            )"
+            release_tag="v$version"
+
+            if git rev-parse -q --verify "refs/tags/$release_tag" > /dev/null; then
+              echo "Tag $release_tag already exists. Refusing to overwrite an existing release tag." >&2
+              exit 1
+            fi
+
+            release_ref="$(git rev-parse HEAD)"
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$release_tag" -m "$release_tag" "$release_ref"
+
+            # mainはRulesetでPR必須かつ更新制限されているため変更しない。
+            # tagだけをpushし、実際のapp versionはrelease buildのworkspaceでmaterializeする。
+            git push origin "refs/tags/$release_tag"
           fi
-
-          release_ref="$(git rev-parse HEAD)"
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "$release_tag" -m "$release_tag" "$release_ref"
-
-          # mainはRulesetでPR必須かつ更新制限されているため変更しない。
-          # tagだけをpushし、実際のapp versionはrelease buildのworkspaceでmaterializeする。
-          git push origin "refs/tags/$release_tag"
 
           echo "release_ref=$release_ref" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
@@ -114,7 +123,7 @@ jobs:
           {
             echo "## $RELEASE_TAG"
             echo
-            echo "The release tag was created from the current main commit."
+            echo "The release tag was created from main or an unpublished existing tag was resumed."
             echo "The release build materializes the selected version without pushing to protected main."
             echo "The macOS build, updater signing, and GitHub Release are handled by the next job."
           } >> "$GITHUB_STEP_SUMMARY"
