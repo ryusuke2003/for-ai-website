@@ -11,7 +11,7 @@ use std::{
 #[cfg(target_os = "macos")]
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    tray::{MouseButton, MouseButtonState, TrayIcon, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, LogicalSize, Manager, PhysicalPosition, WindowEvent,
 };
 
@@ -168,6 +168,28 @@ fn show_tray_window(app: &AppHandle, position: PhysicalPosition<f64>) {
     state.0.store(true, Ordering::SeqCst);
     let _ = window.show();
     let _ = window.set_focus();
+}
+
+#[cfg(target_os = "macos")]
+fn show_tray_context_menu(tray: &TrayIcon, menu: &Menu) {
+    // tray-icon 0.24.x keeps NSMenu attached to NSStatusItem at rest.
+    // macOS 27 then consumes left clicks before TrayIconEvent is delivered.
+    // Keep the menu detached normally, and attach it only while presenting
+    // the right-click menu. This mirrors the upstream tray-icon 0.25.1 fix.
+    if let Err(error) = tray.set_menu(Some(menu.clone())) {
+        eprintln!("failed to attach tray menu: {error}");
+        return;
+    }
+
+    let show_result = tray.with_inner_tray_icon(|inner| inner.show_menu());
+    let detach_result = tray.set_menu::<Menu>(None);
+
+    if let Err(error) = show_result {
+        eprintln!("failed to show tray menu: {error}");
+    }
+    if let Err(error) = detach_result {
+        eprintln!("failed to detach tray menu: {error}");
+    }
 }
 
 #[cfg(target_os = "macos")]
@@ -334,9 +356,9 @@ pub fn run() {
         let quit_item = MenuItem::with_id(app, "quit", "タイマーを終了", true, None::<&str>)?;
         let menu = Menu::with_items(app, &[&update_item, &quit_item])?;
         let update_item_for_menu = update_item.clone();
+        let menu_for_tray_click = menu.clone();
 
         let mut tray_builder = TrayIconBuilder::with_id(TRAY_ID)
-            .menu(&menu)
             .show_menu_on_left_click(false)
             .icon_as_template(true)
             .title("")
@@ -369,13 +391,18 @@ pub fn run() {
                     app.exit(0);
                 }
             })
-            .on_tray_icon_event(|tray, event| match event {
+            .on_tray_icon_event(move |tray, event| match event {
                 TrayIconEvent::Click {
                     position,
                     button: MouseButton::Left,
                     button_state: MouseButtonState::Up,
                     ..
                 } => show_tray_window(tray.app_handle(), position),
+                TrayIconEvent::Click {
+                    button: MouseButton::Right,
+                    button_state: MouseButtonState::Down,
+                    ..
+                } => show_tray_context_menu(tray, &menu_for_tray_click),
                 _ => {}
             });
 
