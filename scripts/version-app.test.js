@@ -4,9 +4,11 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   bumpPatchVersion,
+  bumpVersion,
   cargoUpdateArguments,
   formatCargoUpdateError,
   incrementPatchVersion,
+  incrementVersion,
   readLockedPackageVersion,
   replaceCargoPackageVersion,
 } from './version-app.mjs';
@@ -42,6 +44,16 @@ describe('version-app', () => {
   it('patch versionを1つ上げる', () => {
     expect(incrementPatchVersion('0.1.1')).toBe('0.1.2');
     expect(incrementPatchVersion('2.9.99')).toBe('2.9.100');
+  });
+
+  it('patch / minor / majorをSemVerとして更新する', () => {
+    expect(incrementVersion('1.2.3', 'patch')).toBe('1.2.4');
+    expect(incrementVersion('1.2.3', 'minor')).toBe('1.3.0');
+    expect(incrementVersion('1.2.3', 'major')).toBe('2.0.0');
+  });
+
+  it('未対応のversion bumpは拒否する', () => {
+    expect(() => incrementVersion('1.2.3', 'banana')).toThrow('Unsupported version bump: banana');
   });
 
   it('semver形式でないversionは拒否する', () => {
@@ -94,6 +106,24 @@ describe('version-app', () => {
     expect(JSON.parse(readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8')).version).toBe('0.1.2');
     expect(readFileSync(join(rootDir, 'src-tauri/Cargo.toml'), 'utf8')).toContain('version = "0.1.2"');
     expect(readLockedPackageVersion(readFileSync(join(rootDir, 'src-tauri/Cargo.lock'), 'utf8'))).toBe('0.1.2');
+  });
+
+  it('minor versionでも3ファイルを同期する', () => {
+    const rootDir = createVersionFixture();
+
+    const result = bumpVersion({
+      rootDir,
+      releaseType: 'minor',
+      runCargo: ({ cargoLockPath, nextVersion }) => {
+        const current = readFileSync(cargoLockPath, 'utf8');
+        writeFileSync(cargoLockPath, current.replace('version = "0.1.0"', `version = "${nextVersion}"`));
+      },
+    });
+
+    expect(result).toEqual({ currentVersion: '0.1.1', nextVersion: '0.2.0' });
+    expect(JSON.parse(readFileSync(join(rootDir, 'src-tauri/tauri.conf.json'), 'utf8')).version).toBe('0.2.0');
+    expect(readFileSync(join(rootDir, 'src-tauri/Cargo.toml'), 'utf8')).toContain('version = "0.2.0"');
+    expect(readLockedPackageVersion(readFileSync(join(rootDir, 'src-tauri/Cargo.lock'), 'utf8'))).toBe('0.2.0');
   });
 
   it('Cargo処理が失敗した場合は3ファイルすべてを実行前の状態へ戻す', () => {
