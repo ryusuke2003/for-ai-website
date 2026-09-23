@@ -37,7 +37,9 @@ workflowは同時に複数のReleaseが走らないよう直列化していま�
 
 ### リリース途中で失敗した場合
 
-tag作成まで成功したあと、macOS buildや署名で失敗した場合は、**新しくRun workflowを押さず、同じworkflow runの「Re-run failed jobs」**を使ってください。新しいRelease workflowを開始すると既存tagと衝突するためです。
+tag作成まで成功したあと、macOS build・署名・GitHub Release作成で失敗した場合は、まず同じworkflow runの **Re-run failed jobs** を使えます。
+
+tagだけ作成されてGitHub Releaseが存在しない状態でworkflowを新しく実行しても、最新の未公開tagを検出してそのtagの公開処理を再開します。未公開tagを飛ばして次versionを作ることはありません。
 
 ## CLIからversionだけ更新する場合
 
