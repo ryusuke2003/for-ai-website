@@ -53,6 +53,23 @@ jobs:
           node-version: 22.22.2
           cache: npm
 
+      - name: Setup Rust
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Materialize manual release version
+        if: github.event_name == 'workflow_call'
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          release_version="${RELEASE_TAG#v}"
+          node scripts/version-app.mjs set "$release_version"
+
       - name: Verify release tag matches app version
         if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_call'
         shell: bash
@@ -66,13 +83,6 @@ jobs:
             echo "Tag version ($tag_version) does not match Tauri app version ($app_version)." >&2
             exit 1
           fi
-
-      - name: Setup Rust
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-          rustc --version
-          cargo --version
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
