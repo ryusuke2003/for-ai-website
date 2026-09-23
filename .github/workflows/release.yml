@@ -1,0 +1,123 @@
+name: Release
+
+run-name: Release ${{ inputs.bump }} from main
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: Version bump
+        required: true
+        default: patch
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manual-release-main
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    name: Bump version and create tag
+    runs-on: ubuntu-latest
+    outputs:
+      release_ref: ${{ steps.release.outputs.release_ref }}
+      release_tag: ${{ steps.release.outputs.release_tag }}
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Require main branch
+        if: github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "Run this workflow from the main branch." >&2
+          exit 1
+
+      - name: Checkout main
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: true
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22.22.2
+          cache: npm
+
+      - name: Setup Rust
+        shell: bash
+        run: |
+          rustup toolchain install stable --profile minimal --no-self-update
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Bump app version
+        id: release
+        shell: bash
+        env:
+          VERSION_BUMP: ${{ inputs.bump }}
+        run: |
+          set -euo pipefail
+
+          node scripts/version-app.mjs "$VERSION_BUMP"
+          cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
+
+          version="$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); process.stdout.write(config.version)")"
+          release_tag="v$version"
+
+          git fetch --tags --force
+          if git rev-parse -q --verify "refs/tags/$release_tag" > /dev/null; then
+            echo "Tag $release_tag already exists. Refusing to overwrite an existing release tag." >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+
+          if git diff --cached --quiet; then
+            echo "Version bump produced no changes." >&2
+            exit 1
+          fi
+
+          git commit -m "chore(release): $release_tag"
+          git tag -a "$release_tag" -m "$release_tag"
+
+          # GITHUB_TOKENによるpushは別workflowを自動起動しないため、
+          # このworkflow内で下のreusable Tauri buildを直接呼び出す。
+          git push --atomic origin HEAD:main "refs/tags/$release_tag"
+
+          echo "release_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Show release summary
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+        run: |
+          {
+            echo "## $RELEASE_TAG"
+            echo
+            echo "Version files were committed to main and the release tag was created."
+            echo "The macOS build, updater signing, and GitHub Release are handled by the next job."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Build and publish
+    needs: prepare
+    permissions:
+      contents: write
+    uses: ./.github/workflows/tauri-build.yml
+    with:
+      release_ref: ${{ needs.prepare.outputs.release_ref }}
+      release_tag: ${{ needs.prepare.outputs.release_tag }}
+    secrets: inherit
