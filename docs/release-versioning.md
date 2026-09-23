@@ -1,6 +1,6 @@
 # リリース版数の更新
 
-Tauriアプリの版数は `src-tauri/tauri.conf.json` を正本とします。
+`src-tauri/tauri.conf.json` は開発時の版数を保持します。GUIリリース時の次版は、最新の `v*` tag と開発版数のうち新しい方を基準に決め、release build内だけで3ファイルへ反映します。
 
 ## 推奨: GitHub ActionsのGUIからリリース
 
@@ -23,21 +23,21 @@ versionの更新規則はSemVerです。
 
 Release workflowは次を自動で行います。
 
-1. `src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` を同じversionへ更新
-2. `cargo metadata --locked` でlockfile同期を確認
-3. `github-actions[bot]` としてversion更新commitを `main` へpush
-4. 同じversionの `vX.Y.Z` tagを作成
-5. 既存のTauri build workflowを呼び出してmacOS版をbuild
+1. 最新の `v*` tag と開発版数から次のversionを決定
+2. 現在の `main` commitへ同じversionの `vX.Y.Z` tagを作成
+3. release buildのworkspace内だけで `src-tauri/tauri.conf.json`、`src-tauri/Cargo.toml`、`src-tauri/Cargo.lock` を同じversionへ同期
+4. `cargo metadata --locked` でlockfile同期を確認
+5. 既存のTauri build workflowでmacOS版をbuild
 6. Tauri Updater用bundleへ署名
 7. `timer-macos.zip`、Updater bundle、署名、`latest.json` をGitHub Releaseへ公開
 
-workflowは同時に複数のReleaseが走らないよう直列化しています。また、既存tagの上書きは行いません。
+`main` への直接pushは行いません。これにより「変更はPull Request経由のみ」「protected refを直接更新しない」というRepository Rulesを維持したまま、GUIから1回でリリースできます。
 
-Release workflowのversion更新commitはGitHub Actionsから `main` へ直接pushします。将来branch rulesを厳しくする場合は、GitHub Actionsによるこのpushを許可するか、リリース方式も合わせて変更してください。
+workflowは同時に複数のReleaseが走らないよう直列化しています。また、既存tagの上書きは行いません。
 
 ### リリース途中で失敗した場合
 
-version更新commitとtag作成まで成功したあと、macOS buildや署名で失敗した場合は、**新しくRun workflowを押さず、同じworkflow runの「Re-run failed jobs」**を使ってください。新しいRelease workflowを開始すると、さらに次のversionへ進むためです。
+tag作成まで成功したあと、macOS buildや署名で失敗した場合は、**新しくRun workflowを押さず、同じworkflow runの「Re-run failed jobs」**を使ってください。新しいRelease workflowを開始すると既存tagと衝突するためです。
 
 ## CLIからversionだけ更新する場合
 

@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   prepare:
-    name: Bump version and create tag
+    name: Create release tag
     runs-on: ubuntu-latest
     outputs:
       release_ref: ${{ steps.release.outputs.release_ref }}
@@ -51,15 +51,7 @@ jobs:
           node-version: 22.22.2
           cache: npm
 
-      - name: Setup Rust
-        shell: bash
-        run: |
-          rustup toolchain install stable --profile minimal --no-self-update
-          rustup default stable
-          rustc --version
-          cargo --version
-
-      - name: Bump app version
+      - name: Determine next release version and create tag
         id: release
         shell: bash
         env:
@@ -67,35 +59,50 @@ jobs:
         run: |
           set -euo pipefail
 
-          node scripts/version-app.mjs "$VERSION_BUMP"
-          cargo metadata --manifest-path src-tauri/Cargo.toml --locked --format-version 1 --no-deps > /dev/null
+          git fetch --tags --force
+          source_version="$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); process.stdout.write(config.version)")"
+          latest_tag="$(git tag --list 'v[0-9]*.[0-9]*.[0-9]*' --sort=-v:refname | head -n1 || true)"
+          latest_version="${latest_tag#v}"
 
-          version="$(node -e "const fs=require('fs'); const config=JSON.parse(fs.readFileSync('src-tauri/tauri.conf.json','utf8')); process.stdout.write(config.version)")"
+          base_version="$(node --input-type=module - "$source_version" "$latest_version" <<'NODE'
+          const [sourceVersion, latestVersion] = process.argv.slice(2);
+          const parse = (value) => value.split('.').map(Number);
+          const compare = (left, right) => {
+            const a = parse(left);
+            const b = parse(right);
+            for (let i = 0; i < 3; i += 1) {
+              if (a[i] !== b[i]) return a[i] - b[i];
+            }
+            return 0;
+          };
+          const candidates = [sourceVersion, latestVersion].filter(Boolean);
+          process.stdout.write(candidates.reduce((best, value) => compare(value, best) > 0 ? value : best));
+          NODE
+          )"
+
+          version="$(node --input-type=module - "$VERSION_BUMP" "$base_version" <<'NODE'
+          import { incrementVersion } from './scripts/version-app.mjs';
+          const [releaseType, baseVersion] = process.argv.slice(2);
+          process.stdout.write(incrementVersion(baseVersion, releaseType));
+          NODE
+          )"
           release_tag="v$version"
 
-          git fetch --tags --force
           if git rev-parse -q --verify "refs/tags/$release_tag" > /dev/null; then
             echo "Tag $release_tag already exists. Refusing to overwrite an existing release tag." >&2
             exit 1
           fi
 
+          release_ref="$(git rev-parse HEAD)"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src-tauri/tauri.conf.json src-tauri/Cargo.toml src-tauri/Cargo.lock
+          git tag -a "$release_tag" -m "$release_tag" "$release_ref"
 
-          if git diff --cached --quiet; then
-            echo "Version bump produced no changes." >&2
-            exit 1
-          fi
+          # mainはRulesetでPR必須かつ更新制限されているため変更しない。
+          # tagだけをpushし、実際のapp versionはrelease buildのworkspaceでmaterializeする。
+          git push origin "refs/tags/$release_tag"
 
-          git commit -m "chore(release): $release_tag"
-          git tag -a "$release_tag" -m "$release_tag"
-
-          # GITHUB_TOKENによるpushは別workflowを自動起動しないため、
-          # このworkflow内で下のreusable Tauri buildを直接呼び出す。
-          git push --atomic origin HEAD:main "refs/tags/$release_tag"
-
-          echo "release_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          echo "release_ref=$release_ref" >> "$GITHUB_OUTPUT"
           echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -107,7 +114,8 @@ jobs:
           {
             echo "## $RELEASE_TAG"
             echo
-            echo "Version files were committed to main and the release tag was created."
+            echo "The release tag was created from the current main commit."
+            echo "The release build materializes the selected version without pushing to protected main."
             echo "The macOS build, updater signing, and GitHub Release are handled by the next job."
           } >> "$GITHUB_STEP_SUMMARY"
 

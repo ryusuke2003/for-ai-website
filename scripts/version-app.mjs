@@ -83,11 +83,15 @@ function updateCargoLock({ rootDir, manifestPath, nextVersion }) {
   }
 }
 
-export function bumpVersion({
+export function setAppVersion({
   rootDir = process.cwd(),
   runCargo,
-  releaseType = 'patch',
+  targetVersion,
 } = {}) {
+  if (!VERSION_PATTERN.test(targetVersion ?? '')) {
+    throw new Error(`Unsupported version: ${targetVersion}`);
+  }
+
   const tauriConfigPath = resolve(rootDir, 'src-tauri/tauri.conf.json');
   const cargoTomlPath = resolve(rootDir, 'src-tauri/Cargo.toml');
   const cargoLockPath = resolve(rootDir, 'src-tauri/Cargo.lock');
@@ -97,25 +101,24 @@ export function bumpVersion({
   const originalCargoLock = readFileSync(cargoLockPath, 'utf8');
   const tauriConfig = JSON.parse(originalTauriConfig);
   const currentVersion = tauriConfig.version;
-  const nextVersion = incrementVersion(currentVersion, releaseType);
 
   const executeCargo = runCargo ?? updateCargoLock;
 
   try {
-    tauriConfig.version = nextVersion;
+    tauriConfig.version = targetVersion;
     writeFileSync(tauriConfigPath, `${JSON.stringify(tauriConfig, null, 2)}\n`);
-    writeFileSync(cargoTomlPath, replaceCargoPackageVersion(originalCargoToml, nextVersion));
+    writeFileSync(cargoTomlPath, replaceCargoPackageVersion(originalCargoToml, targetVersion));
 
     executeCargo({
       rootDir,
       manifestPath: cargoTomlPath,
       cargoLockPath,
-      nextVersion,
+      nextVersion: targetVersion,
     });
 
     const lockedVersion = readLockedPackageVersion(readFileSync(cargoLockPath, 'utf8'), CARGO_PACKAGE_NAME);
-    if (lockedVersion !== nextVersion) {
-      throw new Error(`Cargo.lock version did not update to ${nextVersion} (actual: ${lockedVersion ?? 'missing'})`);
+    if (lockedVersion !== targetVersion) {
+      throw new Error(`Cargo.lock version did not update to ${targetVersion} (actual: ${lockedVersion ?? 'missing'})`);
     }
   } catch (error) {
     writeFileSync(tauriConfigPath, originalTauriConfig);
@@ -123,6 +126,26 @@ export function bumpVersion({
     writeFileSync(cargoLockPath, originalCargoLock);
     throw error;
   }
+
+  return { currentVersion, nextVersion: targetVersion };
+}
+
+export function bumpVersion({
+  rootDir = process.cwd(),
+  runCargo,
+  releaseType = 'patch',
+  baseVersion,
+} = {}) {
+  const tauriConfigPath = resolve(rootDir, 'src-tauri/tauri.conf.json');
+  const tauriConfig = JSON.parse(readFileSync(tauriConfigPath, 'utf8'));
+  const currentVersion = baseVersion ?? tauriConfig.version;
+  const nextVersion = incrementVersion(currentVersion, releaseType);
+
+  setAppVersion({
+    rootDir,
+    runCargo,
+    targetVersion: nextVersion,
+  });
 
   return { currentVersion, nextVersion };
 }
@@ -132,9 +155,22 @@ export function bumpPatchVersion(options = {}) {
 }
 
 function main() {
-  const releaseType = process.argv[2] ?? 'patch';
-  const { currentVersion, nextVersion } = bumpVersion({ releaseType });
-  console.log(`Tauri app version: ${currentVersion} -> ${nextVersion} (${releaseType})`);
+  const command = process.argv[2] ?? 'patch';
+
+  if (command === 'set') {
+    const targetVersion = process.argv[3];
+    const { currentVersion, nextVersion } = setAppVersion({ targetVersion });
+    console.log(`Tauri app version: ${currentVersion} -> ${nextVersion} (set)`);
+    console.log('Updated src-tauri/tauri.conf.json, Cargo.toml and Cargo.lock.');
+    return;
+  }
+
+  const baseVersion = process.argv[3];
+  const { currentVersion, nextVersion } = bumpVersion({
+    releaseType: command,
+    baseVersion,
+  });
+  console.log(`Tauri app version: ${currentVersion} -> ${nextVersion} (${command})`);
   console.log('Updated src-tauri/tauri.conf.json, Cargo.toml and Cargo.lock.');
 }
 

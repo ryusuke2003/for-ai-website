@@ -171,7 +171,7 @@ GitHub Actionsでは主に次を確認します。
 <details>
 <summary><strong>GitHub Release / バージョン更新</strong></summary>
 
-通常のリリースはGitHubの **Actions → Release → Run workflow** から実行します。branchを `main` にし、`patch` / `minor` / `major` を選ぶだけで、version更新commit、tag作成、macOS build、Updater署名、GitHub Release公開まで自動実行します。
+通常のリリースはGitHubの **Actions → Release → Run workflow** から実行します。branchを `main` にし、`patch` / `minor` / `major` を選ぶだけで、tag作成、release build内のversion同期、macOS build、Updater署名、GitHub Release公開まで自動実行します。protected `main` への直接pushは行いません。
 
 CLIからpatch版だけ更新する従来コマンドも残しています。
 
