@@ -4,13 +4,28 @@ import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const VERSION_PATTERN = /^(\d+)\.(\d+)\.(\d+)$/;
+const VERSION_BUMP_TYPES = new Set(['patch', 'minor', 'major']);
 const CARGO_PACKAGE_NAME = 'one-desktop';
 
-export function incrementPatchVersion(version) {
+export function incrementVersion(version, releaseType = 'patch') {
   const match = VERSION_PATTERN.exec(version);
   if (!match) throw new Error(`Unsupported version: ${version}`);
-  const [, major, minor, patch] = match;
-  return `${major}.${minor}.${Number(patch) + 1}`;
+  if (!VERSION_BUMP_TYPES.has(releaseType)) {
+    throw new Error(`Unsupported version bump: ${releaseType}`);
+  }
+
+  const [, majorText, minorText, patchText] = match;
+  const major = Number(majorText);
+  const minor = Number(minorText);
+  const patch = Number(patchText);
+
+  if (releaseType === 'major') return `${major + 1}.0.0`;
+  if (releaseType === 'minor') return `${major}.${minor + 1}.0`;
+  return `${major}.${minor}.${patch + 1}`;
+}
+
+export function incrementPatchVersion(version) {
+  return incrementVersion(version, 'patch');
 }
 
 export function replaceCargoPackageVersion(source, nextVersion) {
@@ -68,7 +83,11 @@ function updateCargoLock({ rootDir, manifestPath, nextVersion }) {
   }
 }
 
-export function bumpPatchVersion({ rootDir = process.cwd(), runCargo } = {}) {
+export function bumpVersion({
+  rootDir = process.cwd(),
+  runCargo,
+  releaseType = 'patch',
+} = {}) {
   const tauriConfigPath = resolve(rootDir, 'src-tauri/tauri.conf.json');
   const cargoTomlPath = resolve(rootDir, 'src-tauri/Cargo.toml');
   const cargoLockPath = resolve(rootDir, 'src-tauri/Cargo.lock');
@@ -78,7 +97,7 @@ export function bumpPatchVersion({ rootDir = process.cwd(), runCargo } = {}) {
   const originalCargoLock = readFileSync(cargoLockPath, 'utf8');
   const tauriConfig = JSON.parse(originalTauriConfig);
   const currentVersion = tauriConfig.version;
-  const nextVersion = incrementPatchVersion(currentVersion);
+  const nextVersion = incrementVersion(currentVersion, releaseType);
 
   const executeCargo = runCargo ?? updateCargoLock;
 
@@ -108,9 +127,14 @@ export function bumpPatchVersion({ rootDir = process.cwd(), runCargo } = {}) {
   return { currentVersion, nextVersion };
 }
 
+export function bumpPatchVersion(options = {}) {
+  return bumpVersion({ ...options, releaseType: 'patch' });
+}
+
 function main() {
-  const { currentVersion, nextVersion } = bumpPatchVersion();
-  console.log(`Tauri app version: ${currentVersion} -> ${nextVersion}`);
+  const releaseType = process.argv[2] ?? 'patch';
+  const { currentVersion, nextVersion } = bumpVersion({ releaseType });
+  console.log(`Tauri app version: ${currentVersion} -> ${nextVersion} (${releaseType})`);
   console.log('Updated src-tauri/tauri.conf.json, Cargo.toml and Cargo.lock.');
 }
 
